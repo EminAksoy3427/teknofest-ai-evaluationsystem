@@ -1,8 +1,66 @@
-import { StrictMode } from "react";
+import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router";
 
 import "./styles.css";
+import { authClient } from "./auth-client";
+
+function AuthenticationState() {
+  const { data: session, error, isPending } = authClient.useSession();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (isPending) {
+    return <p className="text-sm text-neutral-500">Oturum durumu kontrol ediliyor…</p>;
+  }
+
+  if (session) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <div>
+          <p className="font-medium text-neutral-900">{session.user.name}</p>
+          <p className="text-sm text-neutral-500">{session.user.email}</p>
+        </div>
+        <button
+          className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50 disabled:opacity-50"
+          disabled={isSubmitting}
+          onClick={async () => {
+            setIsSubmitting(true);
+            await authClient.signOut();
+            window.location.reload();
+          }}
+          type="button"
+        >
+          Çıkış yap
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <button
+        className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
+        disabled={isSubmitting}
+        onClick={async () => {
+          setIsSubmitting(true);
+          await authClient.signIn.social({
+            provider: "google",
+            callbackURL: "/",
+          });
+          setIsSubmitting(false);
+        }}
+        type="button"
+      >
+        Google ile giriş yap
+      </button>
+      {error ? (
+        <p className="text-sm text-red-700" role="alert">
+          Oturum bilgisi alınamadı. Yerel kimlik doğrulama yapılandırmasını kontrol edin.
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 function FoundationPage() {
   return (
@@ -22,9 +80,15 @@ function FoundationPage() {
             className="rounded-full bg-neutral-900 px-3 py-1 text-sm font-medium text-white"
             role="status"
           >
-            P0-01 · Foundation hazır
+            P1-02 · Kimlik doğrulama temeli
           </span>
           <span className="text-sm text-neutral-500">React SPA · Hono API · Cloudflare Worker</span>
+        </div>
+        <div className="mt-6 border-t border-neutral-200 pt-6">
+          <AuthenticationState />
+          <p className="mt-3 text-xs text-neutral-500">
+            Bu aşama yalnız kimlik doğrulamayı kurar; yarışma yetkileri henüz verilmez.
+          </p>
         </div>
       </section>
     </main>

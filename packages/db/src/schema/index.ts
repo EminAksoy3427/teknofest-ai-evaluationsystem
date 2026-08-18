@@ -1,3 +1,4 @@
+export * from "./auth";
 export { categories } from "./category";
 export { competitions } from "./competition";
 export { criteria } from "./criterion";

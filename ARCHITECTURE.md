@@ -35,10 +35,11 @@ rotalarını `index.html` dosyasına yönlendirir.
 
 ## 5. API ve dağıtım modeli
 
-Hono, `/api/v1/*` altındaki sürümlü HTTP API sınırıdır. Web istemcisi bu API'nin bir
-tüketicisidir; gelecekteki mobil istemci aynı sözleşmeleri kullanabilmelidir. Vite,
-istemci varlıklarını üretir; Cloudflare Worker aynı dağıtım birimi içinde API isteklerini
-çalıştırır. Ayrı bir Node sunucusu veya mikroservis yoktur.
+Hono, `/api/v1/*` altındaki sürümlü uygulama API sınırıdır. Better Auth protokol uçları ayrı
+olarak `/api/auth/*` altında çalışır. Web istemcisi uygulama API'sinin bir tüketicisidir;
+gelecekteki mobil istemci aynı sözleşmeleri kullanabilmelidir. Vite, istemci varlıklarını
+üretir; Cloudflare Worker aynı dağıtım birimi içinde API isteklerini çalıştırır. Ayrı bir
+Node sunucusu veya mikroservis yoktur.
 
 ## 6. Planlanan platform sorumlulukları
 
@@ -54,13 +55,15 @@ Bu maddeler planlanmıştır; hiçbiri mevcut fazda uygulanmış değildir.
 
 ## 7. Güvenlik sınırı
 
-Kimlik doğrulama ve yetkilendirme ileride API/Worker tarafında zorunlu olacaktır. Tarayıcı
-kontrolleri yetki kanıtı değildir. Sırlar yalnız Cloudflare secret/env mekanizmalarından
-okunacaktır. Raporlar ve bunlardan gelen metinler güvenilmeyen girdi olarak doğrulanacak,
-sınırlandırılacak ve yapay zekâ talimatı olarak kabul edilmeyecektir.
+Google tabanlı kimlik doğrulama Better Auth ile Worker tarafında uygulanır; oturumlar D1'de
+ve imzalı HTTP-only cookie ile yönetilir. Kimlik doğrulama yetki vermez: yarışma kapsamlı
+yetkilendirme sonraki aşamadadır ve tarayıcı kontrolleri yetki kanıtı değildir. Sırlar yalnız
+Cloudflare secret/env mekanizmalarından okunacaktır. Raporlar ve bunlardan gelen metinler
+güvenilmeyen girdi olarak doğrulanacak, sınırlandırılacak ve yapay zekâ talimatı olarak kabul
+edilmeyecektir.
 
 ## 8. Bilinçli olarak ertelenenler
 
-Kimlik doğrulama, Google OAuth, kullanıcı/RBAC, başvuru, değerlendirme, hakem işlevleri,
+Yarışma kapsamlı RBAC, başvuru, değerlendirme, hakem işlevleri, production OAuth/D1,
 uzak D1 kaynağı, R2, OpenAI entegrasyonu, benzerlik analizi, Vectorize, Workflows ve diğer
 iş özellikleri bu aşamada ertelenmiştir.

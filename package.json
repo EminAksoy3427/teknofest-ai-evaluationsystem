@@ -15,6 +15,7 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "format:check": "biome format .",
+    "auth:schema:generate": "pnpm --filter @teknofest-ai/db auth:schema:generate",
     "db:generate": "pnpm --filter @teknofest-ai/db db:generate",
     "db:migrate:local": "pnpm --filter @teknofest-ai/web db:migrate:local",
     "db:migrations:list:local": "pnpm --filter @teknofest-ai/web db:migrations:list:local",

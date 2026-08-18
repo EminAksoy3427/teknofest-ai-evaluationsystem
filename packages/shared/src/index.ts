@@ -1,4 +1,12 @@
 export {
+  type CurrentUserResponse,
+  CurrentUserResponseSchema,
+  createCurrentUserResponse,
+  createUnauthorizedResponse,
+  type UnauthorizedResponse,
+  UnauthorizedResponseSchema,
+} from "./current-user";
+export {
   createDatabaseHealthResponse,
   type DatabaseHealthResponse,
   DatabaseHealthResponseSchema,

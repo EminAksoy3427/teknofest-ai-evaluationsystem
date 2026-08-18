@@ -83,5 +83,9 @@ test edilmiş ve kök yarışma silinerek cascade davranışı ile tüm geçici 
 
 ## Ertelenenler
 
-Uzak D1 oluşturma/uygulama, production dağıtımı, kalıcı seed verisi, kullanıcılar, kimlik
-doğrulama, RBAC, başvurular, değerlendirmeler, yapay zekâ ve R2 bu temelin kapsamında değildir.
+Better Auth'ın ürettiği `user`, `session`, `account` ve `verification` tabloları P1-02'de bu
+kalıcılık sınırına eklenmiştir. Auth kullanıcısı gelecekteki yarışma üyeliklerinin kimlik
+köküdür; rol doğrudan kullanıcıya yazılmaz.
+
+Uzak D1 oluşturma/uygulama, production dağıtımı, kalıcı seed verisi, RBAC, başvurular,
+değerlendirmeler, yapay zekâ ve R2 bu temelin kapsamında değildir.

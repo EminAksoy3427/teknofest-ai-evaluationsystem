@@ -1,0 +1,4 @@
+GOOGLE_CLIENT_ID=replace_me
+GOOGLE_CLIENT_SECRET=replace_me
+BETTER_AUTH_SECRET=replace_me
+BETTER_AUTH_URL=http://localhost:5173
