@@ -1,0 +1,516 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "124c9964-ce28-4f92-b1cf-0383d9242aab",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "category": {
+      "name": "category",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "competition_id": {
+          "name": "competition_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "category_competition_code_unique": {
+          "name": "category_competition_code_unique",
+          "columns": [
+            "competition_id",
+            "code"
+          ],
+          "isUnique": true
+        },
+        "category_competition_id_index": {
+          "name": "category_competition_id_index",
+          "columns": [
+            "competition_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "category_competition_id_competition_id_fk": {
+          "name": "category_competition_id_competition_id_fk",
+          "tableFrom": "category",
+          "tableTo": "competition",
+          "columnsFrom": [
+            "competition_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "category_sort_order_check": {
+          "name": "category_sort_order_check",
+          "value": "\"category\".\"sort_order\" >= 0"
+        }
+      }
+    },
+    "competition": {
+      "name": "competition",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'DRAFT'"
+        },
+        "expected_language": {
+          "name": "expected_language",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'tr'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "competition_slug_unique": {
+          "name": "competition_slug_unique",
+          "columns": [
+            "slug"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "competition_status_check": {
+          "name": "competition_status_check",
+          "value": "\"competition\".\"status\" in ('DRAFT', 'ACTIVE', 'ARCHIVED')"
+        }
+      }
+    },
+    "criterion": {
+      "name": "criterion",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rubric_version_id": {
+          "name": "rubric_version_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "max_score": {
+          "name": "max_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "weight_basis_points": {
+          "name": "weight_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "criterion_rubric_code_unique": {
+          "name": "criterion_rubric_code_unique",
+          "columns": [
+            "rubric_version_id",
+            "code"
+          ],
+          "isUnique": true
+        },
+        "criterion_rubric_version_id_index": {
+          "name": "criterion_rubric_version_id_index",
+          "columns": [
+            "rubric_version_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "criterion_rubric_version_id_rubric_version_id_fk": {
+          "name": "criterion_rubric_version_id_rubric_version_id_fk",
+          "tableFrom": "criterion",
+          "tableTo": "rubric_version",
+          "columnsFrom": [
+            "rubric_version_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "criterion_max_score_check": {
+          "name": "criterion_max_score_check",
+          "value": "\"criterion\".\"max_score\" > 0"
+        },
+        "criterion_weight_basis_points_check": {
+          "name": "criterion_weight_basis_points_check",
+          "value": "\"criterion\".\"weight_basis_points\" >= 0 and \"criterion\".\"weight_basis_points\" <= 10000"
+        },
+        "criterion_sort_order_check": {
+          "name": "criterion_sort_order_check",
+          "value": "\"criterion\".\"sort_order\" >= 0"
+        }
+      }
+    },
+    "rubric_version": {
+      "name": "rubric_version",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "competition_id": {
+          "name": "competition_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "version_number": {
+          "name": "version_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'DRAFT'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "rubric_version_competition_version_unique": {
+          "name": "rubric_version_competition_version_unique",
+          "columns": [
+            "competition_id",
+            "version_number"
+          ],
+          "isUnique": true
+        },
+        "rubric_version_competition_id_index": {
+          "name": "rubric_version_competition_id_index",
+          "columns": [
+            "competition_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "rubric_version_competition_id_competition_id_fk": {
+          "name": "rubric_version_competition_id_competition_id_fk",
+          "tableFrom": "rubric_version",
+          "tableTo": "competition",
+          "columnsFrom": [
+            "competition_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "rubric_version_number_check": {
+          "name": "rubric_version_number_check",
+          "value": "\"rubric_version\".\"version_number\" > 0"
+        },
+        "rubric_version_status_check": {
+          "name": "rubric_version_status_check",
+          "value": "\"rubric_version\".\"status\" in ('DRAFT', 'ACTIVE', 'ARCHIVED')"
+        }
+      }
+    },
+    "template_version": {
+      "name": "template_version",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "competition_id": {
+          "name": "competition_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "version_number": {
+          "name": "version_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'DRAFT'"
+        },
+        "storage_key": {
+          "name": "storage_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sha256": {
+          "name": "sha256",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch() * 1000)"
+        }
+      },
+      "indexes": {
+        "template_version_competition_version_unique": {
+          "name": "template_version_competition_version_unique",
+          "columns": [
+            "competition_id",
+            "version_number"
+          ],
+          "isUnique": true
+        },
+        "template_version_competition_id_index": {
+          "name": "template_version_competition_id_index",
+          "columns": [
+            "competition_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "template_version_competition_id_competition_id_fk": {
+          "name": "template_version_competition_id_competition_id_fk",
+          "tableFrom": "template_version",
+          "tableTo": "competition",
+          "columnsFrom": [
+            "competition_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "template_version_number_check": {
+          "name": "template_version_number_check",
+          "value": "\"template_version\".\"version_number\" > 0"
+        },
+        "template_version_status_check": {
+          "name": "template_version_status_check",
+          "value": "\"template_version\".\"status\" in ('DRAFT', 'ACTIVE', 'ARCHIVED')"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

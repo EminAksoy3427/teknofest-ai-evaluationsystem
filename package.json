@@ -10,11 +10,15 @@
   "scripts": {
     "dev": "pnpm --filter @teknofest-ai/web dev",
     "build": "pnpm --filter @teknofest-ai/web build",
-    "typecheck": "pnpm --filter @teknofest-ai/shared typecheck && pnpm --filter @teknofest-ai/web typecheck",
+    "typecheck": "pnpm --filter @teknofest-ai/shared typecheck && pnpm --filter @teknofest-ai/db typecheck && pnpm --filter @teknofest-ai/web typecheck",
     "test": "pnpm --filter @teknofest-ai/shared test && pnpm --filter @teknofest-ai/web test",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "format:check": "biome format ."
+    "format:check": "biome format .",
+    "db:generate": "pnpm --filter @teknofest-ai/db db:generate",
+    "db:migrate:local": "pnpm --filter @teknofest-ai/web db:migrate:local",
+    "db:migrations:list:local": "pnpm --filter @teknofest-ai/web db:migrations:list:local",
+    "cf:typegen": "pnpm --filter @teknofest-ai/web cf:typegen"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.9"

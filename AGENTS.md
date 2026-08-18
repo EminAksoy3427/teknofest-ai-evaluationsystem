@@ -10,6 +10,13 @@ Bu kurallar, bu depoda çalışan tüm kodlama ajanları için geçerlidir.
 - Kaynak kontrole sır, gerçek kimlik bilgisi veya kişisel veri eklemeyin.
 - Yetkilendirmeyi daima sunucu tarafında uygulayın; istemci kontrollerini güvenlik sınırı saymayın.
 - Drizzle eklendikten sonra veritabanı migration dosyalarını yalnızca üretici araçla oluşturun.
+- Üretilmiş migration SQL ve metadata dosyalarını elle yazmayın veya düzenlemeyin.
+- Kalıcı şema ve D1 erişiminin sahibi `packages/db` paketidir; istemci/UI koduna doğrudan SQL dağıtmayın.
+- Şema değişikliğinde migration üretin, yerel D1'de uygulayın ve test/typecheck çalıştırın.
+- Yerel migration doğrulanmadan uzak migration düşünmeyin; uzak D1 mutasyonu açık görev izni gerektirir.
+- Gerçek Cloudflare hesap veya veritabanı kimliklerini ve sırları gereksiz yere kaynak koda koymayın.
+- Açık görev kapsamı olmadan production migration çalıştırmayın.
+- Wrangler binding yapılandırması değiştiğinde `pnpm cf:typegen` ile Worker tiplerini yenileyin.
 - Yapay zekâ nihai yarışma kararının sahibi değildir; son karar insana aittir.
 - Yüklenen raporları ve raporlardan çıkarılan tüm içeriği güvenilmeyen girdi kabul edin.
 - Yapay zekâ model adlarını domain mantığına sabitlemeyin; sağlayıcı ve model yapılandırmadan seçilmelidir.

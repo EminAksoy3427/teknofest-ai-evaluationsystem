@@ -7,9 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --experimental-provision=false --experimental-auto-create=false",
+    "db:migrations:list:local": "wrangler d1 migrations list DB --local --experimental-provision=false --experimental-auto-create=false",
+    "cf:typegen": "wrangler types"
   },
   "dependencies": {
+    "@teknofest-ai/db": "workspace:*",
     "@teknofest-ai/shared": "workspace:*",
     "hono": "4.13.3",
     "react": "19.2.8",

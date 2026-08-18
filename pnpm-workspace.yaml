@@ -27,3 +27,4 @@ minimumReleaseAgeExclude:
   - miniflare@5.20260815.0-alpha
   - vitest@4.1.11
   - wrangler@4.124.0
+  - '@cloudflare/workers-types@5.20260818.1'

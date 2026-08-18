@@ -20,7 +20,7 @@ ve sorumluluk insandadır.
 - `apps/web`: Tek uygulama ve Cloudflare dağıtım sınırı; React istemcisi ile Hono Worker'ı içerir.
 - `packages/shared`: Framework bağımsız DTO, şema, enum ve yardımcılar.
 - `packages/ui`: Yeniden kullanılabilir görsel bileşenler ve tasarım tokenları. İş mantığı içermez.
-- `packages/db`: **Planlanan** Drizzle/D1 kalıcılık sınırı; şu an şema veya migration yoktur.
+- `packages/db`: Drizzle şeması, üretici araçla oluşturulan migration'lar ve tipli D1 erişim sınırı.
 - `packages/ai`: **Planlanan** sağlayıcı, prompt ve yapılandırılmış çıktı sınırı; şu an runtime kodu yoktur.
 - `packages/config`: Gerçek bir ortak ihtiyaç oluştuğunda kullanılacak yapılandırma sınırı.
 
@@ -42,7 +42,8 @@ istemci varlıklarını üretir; Cloudflare Worker aynı dağıtım birimi için
 
 ## 6. Planlanan platform sorumlulukları
 
-- **D1:** İlişkisel uygulama verileri ve işlem kayıtları; şema sonraki fazda tasarlanacaktır.
+- **D1:** Yarışma, kategori, şablon sürümü, rubrik sürümü ve ölçüt verileri. Worker `DB`
+  binding'i üzerinden `packages/db` sınırına erişir; migration'lar yerel öncelikli çalıştırılır.
 - **R2:** Yüklenen raporların ve büyük nesnelerin saklanması; bu fazda binding yoktur.
 - **OpenAI:** Sağlayıcı adaptörü ve model seçimi ortam yapılandırmasından gelecektir. Domain
   mantığı belirli bir GPT-5 ailesi model adını bilmeyecektir.
@@ -60,6 +61,6 @@ sınırlandırılacak ve yapay zekâ talimatı olarak kabul edilmeyecektir.
 
 ## 8. Bilinçli olarak ertelenenler
 
-Kimlik doğrulama, Google OAuth, veri tabanı şeması/migration, D1/R2 binding, yarışma,
-başvuru, rubrik ve hakem işlevleri, OpenAI entegrasyonu, benzerlik analizi, Vectorize,
-Workflows ve diğer iş özellikleri P0-01 kapsamı dışındadır.
+Kimlik doğrulama, Google OAuth, kullanıcı/RBAC, başvuru, değerlendirme, hakem işlevleri,
+uzak D1 kaynağı, R2, OpenAI entegrasyonu, benzerlik analizi, Vectorize, Workflows ve diğer
+iş özellikleri bu aşamada ertelenmiştir.

@@ -3,5 +3,22 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Gelecekteki Drizzle ve Cloudflare D1 kalıcılık sınırı."
+  "description": "Drizzle ve Cloudflare D1 kalıcılık sınırı.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@teknofest-ai/shared": "workspace:*",
+    "drizzle-orm": "0.45.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260818.1",
+    "drizzle-kit": "0.31.10",
+    "typescript": "7.0.2"
+  }
 }

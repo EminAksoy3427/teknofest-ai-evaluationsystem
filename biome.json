@@ -6,7 +6,8 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": true
+    "ignoreUnknown": true,
+    "includes": ["**", "!apps/web/worker-configuration.d.ts", "!packages/db/migrations"]
   },
   "formatter": {
     "enabled": true,
