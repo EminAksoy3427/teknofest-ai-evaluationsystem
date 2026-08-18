@@ -1,0 +1,7 @@
+{
+  "name": "@teknofest-ai/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Gelecekteki Drizzle ve Cloudflare D1 kalıcılık sınırı."
+}

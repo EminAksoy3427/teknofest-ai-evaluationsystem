@@ -1,0 +1,7 @@
+{
+  "name": "@teknofest-ai/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Gelecekteki ortak arayüz bileşenleri ve tasarım tokenları için paket sınırı."
+}

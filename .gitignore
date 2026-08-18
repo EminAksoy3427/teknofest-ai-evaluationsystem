@@ -1,10 +1,12 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
+.pnpm-store/
 
 # Build
 dist/
 build/
 .cache/
+*.tsbuildinfo
 
 # Environment & secrets
 .env

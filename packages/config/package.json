@@ -1,0 +1,7 @@
+{
+  "name": "@teknofest-ai/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Gerçek ortak ihtiyaçlar için gelecekteki paylaşılan yapılandırma sınırı."
+}

@@ -1,0 +1,22 @@
+{
+  "name": "teknofest-ai-evaluationsystem",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TEKNOFEST raporları için insan kontrollü, yapay zekâ destekli değerlendirme platformu.",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": "^24.19.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @teknofest-ai/web dev",
+    "build": "pnpm --filter @teknofest-ai/web build",
+    "typecheck": "pnpm --filter @teknofest-ai/shared typecheck && pnpm --filter @teknofest-ai/web typecheck",
+    "test": "pnpm --filter @teknofest-ai/shared test && pnpm --filter @teknofest-ai/web test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.9"
+  }
+}
