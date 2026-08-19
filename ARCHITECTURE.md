@@ -43,9 +43,11 @@ Node sunucusu veya mikroservis yoktur.
 
 ## 6. Planlanan platform sorumlulukları
 
-- **D1:** Yarışma, kategori, şablon sürümü, rubrik sürümü ve ölçüt verileri. Worker `DB`
+- **D1:** Yarışma, kategori, şablon/rubrik/ölçüt ve başvuru dosya metadata'sı. Worker `DB`
   binding'i üzerinden `packages/db` sınırına erişir; migration'lar yerel öncelikli çalıştırılır.
-- **R2:** Yüklenen raporların ve büyük nesnelerin saklanması; bu fazda binding yoktur.
+- **R2:** Başvuru PDF gövdeleri özel `DOCUMENTS` binding'inde saklanır. Worker her okumayı
+  yetkilendirir; public URL veya R2 kimlik bilgisi tarayıcıya verilmez. P2-02 yalnız yerel R2
+  simülasyonunu kullanır.
 - **OpenAI:** Sağlayıcı adaptörü ve model seçimi ortam yapılandırmasından gelecektir. Domain
   mantığı belirli bir GPT-5 ailesi model adını bilmeyecektir.
 - **Workflows:** Uzun süren, tekrar denenebilir değerlendirme süreçlerinin orkestrasyonu.
@@ -79,6 +81,7 @@ projeksiyonudur. Ayrıntılar `docs/architecture/competition-configuration.md` i
 
 ## 9. Bilinçli olarak ertelenenler
 
-Hakem ataması, yarışmacı sahipliği, global yönetim, başvuru, değerlendirme, production
-OAuth/D1, uzak D1 kaynağı, R2, OpenAI entegrasyonu, benzerlik analizi, Vectorize, Workflows
-ve diğer iş özellikleri bu aşamada ertelenmiştir.
+Başvuru PDF depolaması özel R2 ve D1 metadata ayrımıyla uygulanmıştır; ayrıntılar
+`docs/architecture/document-storage.md` içindedir. Hakem ataması, yarışmacı sahipliği, global
+yönetim, PDF çıkarımı, değerlendirme, production OAuth/D1, uzak D1/R2 kaynağı, OpenAI
+entegrasyonu, benzerlik analizi, Vectorize, Workflows ve diğer iş özellikleri ertelenmiştir.

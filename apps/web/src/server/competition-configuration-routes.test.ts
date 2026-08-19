@@ -300,6 +300,27 @@ describe("nested configuration resources", () => {
     expect(ApiErrorResponseSchema.parse(await response.json()).code).toBe("NOT_FOUND");
   });
 
+  it("maps category deletion with dependent submissions to a safe conflict", async () => {
+    const response = await request(
+      authenticatedApp(
+        "COMPETITION_MANAGER",
+        repositoryStub({
+          deleteCategory: async () => {
+            throw new ConfigurationRepositoryError("CONFLICT", "CATEGORY_IN_USE");
+          },
+        }),
+      ),
+      "/api/v1/competitions/competition-a/categories/category-a",
+      "DELETE",
+    );
+
+    expect(response.status).toBe(409);
+    expect(ApiErrorResponseSchema.parse(await response.json())).toEqual({
+      code: "CONFLICT",
+      message: "Bu kategoriye bağlı başvurular bulunduğu için silinemez.",
+    });
+  });
+
   it("returns non-leaking 404 for a template id owned by another competition", async () => {
     const response = await request(
       authenticatedApp(

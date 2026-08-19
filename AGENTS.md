@@ -24,7 +24,12 @@ Bu kurallar, bu depoda çalışan tüm kodlama ajanları için geçerlidir.
 - Yapılandırma mutasyonları `competition:configure` izni gerektirir; nested kaynak sahipliğini route yarışmasıyla veritabanında doğrulayın.
 - Aktif ve emekli şablon/rubrik sürümleri değişmezdir; değişiklik yeni bir taslak sürümle yapılır.
 - Yapılandırma hazırlığını kalıcı bayrak olarak değil mevcut aktif sürümlerden türetin.
-- R2 aşamasından önce şablon dosya depolaması varsaymayın.
+- Şablon dosya depolaması ayrı bir özellik olarak açıkça istenmeden varsaymayın.
+- Başvuru raporlarını yalnız özel `DOCUMENTS` R2 binding'inde tutun; D1 yalnız sorgulanabilir metadata taşır.
+- R2 nesne anahtarlarını yalnız sunucu kimliklerinden üretin; yüklenen dosya adı anahtarı belirleyemez.
+- Her rapor indirmesinde yarışma kapsamlı sunucu yetkilendirmesi uygulayın; kalıcı veya herkese açık R2 URL'si üretmeyin.
+- SHA-256 uygulama içerik kimliğidir; birebir eşleşme bir sinyaldir, intihal veya nihai karar değildir.
+- R2 ve D1 yazımlarında dağıtık transaction varsaymayın; R2-önce yazım ve D1 hatasında silme telafisi uygulayın.
 - Arayüzde öğe gizlemek yetkilendirme değildir.
 - Hakem ataması ve yarışmacı sahipliği, ilgili özellikler geldiğinde üyelikten daha dar kontroller eklemelidir.
 - Better Auth `user`, `session`, `account` ve `verification` şemasının sahibidir; auth kullanıcısına rol sütunu eklemeyin.

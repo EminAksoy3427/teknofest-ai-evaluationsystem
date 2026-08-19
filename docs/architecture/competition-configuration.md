@@ -41,6 +41,10 @@ ve deterministik sıra taşır. Açıklama “bu kategori nedir?”, kapsam notu
 sayılır?” sorularını yanıtlar. Aynı kod farklı yarışmalarda kullanılabilir. Bu alanlar prompt
 değildir; gelecekteki kategori uyumu analizinin yetkili girdileridir.
 
+P2-02 ile başvurular kategoriye `RESTRICT` ilişkisiyle bağlanır. Boş kategori silinebilir; bağlı
+başvuru bulunan kategori tarihsel başvuruyu yok etmemek için silinmez ve API güvenli `409`
+döndürür.
+
 ## Şablon yapısal profili ve yaşam döngüsü
 
 Şablon tek bir değişebilir yarışma alanı değildir. Her `TemplateVersion`, artan sürüm numarası,

@@ -31,3 +31,18 @@ export {
   type MembershipSummaryList,
 } from "./competition-membership";
 export * from "./schema";
+export {
+  categoryBelongsToCompetition,
+  countCompetitionFilesBySha256,
+  createSubmissionWithFileMetadata,
+  getCompetitionSubmission,
+  getCompetitionSubmissionFileMetadata,
+  listCompetitionSubmissions,
+  type SubmissionFileStorageMetadata,
+  type SubmissionMetadataInput,
+  type SubmissionRepository,
+  SubmissionRepositoryError,
+  type SubmissionRepositoryErrorCode,
+  type SubmissionRepositoryErrorReason,
+  submissionRepository,
+} from "./submission";

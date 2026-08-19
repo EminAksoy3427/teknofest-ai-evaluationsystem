@@ -6,6 +6,7 @@ import "./styles.css";
 import { authClient } from "./auth-client";
 import { DashboardPage } from "./dashboard-page";
 import { SetupPage } from "./setup-page";
+import { SubmissionsPage } from "./submissions-page";
 
 function LoginPage({ sessionError }: { sessionError: boolean }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -128,6 +129,7 @@ function SessionGate() {
         <Route element={<DashboardPage />} path="/" />
         <Route element={<DashboardPage />} path="/app" />
         <Route element={<SetupPage />} path="/app/competitions/:competitionId/setup" />
+        <Route element={<SubmissionsPage />} path="/app/competitions/:competitionId/submissions" />
         <Route element={<DashboardPage />} path="*" />
       </Routes>
     </div>

@@ -4,4 +4,6 @@ export { competitions } from "./competition";
 export { competitionMembers } from "./competition-member";
 export { criteria } from "./criterion";
 export { rubricVersions } from "./rubric-version";
+export { submissions } from "./submission";
+export { submissionFiles } from "./submission-file";
 export { templateVersions } from "./template-version";

@@ -302,7 +302,17 @@ export type CompetitionConfigurationResponse = z.infer<
 
 export const ApiErrorResponseSchema = z
   .object({
-    code: z.enum(["UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND", "VALIDATION_ERROR", "CONFLICT"]),
+    code: z.enum([
+      "UNAUTHORIZED",
+      "FORBIDDEN",
+      "NOT_FOUND",
+      "VALIDATION_ERROR",
+      "CONFLICT",
+      "PAYLOAD_TOO_LARGE",
+      "UNSUPPORTED_MEDIA_TYPE",
+      "STORAGE_ERROR",
+      "INTERNAL_ERROR",
+    ]),
     message: z.string().min(1),
     issues: z.array(z.object({ path: z.string(), message: z.string() }).strict()).optional(),
   })

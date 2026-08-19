@@ -1,4 +1,4 @@
-import type { ConfigurationRepositoryError } from "@teknofest-ai/db";
+import type { ConfigurationRepositoryError, SubmissionRepositoryError } from "@teknofest-ai/db";
 import type { ApiErrorResponse } from "@teknofest-ai/shared";
 import type { Context } from "hono";
 
@@ -6,14 +6,36 @@ import type { AuthRuntimeBindings } from "./auth/auth";
 
 export class ApiApplicationError extends Error {
   readonly response: ApiErrorResponse;
-  readonly status: 400 | 404 | 409;
+  readonly status: 400 | 404 | 409 | 413 | 415 | 500;
 
-  constructor(response: ApiErrorResponse, status: 400 | 404 | 409) {
+  constructor(response: ApiErrorResponse, status: 400 | 404 | 409 | 413 | 415 | 500) {
     super(response.code);
     this.name = "ApiApplicationError";
     this.response = response;
     this.status = status;
   }
+}
+
+export function mapSubmissionRepositoryError(
+  error: SubmissionRepositoryError,
+): ApiApplicationError {
+  if (error.code === "NOT_FOUND") {
+    return new ApiApplicationError(
+      {
+        code: "NOT_FOUND",
+        message:
+          error.reason === "CATEGORY"
+            ? "Seçilen kategori bu yarışmada bulunamadı."
+            : "Başvuru bulunamadı.",
+      },
+      404,
+    );
+  }
+
+  return new ApiApplicationError(
+    { code: "CONFLICT", message: "Bu başvuru kodu yarışma içinde zaten kullanılıyor." },
+    409,
+  );
 }
 
 interface RuntimeSchema<T> {
@@ -67,6 +89,7 @@ export function mapRepositoryError(error: ConfigurationRepositoryError): ApiAppl
 
   const messages = {
     CATEGORY_CODE: "Bu kategori kodu yarışma içinde zaten kullanılıyor.",
+    CATEGORY_IN_USE: "Bu kategoriye bağlı başvurular bulunduğu için silinemez.",
     COMPETITION_SLUG: "Bu yarışma slug değeri zaten kullanılıyor.",
     IMMUTABLE_VERSION: "Aktif veya emekli sürümler değiştirilemez.",
     RUBRIC_NOT_READY: "Kriteri olmayan bir rubrik etkinleştirilemez.",

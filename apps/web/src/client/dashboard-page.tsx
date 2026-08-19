@@ -43,12 +43,20 @@ function MembershipCard({ membership }: { membership: MembershipSummary }) {
         </span>
       </div>
       {canConfigure ? (
-        <Link
-          className="mt-5 inline-flex rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-          to={`/app/competitions/${membership.competitionId}/setup`}
-        >
-          Yapılandırmayı aç
-        </Link>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Link
+            className="primary-button"
+            to={`/app/competitions/${membership.competitionId}/submissions`}
+          >
+            Başvuruları aç
+          </Link>
+          <Link
+            className="secondary-button"
+            to={`/app/competitions/${membership.competitionId}/setup`}
+          >
+            Yapılandırma
+          </Link>
+        </div>
       ) : (
         <p className="mt-5 text-sm leading-6 text-slate-600">
           Bu role ait ürün alanı sonraki aşamada açılacak. Yarışma yapılandırması yalnız yarışma

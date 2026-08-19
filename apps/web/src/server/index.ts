@@ -7,6 +7,9 @@ import {
   findCompetitionMembership,
   listMembershipSummaries,
   type MembershipSummaryList,
+  type SubmissionRepository,
+  SubmissionRepositoryError,
+  submissionRepository,
 } from "@teknofest-ai/db";
 import {
   createCompetitionAccessResponse,
@@ -19,7 +22,7 @@ import {
 } from "@teknofest-ai/shared";
 import { Hono } from "hono";
 
-import { ApiApplicationError, mapRepositoryError } from "./api-error";
+import { ApiApplicationError, mapRepositoryError, mapSubmissionRepositoryError } from "./api-error";
 import { type AuthRuntimeBindings, createAuth } from "./auth/auth";
 import { resolveCurrentSession, type SessionResolver } from "./auth/session";
 import { AuthorizationError } from "./authorization/error";
@@ -27,12 +30,16 @@ import { requireCompetitionMembership } from "./authorization/membership";
 import { getPermissionsForRole } from "./authorization/policy";
 import { requireAuthenticatedUser } from "./authorization/require-auth";
 import { registerCompetitionConfigurationRoutes } from "./competition-configuration-routes";
+import { type DocumentStorage, documentStorage } from "./storage/documents";
+import { registerSubmissionRoutes } from "./submission-routes";
 
 interface AppDependencies {
   resolveSession: SessionResolver;
   findMembership: CompetitionMembershipLookup;
   listMemberships: MembershipSummaryList;
   repository: CompetitionConfigurationRepository;
+  submissionRepository: SubmissionRepository;
+  documentStorage: DocumentStorage;
 }
 
 const defaultDependencies: AppDependencies = {
@@ -40,6 +47,8 @@ const defaultDependencies: AppDependencies = {
   findMembership: findCompetitionMembership,
   listMemberships: listMembershipSummaries,
   repository: competitionConfigurationRepository,
+  submissionRepository,
+  documentStorage,
 };
 
 export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
@@ -60,6 +69,11 @@ export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
 
     if (error instanceof ConfigurationRepositoryError) {
       const mapped = mapRepositoryError(error);
+      return context.json(mapped.response, mapped.status);
+    }
+
+    if (error instanceof SubmissionRepositoryError) {
+      const mapped = mapSubmissionRepositoryError(error);
       return context.json(mapped.response, mapped.status);
     }
 
@@ -137,6 +151,7 @@ export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
   });
 
   registerCompetitionConfigurationRoutes(app, dependencies);
+  registerSubmissionRoutes(app, dependencies);
 
   return app;
 }

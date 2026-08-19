@@ -96,3 +96,18 @@ export {
   type VersionStatus,
   VersionStatusSchema,
 } from "./status";
+export {
+  type ExactDuplicateSignal,
+  ExactDuplicateSignalSchema,
+  MAX_SUBMISSION_PDF_BYTES,
+  type SubmissionCreateMetadata,
+  SubmissionCreateMetadataSchema,
+  type SubmissionFileMetadata,
+  SubmissionFileMetadataSchema,
+  type SubmissionListResponse,
+  SubmissionListResponseSchema,
+  type SubmissionResponse,
+  SubmissionResponseSchema,
+  type SubmissionSummary,
+  SubmissionSummarySchema,
+} from "./submission";

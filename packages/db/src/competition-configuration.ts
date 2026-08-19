@@ -27,6 +27,7 @@ import {
   competitions,
   criteria,
   rubricVersions,
+  submissions,
   templateVersions,
 } from "./schema";
 
@@ -35,6 +36,7 @@ export type ConfigurationRepositoryErrorCode = "NOT_FOUND" | "CONFLICT";
 export type ConfigurationRepositoryErrorReason =
   | "COMPETITION_SLUG"
   | "CATEGORY_CODE"
+  | "CATEGORY_IN_USE"
   | "IMMUTABLE_VERSION"
   | "TEMPLATE_NOT_READY"
   | "RUBRIC_NOT_READY"
@@ -121,6 +123,10 @@ function mapCriterion(row: typeof criteria.$inferSelect) {
 
 function isUniqueConstraintError(error: unknown): boolean {
   return error instanceof Error && /unique constraint|unique/i.test(error.message);
+}
+
+function isForeignKeyConstraintError(error: unknown): boolean {
+  return error instanceof Error && /foreign key constraint|foreign key/i.test(error.message);
 }
 
 export async function createCompetitionWithManager(
@@ -340,9 +346,25 @@ export async function deleteCategory(
     throw new ConfigurationRepositoryError("NOT_FOUND", "RESOURCE");
   }
 
-  await db
-    .delete(categories)
-    .where(and(eq(categories.id, categoryId), eq(categories.competitionId, competitionId)));
+  const [dependentSubmission] = await db
+    .select({ id: submissions.id })
+    .from(submissions)
+    .where(eq(submissions.categoryId, categoryId))
+    .limit(1);
+  if (dependentSubmission) {
+    throw new ConfigurationRepositoryError("CONFLICT", "CATEGORY_IN_USE");
+  }
+
+  try {
+    await db
+      .delete(categories)
+      .where(and(eq(categories.id, categoryId), eq(categories.competitionId, competitionId)));
+  } catch (error) {
+    if (isForeignKeyConstraintError(error)) {
+      throw new ConfigurationRepositoryError("CONFLICT", "CATEGORY_IN_USE");
+    }
+    throw error;
+  }
 }
 
 export async function listTemplateVersions(

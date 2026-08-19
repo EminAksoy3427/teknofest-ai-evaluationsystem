@@ -24,7 +24,9 @@ export async function apiRequest<T>(
   const response = await fetch(path, {
     ...init,
     headers: {
-      ...(init?.body ? { "content-type": "application/json" } : {}),
+      ...(init?.body && !(init.body instanceof FormData)
+        ? { "content-type": "application/json" }
+        : {}),
       ...init?.headers,
     },
   });

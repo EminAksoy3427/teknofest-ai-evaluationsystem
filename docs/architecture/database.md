@@ -38,6 +38,8 @@ otomatik kaynak oluşturmayı kapatır.
 ```text
 Competition
  ├── Category
+ │    └── Submission
+ │         └── SubmissionFile
  ├── TemplateVersion
  ├── RubricVersion
  │    └── Criterion
@@ -45,6 +47,9 @@ Competition
 ```
 
 - `competition` → `category`: `ON DELETE CASCADE`
+- `competition` → `submission`: `ON DELETE CASCADE`
+- `category` → `submission`: `ON DELETE RESTRICT`
+- `submission` → `submission_file`: `ON DELETE CASCADE` (yalnız D1 metadata'sı)
 - `competition` → `template_version`: `ON DELETE CASCADE`
 - `competition` → `rubric_version`: `ON DELETE CASCADE`
 - `rubric_version` → `criterion`: `ON DELETE CASCADE`
@@ -94,6 +99,6 @@ Better Auth'ın ürettiği `user`, `session`, `account` ve `verification` tablol
 kalıcılık sınırına eklenmiştir. Auth kullanıcısı yarışma üyeliklerinin kimlik köküdür; rol
 doğrudan kullanıcıya yazılmaz.
 
-Uzak D1 oluşturma/uygulama, production dağıtımı, kalıcı seed verisi, iş düzeyi dar
-yetkilendirme kontrolleri, başvurular, değerlendirmeler, yapay zekâ ve R2 bu temelin
-kapsamında değildir.
+Uzak D1 oluşturma/uygulama, production dağıtımı, kalıcı seed verisi, PDF çıkarımı,
+değerlendirmeler ve yapay zekâ bu temelin kapsamında değildir. Başvuru metadata modeli ve özel
+R2 ayrımı `docs/architecture/document-storage.md` içinde açıklanır.
