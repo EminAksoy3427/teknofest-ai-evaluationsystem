@@ -1,4 +1,23 @@
 export {
+  COMPETITION_ROLE_VALUES,
+  type CompetitionAccessResponse,
+  CompetitionAccessResponseSchema,
+  type CompetitionRole,
+  CompetitionRoleSchema,
+  createCompetitionAccessResponse,
+  createForbiddenResponse,
+  createMembershipListResponse,
+  type ForbiddenResponse,
+  ForbiddenResponseSchema,
+  type MembershipListResponse,
+  MembershipListResponseSchema,
+  type MembershipSummary,
+  MembershipSummarySchema,
+  PERMISSION_VALUES,
+  type Permission,
+  PermissionSchema,
+} from "./authorization";
+export {
   type CurrentUserResponse,
   CurrentUserResponseSchema,
   createCurrentUserResponse,

@@ -57,13 +57,14 @@ Bu maddeler planlanmıştır; hiçbiri mevcut fazda uygulanmış değildir.
 
 Google tabanlı kimlik doğrulama Better Auth ile Worker tarafında uygulanır; oturumlar D1'de
 ve imzalı HTTP-only cookie ile yönetilir. Kimlik doğrulama yetki vermez: yarışma kapsamlı
-yetkilendirme sonraki aşamadadır ve tarayıcı kontrolleri yetki kanıtı değildir. Sırlar yalnız
-Cloudflare secret/env mekanizmalarından okunacaktır. Raporlar ve bunlardan gelen metinler
-güvenilmeyen girdi olarak doğrulanacak, sınırlandırılacak ve yapay zekâ talimatı olarak kabul
-edilmeyecektir.
+üyelik D1'den okunur ve roller hiyerarşi olmadan açık izinlere eşlenir. Korunan uygulama
+uçları üyelik ve rolü Worker tarafında doğrular; tarayıcı kontrolleri yetki kanıtı değildir.
+Sırlar yalnız Cloudflare secret/env mekanizmalarından okunacaktır. Raporlar ve bunlardan
+gelen metinler güvenilmeyen girdi olarak doğrulanacak, sınırlandırılacak ve yapay zekâ
+talimatı olarak kabul edilmeyecektir.
 
 ## 8. Bilinçli olarak ertelenenler
 
-Yarışma kapsamlı RBAC, başvuru, değerlendirme, hakem işlevleri, production OAuth/D1,
-uzak D1 kaynağı, R2, OpenAI entegrasyonu, benzerlik analizi, Vectorize, Workflows ve diğer
-iş özellikleri bu aşamada ertelenmiştir.
+Hakem ataması, yarışmacı sahipliği, global yönetim, başvuru, değerlendirme, production
+OAuth/D1, uzak D1 kaynağı, R2, OpenAI entegrasyonu, benzerlik analizi, Vectorize, Workflows
+ve diğer iş özellikleri bu aşamada ertelenmiştir.

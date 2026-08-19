@@ -3,7 +3,7 @@
 ## Sorumluluk ve sınırlar
 
 Better Auth kullanıcının kim olduğunu doğrular; yarışma verisine erişip erişemeyeceğine karar
-vermez. Yetkilendirme P1-03'te yarışma üyeliği üzerinden sunucu tarafında uygulanacaktır.
+vermez. Yetkilendirme, yarışma üyeliği üzerinden sunucu tarafında ayrı bir katmanda uygulanır.
 Başarılı Google oturumu tek başına herhangi bir yarışma yetkisi sağlamaz.
 
 - `/api/auth/*`: Better Auth'ın OAuth, callback ve oturum protokol alanı
@@ -47,5 +47,4 @@ kaynak koda veya `VITE_` değişkenlerine konmaz. Yapılandırma doğrulama hata
 değişken adlarını bildirir, değerleri göstermez. Trusted origin, `BETTER_AUTH_URL` ile belirtilen
 tek origin'dir; wildcard kullanılmaz.
 
-Production callback, OAuth credentials, yarışma yetkilendirmesi ve deployment bu aşamada
-bilinçli olarak ertelenmiştir.
+Production callback, production OAuth credentials ve deployment bilinçli olarak ertelenmiştir.

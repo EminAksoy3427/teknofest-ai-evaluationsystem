@@ -11,7 +11,7 @@
     "dev": "pnpm --filter @teknofest-ai/web dev",
     "build": "pnpm --filter @teknofest-ai/web build",
     "typecheck": "pnpm --filter @teknofest-ai/shared typecheck && pnpm --filter @teknofest-ai/db typecheck && pnpm --filter @teknofest-ai/web typecheck",
-    "test": "pnpm --filter @teknofest-ai/shared test && pnpm --filter @teknofest-ai/web test",
+    "test": "pnpm --filter @teknofest-ai/shared test && pnpm --filter @teknofest-ai/db test && pnpm --filter @teknofest-ai/web test",
     "lint": "biome check .",
     "format": "biome format --write .",
     "format:check": "biome format .",

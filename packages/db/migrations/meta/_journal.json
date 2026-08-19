@@ -15,6 +15,13 @@
       "when": 1787078427111,
       "tag": "0001_perpetual_venus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787129663139,
+      "tag": "0002_tranquil_molten_man",
+      "breakpoints": true
     }
   ]
 }

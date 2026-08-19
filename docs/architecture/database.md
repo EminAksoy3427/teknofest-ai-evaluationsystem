@@ -37,14 +37,17 @@ otomatik kaynak oluşturmayı kapatır.
 Competition
  ├── Category
  ├── TemplateVersion
- └── RubricVersion
-      └── Criterion
+ ├── RubricVersion
+ │    └── Criterion
+ └── CompetitionMember ── User (Better Auth)
 ```
 
 - `competition` → `category`: `ON DELETE CASCADE`
 - `competition` → `template_version`: `ON DELETE CASCADE`
 - `competition` → `rubric_version`: `ON DELETE CASCADE`
 - `rubric_version` → `criterion`: `ON DELETE CASCADE`
+- `competition` → `competition_member`: `ON DELETE CASCADE`
+- `user` → `competition_member`: `ON DELETE CASCADE`
 
 Doğal iş anahtarları için yarışma slug'ı, yarışma içindeki kategori kodu, yarışma içindeki
 şablon/rubrik sürüm numarası ve rubrik içindeki ölçüt kodu benzersizdir. Tüm foreign key
@@ -77,15 +80,16 @@ pnpm db:migrate:local
 pnpm cf:typegen
 ```
 
-İlk migration yerel D1'e uygulanmış; beş tablonun ve indekslerin varlığı doğrulanmıştır.
-Geçici bir yarışma-kategori-şablon-rubrik-ölçüt grafiği eklenmiş, benzersizlik constraint'i
-test edilmiş ve kök yarışma silinerek cascade davranışı ile tüm geçici satırlar temizlenmiştir.
+Migration zinciri P1-01 domain, P1-02 Better Auth ve P1-03 yarışma üyeliği sırasını korur.
+`competition_member`, kullanıcı/yarışma çifti için tek satır tutar; rolü dört resmî değerle
+sınırlayan `CHECK`, iki cascade foreign key ve üyelik sorgularına uygun indeksler içerir.
 
 ## Ertelenenler
 
 Better Auth'ın ürettiği `user`, `session`, `account` ve `verification` tabloları P1-02'de bu
-kalıcılık sınırına eklenmiştir. Auth kullanıcısı gelecekteki yarışma üyeliklerinin kimlik
-köküdür; rol doğrudan kullanıcıya yazılmaz.
+kalıcılık sınırına eklenmiştir. Auth kullanıcısı yarışma üyeliklerinin kimlik köküdür; rol
+doğrudan kullanıcıya yazılmaz.
 
-Uzak D1 oluşturma/uygulama, production dağıtımı, kalıcı seed verisi, RBAC, başvurular,
-değerlendirmeler, yapay zekâ ve R2 bu temelin kapsamında değildir.
+Uzak D1 oluşturma/uygulama, production dağıtımı, kalıcı seed verisi, iş düzeyi dar
+yetkilendirme kontrolleri, başvurular, değerlendirmeler, yapay zekâ ve R2 bu temelin
+kapsamında değildir.

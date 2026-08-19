@@ -17,7 +17,12 @@ Bu kurallar, bu depoda çalışan tüm kodlama ajanları için geçerlidir.
 - Gerçek Cloudflare hesap veya veritabanı kimliklerini ve sırları gereksiz yere kaynak koda koymayın.
 - Açık görev kapsamı olmadan production migration çalıştırmayın.
 - Wrangler binding yapılandırması değiştiğinde `pnpm cf:typegen` ile Worker tiplerini yenileyin.
-- Kimlik doğrulama kimliği, yetkilendirme erişim kapsamını belirler; ikisini aynı kontrol saymayın.
+- Kimlik doğrulama yarışma erişimi sağlamaz; üyelik daima yarışma kapsamında doğrulanmalıdır.
+- Roller hiyerarşik değildir ve yetkilendirme daima sunucu tarafında uygulanmalıdır.
+- İstemcinin gönderdiği rol veya yarışma kimliğini veritabanı üyelik doğrulaması olmadan güvenilir saymayın.
+- Çapraz yarışma izolasyonunu yetkilendirme testlerinde açıkça koruyun.
+- Arayüzde öğe gizlemek yetkilendirme değildir.
+- Hakem ataması ve yarışmacı sahipliği, ilgili özellikler geldiğinde üyelikten daha dar kontroller eklemelidir.
 - Better Auth `user`, `session`, `account` ve `verification` şemasının sahibidir; auth kullanıcısına rol sütunu eklemeyin.
 - Uygulama yetkileri yarışma kapsamında kurulmalıdır; `/api/auth/*` protokol, `/api/v1/*` uygulama API alanıdır.
 - Auth sırlarını veya erişim/yenileme/oturum tokenlarını kaynakta, istemci deposunda ya da uygulama API yanıtında göstermeyin.
