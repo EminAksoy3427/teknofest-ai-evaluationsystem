@@ -41,7 +41,7 @@ gelecekteki mobil istemci aynı sözleşmeleri kullanabilmelidir. Vite, istemci 
 üretir; Cloudflare Worker aynı dağıtım birimi içinde API isteklerini çalıştırır. Ayrı bir
 Node sunucusu veya mikroservis yoktur.
 
-## 6. Planlanan platform sorumlulukları
+## 6. Platform sorumlulukları
 
 - **D1:** Yarışma, kategori, şablon/rubrik/ölçüt ve başvuru dosya metadata'sı. Worker `DB`
   binding'i üzerinden `packages/db` sınırına erişir; migration'lar yerel öncelikli çalıştırılır.
@@ -50,10 +50,12 @@ Node sunucusu veya mikroservis yoktur.
   simülasyonunu kullanır.
 - **OpenAI:** Sağlayıcı adaptörü ve model seçimi ortam yapılandırmasından gelecektir. Domain
   mantığı belirli bir GPT-5 ailesi model adını bilmeyecektir.
-- **Workflows:** Uzun süren, tekrar denenebilir değerlendirme süreçlerinin orkestrasyonu.
+- **Workflows:** P2-03'te `SUBMISSION_ANALYSIS` yerel Workflow'u yalnız sayfa koruyan PDF metin
+  çıkarımını retry/idempotency sınırıyla orkestre eder. Yapay zekâ aşamaları eklenmemiştir.
 - **Vectorize:** Onaylanmış kullanım senaryosu oluştuğunda benzerlik/erişim indeksi.
 
-Bu maddeler planlanmıştır; hiçbiri mevcut fazda uygulanmış değildir.
+D1, özel yerel R2 ve yerel Workflow sınırları uygulanmıştır. OpenAI ve Vectorize sonraki
+milestone'lara planlanmıştır; uzak/production kaynak kurulumu yapılmamıştır.
 
 ## 7. Güvenlik sınırı
 
@@ -79,9 +81,17 @@ işlemde emekliye ayırır. Tek aktif sürüm ayrıca kısmi benzersiz veritaban
 Hazırlık durumu kalıcı bir bayrak değil, mevcut kategori ve aktif sürümlerden türetilmiş bir API
 projeksiyonudur. Ayrıntılar `docs/architecture/competition-configuration.md` içindedir.
 
-## 9. Bilinçli olarak ertelenenler
+## 9. Belge çıkarımı
+
+`AnalysisRun` oluşturulurken kategori, aktif şablon/rubrik sürümleri ve kaynak PDF SHA-256
+sabitlenir. Yerel Workflow özel R2 kaynağını doğrular, `unpdf` ile sayfa kimliğini koruyarak metin
+çıkarır ve `document-extraction/v1` artifact'ini deterministik özel R2 anahtarına yazar. D1 tam
+metin değil yalnız durum, sayaç, uyarı ve sunucu içi artifact metadata'sını taşır. Ayrıntılar
+`docs/architecture/analysis-pipeline.md` içindedir.
+
+## 10. Bilinçli olarak ertelenenler
 
 Başvuru PDF depolaması özel R2 ve D1 metadata ayrımıyla uygulanmıştır; ayrıntılar
 `docs/architecture/document-storage.md` içindedir. Hakem ataması, yarışmacı sahipliği, global
-yönetim, PDF çıkarımı, değerlendirme, production OAuth/D1, uzak D1/R2 kaynağı, OpenAI
-entegrasyonu, benzerlik analizi, Vectorize, Workflows ve diğer iş özellikleri ertelenmiştir.
+yönetim, semantik değerlendirme, production OAuth/D1, uzak D1/R2/Workflow kaynağı, OpenAI
+entegrasyonu, OCR, benzerlik analizi, Vectorize ve diğer iş özellikleri ertelenmiştir.

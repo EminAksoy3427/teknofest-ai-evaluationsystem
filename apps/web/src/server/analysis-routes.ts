@@ -1,0 +1,148 @@
+import type { AnalysisRunRepository, CompetitionMembershipLookup } from "@teknofest-ai/db";
+import { AnalysisRunListResponseSchema, AnalysisRunResponseSchema } from "@teknofest-ai/shared";
+import type { Hono } from "hono";
+import type { SubmissionAnalysisWorkflowParams } from "./analysis/submission-analysis-workflow";
+import { ApiApplicationError } from "./api-error";
+import type { AuthRuntimeBindings } from "./auth/auth";
+import type { SessionResolver } from "./auth/session";
+import { requireCompetitionPermission } from "./authorization/membership";
+import { requireAuthenticatedUser } from "./authorization/require-auth";
+
+export interface AnalysisWorkflowStarter {
+  start(
+    environment: AuthRuntimeBindings,
+    instanceId: string,
+    params: SubmissionAnalysisWorkflowParams,
+  ): Promise<{ id: string }>;
+}
+
+export const analysisWorkflowStarter: AnalysisWorkflowStarter = {
+  async start(environment, instanceId, params) {
+    const instance = await environment.SUBMISSION_ANALYSIS.create({ id: instanceId, params });
+    return { id: instance.id };
+  },
+};
+
+export interface AnalysisRouteDependencies {
+  resolveSession: SessionResolver;
+  findMembership: CompetitionMembershipLookup;
+  analysisRunRepository: AnalysisRunRepository;
+  analysisWorkflowStarter: AnalysisWorkflowStarter;
+}
+
+function requiredParameter(value: string | undefined, name: string): string {
+  if (!value) {
+    throw new ApiApplicationError(
+      { code: "VALIDATION_ERROR", message: `${name} parametresi gereklidir.` },
+      400,
+    );
+  }
+  return value;
+}
+
+async function requireAnalysisPermission(
+  context: {
+    req: { raw: Request; param(name: string): string | undefined };
+    env: AuthRuntimeBindings;
+  },
+  dependencies: AnalysisRouteDependencies,
+) {
+  const user = await requireAuthenticatedUser(
+    context.req.raw,
+    context.env,
+    dependencies.resolveSession,
+  );
+  const competitionId = requiredParameter(context.req.param("competitionId"), "competitionId");
+  await requireCompetitionPermission(
+    context.env,
+    user.id,
+    competitionId,
+    "competition:configure",
+    dependencies.findMembership,
+  );
+  return competitionId;
+}
+
+export function registerAnalysisRoutes(
+  app: Hono<{ Bindings: AuthRuntimeBindings }>,
+  dependencies: AnalysisRouteDependencies,
+) {
+  app.post(
+    "/api/v1/competitions/:competitionId/submissions/:submissionId/analysis-runs",
+    async (context) => {
+      const competitionId = await requireAnalysisPermission(context, dependencies);
+      const submissionId = requiredParameter(context.req.param("submissionId"), "submissionId");
+      const analysisRunId = crypto.randomUUID();
+      const created = await dependencies.analysisRunRepository.createQueuedAnalysisRun(
+        context.env.DB,
+        {
+          id: analysisRunId,
+          workflowInstanceId: analysisRunId,
+          competitionId,
+          submissionId,
+        },
+      );
+
+      try {
+        await dependencies.analysisWorkflowStarter.start(context.env, analysisRunId, {
+          analysisRunId,
+        });
+      } catch {
+        await dependencies.analysisRunRepository.markAnalysisRunFailed(
+          context.env.DB,
+          analysisRunId,
+          "WORKFLOW_START_FAILED",
+          "Belge işleme iş akışı başlatılamadı.",
+        );
+        throw new ApiApplicationError(
+          { code: "INTERNAL_ERROR", message: "Belge işleme iş akışı başlatılamadı." },
+          500,
+        );
+      }
+
+      const current = await dependencies.analysisRunRepository.getAnalysisRun(
+        context.env.DB,
+        competitionId,
+        submissionId,
+        analysisRunId,
+      );
+      return context.json(AnalysisRunResponseSchema.parse(current ?? created), 201);
+    },
+  );
+
+  app.get(
+    "/api/v1/competitions/:competitionId/submissions/:submissionId/analysis-runs",
+    async (context) => {
+      const competitionId = await requireAnalysisPermission(context, dependencies);
+      const submissionId = requiredParameter(context.req.param("submissionId"), "submissionId");
+      const runHistory = await dependencies.analysisRunRepository.listAnalysisRuns(
+        context.env.DB,
+        competitionId,
+        submissionId,
+      );
+      return context.json(AnalysisRunListResponseSchema.parse({ runHistory }));
+    },
+  );
+
+  app.get(
+    "/api/v1/competitions/:competitionId/submissions/:submissionId/analysis-runs/:analysisRunId",
+    async (context) => {
+      const competitionId = await requireAnalysisPermission(context, dependencies);
+      const submissionId = requiredParameter(context.req.param("submissionId"), "submissionId");
+      const analysisRunId = requiredParameter(context.req.param("analysisRunId"), "analysisRunId");
+      const run = await dependencies.analysisRunRepository.getAnalysisRun(
+        context.env.DB,
+        competitionId,
+        submissionId,
+        analysisRunId,
+      );
+      if (!run) {
+        throw new ApiApplicationError(
+          { code: "NOT_FOUND", message: "Analiz kaydı bulunamadı." },
+          404,
+        );
+      }
+      return context.json(AnalysisRunResponseSchema.parse(run));
+    },
+  );
+}

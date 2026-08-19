@@ -1,4 +1,7 @@
 import {
+  type AnalysisRunRepository,
+  AnalysisRunRepositoryError,
+  analysisRunRepository,
   assertDatabaseConnection,
   type CompetitionConfigurationRepository,
   type CompetitionMembershipLookup,
@@ -21,8 +24,17 @@ import {
   createUnauthorizedResponse,
 } from "@teknofest-ai/shared";
 import { Hono } from "hono";
-
-import { ApiApplicationError, mapRepositoryError, mapSubmissionRepositoryError } from "./api-error";
+import {
+  type AnalysisWorkflowStarter,
+  analysisWorkflowStarter,
+  registerAnalysisRoutes,
+} from "./analysis-routes";
+import {
+  ApiApplicationError,
+  mapAnalysisRunRepositoryError,
+  mapRepositoryError,
+  mapSubmissionRepositoryError,
+} from "./api-error";
 import { type AuthRuntimeBindings, createAuth } from "./auth/auth";
 import { resolveCurrentSession, type SessionResolver } from "./auth/session";
 import { AuthorizationError } from "./authorization/error";
@@ -33,6 +45,8 @@ import { registerCompetitionConfigurationRoutes } from "./competition-configurat
 import { type DocumentStorage, documentStorage } from "./storage/documents";
 import { registerSubmissionRoutes } from "./submission-routes";
 
+export { SubmissionAnalysisWorkflow } from "./analysis/submission-analysis-workflow";
+
 interface AppDependencies {
   resolveSession: SessionResolver;
   findMembership: CompetitionMembershipLookup;
@@ -40,6 +54,8 @@ interface AppDependencies {
   repository: CompetitionConfigurationRepository;
   submissionRepository: SubmissionRepository;
   documentStorage: DocumentStorage;
+  analysisRunRepository: AnalysisRunRepository;
+  analysisWorkflowStarter: AnalysisWorkflowStarter;
 }
 
 const defaultDependencies: AppDependencies = {
@@ -49,6 +65,8 @@ const defaultDependencies: AppDependencies = {
   repository: competitionConfigurationRepository,
   submissionRepository,
   documentStorage,
+  analysisRunRepository,
+  analysisWorkflowStarter,
 };
 
 export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
@@ -74,6 +92,11 @@ export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
 
     if (error instanceof SubmissionRepositoryError) {
       const mapped = mapSubmissionRepositoryError(error);
+      return context.json(mapped.response, mapped.status);
+    }
+
+    if (error instanceof AnalysisRunRepositoryError) {
+      const mapped = mapAnalysisRunRepositoryError(error);
       return context.json(mapped.response, mapped.status);
     }
 
@@ -152,6 +175,7 @@ export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
 
   registerCompetitionConfigurationRoutes(app, dependencies);
   registerSubmissionRoutes(app, dependencies);
+  registerAnalysisRoutes(app, dependencies);
 
   return app;
 }

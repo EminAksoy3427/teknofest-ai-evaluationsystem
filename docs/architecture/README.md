@@ -8,3 +8,4 @@ Ayrıntılı karar kayıtları ihtiyaç oluştukça bu dizine eklenecektir.
 - [Yarışma kapsamlı yetkilendirme](./authorization.md)
 - [Yarışma yapılandırması](./competition-configuration.md)
 - [Özel belge depolama](./document-storage.md)
+- [Belge analiz pipeline'ı](./analysis-pipeline.md)

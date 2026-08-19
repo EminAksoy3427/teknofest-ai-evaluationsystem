@@ -1,3 +1,20 @@
+export {
+  type AnalysisRunExecutionContext,
+  type AnalysisRunRepository,
+  AnalysisRunRepositoryError,
+  type AnalysisRunRepositoryErrorCode,
+  type AnalysisRunRepositoryErrorReason,
+  type AnalysisRunSuccessInput,
+  analysisRunRepository,
+  createQueuedAnalysisRun,
+  getAnalysisRun,
+  getAnalysisRunExecutionContext,
+  listAnalysisRuns,
+  markAnalysisRunFailed,
+  markAnalysisRunProcessing,
+  markAnalysisRunSucceeded,
+  type QueuedAnalysisRunInput,
+} from "./analysis-run";
 export { assertDatabaseConnection, createDb, type Database } from "./client";
 export {
   activateRubricVersion,

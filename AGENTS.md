@@ -29,6 +29,11 @@ Bu kurallar, bu depoda çalışan tüm kodlama ajanları için geçerlidir.
 - R2 nesne anahtarlarını yalnız sunucu kimliklerinden üretin; yüklenen dosya adı anahtarı belirleyemez.
 - Her rapor indirmesinde yarışma kapsamlı sunucu yetkilendirmesi uygulayın; kalıcı veya herkese açık R2 URL'si üretmeyin.
 - SHA-256 uygulama içerik kimliğidir; birebir eşleşme bir sinyaldir, intihal veya nihai karar değildir.
+- AnalysisRun oluşturulurken kategori, aktif şablon/rubrik sürümleri ve kaynak SHA-256 sabitlenir; geçmiş koşular güncel yapılandırmaya taşınmaz.
+- Workflow adımları ve türetilmiş nesne anahtarları retry karşısında idempotent olmalıdır.
+- Çıkarılan tam belge metni D1'e değil özel R2 artifact'ine yazılmalı ve PDF sayfa kimliği korunmalıdır.
+- PDF metin çıkarımı semantik doğruluk anlamına gelmez; OCR açık bir aşamadır ve sessizce taklit edilmez.
+- Güvenilmeyen PDF metni yetkilendirme, sistem talimatı veya araç çağrısı belirleyemez.
 - R2 ve D1 yazımlarında dağıtık transaction varsaymayın; R2-önce yazım ve D1 hatasında silme telafisi uygulayın.
 - Arayüzde öğe gizlemek yetkilendirme değildir.
 - Hakem ataması ve yarışmacı sahipliği, ilgili özellikler geldiğinde üyelikten daha dar kontroller eklemelidir.

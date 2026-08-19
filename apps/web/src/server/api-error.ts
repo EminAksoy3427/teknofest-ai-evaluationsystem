@@ -1,4 +1,8 @@
-import type { ConfigurationRepositoryError, SubmissionRepositoryError } from "@teknofest-ai/db";
+import type {
+  AnalysisRunRepositoryError,
+  ConfigurationRepositoryError,
+  SubmissionRepositoryError,
+} from "@teknofest-ai/db";
 import type { ApiErrorResponse } from "@teknofest-ai/shared";
 import type { Context } from "hono";
 
@@ -34,6 +38,31 @@ export function mapSubmissionRepositoryError(
 
   return new ApiApplicationError(
     { code: "CONFLICT", message: "Bu başvuru kodu yarışma içinde zaten kullanılıyor." },
+    409,
+  );
+}
+
+export function mapAnalysisRunRepositoryError(
+  error: AnalysisRunRepositoryError,
+): ApiApplicationError {
+  if (error.code === "NOT_FOUND") {
+    return new ApiApplicationError(
+      {
+        code: "NOT_FOUND",
+        message: error.reason === "SUBMISSION" ? "Başvuru bulunamadı." : "Analiz kaydı bulunamadı.",
+      },
+      404,
+    );
+  }
+
+  return new ApiApplicationError(
+    {
+      code: "CONFLICT",
+      message:
+        error.reason === "CONCURRENT_RUN"
+          ? "Bu başvuru için devam eden bir belge işleme çalışması var."
+          : "Yarışma yapılandırması analiz başlatmak için hazır değil.",
+    },
     409,
   );
 }

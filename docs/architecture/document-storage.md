@@ -105,6 +105,7 @@ Sentetik test PDF'leri dışında gerçek TEKNOFEST raporu, PII veya özel T3 be
 Yüklenen PDF ve gelecekte çıkarılacak her içerik güvenilmeyen girdidir; yetkiyi, model/system
 promptunu, araç çağrısını veya nihai değerlendirmeyi belirleyemez.
 
-PDF metin çıkarımı, OCR, sayfa ayrıştırma, `document.json`, `AnalysisRun`, Workflows, OpenAI,
-embedding, Vectorize, dil/şablon/bölüm/kategori uyumu, benzerlik, AI rubriği, hakem ataması,
-hakem çalışma alanı ve yarışmacı geri bildirimi P2-02 dışında kalır.
+PDF metin çıkarımı, sayfa ayrıştırma, `document.json` ve `AnalysisRun` P2-02'nin dışında kalmış,
+P2-03'te `docs/architecture/analysis-pipeline.md` sınırıyla eklenmiştir. OCR, OpenAI, embedding,
+Vectorize, dil/şablon/bölüm/kategori uyumu, benzerlik, AI rubriği, hakem ataması, hakem çalışma
+alanı ve yarışmacı geri bildirimi hâlâ ertelenmiştir.

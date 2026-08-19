@@ -1,4 +1,7 @@
 import {
+  AnalysisRunListResponseSchema,
+  type AnalysisRunResponse,
+  AnalysisRunResponseSchema,
   CategoryListResponseSchema,
   MAX_SUBMISSION_PDF_BYTES,
   SubmissionListResponseSchema,
@@ -14,17 +17,71 @@ function formatFileSize(bytes: number) {
   return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024);
 }
 
-function SubmissionTable({ submissions }: { submissions: SubmissionSummary[] }) {
+function AnalysisStatus({
+  run,
+  error,
+}: {
+  run: AnalysisRunResponse | null | undefined;
+  error: string | undefined;
+}) {
+  if (error) return <span className="text-xs font-medium text-red-700">{error}</span>;
+  if (!run) return <span className="text-xs font-medium text-slate-500">Henüz başlatılmadı</span>;
+  if (run.status === "QUEUED" || run.status === "PROCESSING") {
+    return (
+      <span
+        className="inline-flex items-center gap-2 text-xs font-semibold text-blue-800"
+        role="status"
+      >
+        <span className="h-2 w-2 animate-pulse rounded-full bg-blue-600" />
+        Belge işleniyor…
+      </span>
+    );
+  }
+  if (run.status === "FAILED") {
+    return (
+      <div className="max-w-52 text-xs text-red-800" role="alert">
+        <p className="font-semibold">Belge işleme başarısız</p>
+        <p className="mt-1 leading-5">{run.error?.message ?? "İşlem tamamlanamadı."}</p>
+      </div>
+    );
+  }
+  return (
+    <div className="text-xs text-emerald-800">
+      <p className="font-semibold">Metin çıkarıldı</p>
+      <p className="mt-1 text-slate-600">
+        {run.extraction.pageCount} sayfa · {run.extraction.characterCount} karakter
+      </p>
+      {run.extraction.warnings.includes("TEXT_SPARSE") ? (
+        <p className="mt-1 font-medium text-amber-800">Metin seyrek; OCR gerekebilir.</p>
+      ) : null}
+    </div>
+  );
+}
+
+function SubmissionTable({
+  submissions,
+  latestRuns,
+  analysisErrors,
+  startingSubmissionIds,
+  onStartAnalysis,
+}: {
+  submissions: SubmissionSummary[];
+  latestRuns: Record<string, AnalysisRunResponse | null>;
+  analysisErrors: Record<string, string>;
+  startingSubmissionIds: readonly string[];
+  onStartAnalysis(submissionId: string): void;
+}) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[58rem] border-separate border-spacing-0 text-left text-sm">
+      <table className="w-full min-w-[72rem] border-separate border-spacing-0 text-left text-sm">
         <thead>
           <tr className="text-xs tracking-wide text-slate-500 uppercase">
             <th className="border-b border-slate-200 px-4 py-3 font-semibold">Başvuru</th>
             <th className="border-b border-slate-200 px-4 py-3 font-semibold">Kategori</th>
             <th className="border-b border-slate-200 px-4 py-3 font-semibold">Rapor</th>
             <th className="border-b border-slate-200 px-4 py-3 font-semibold">Yükleme</th>
-            <th className="border-b border-slate-200 px-4 py-3 font-semibold">Durum</th>
+            <th className="border-b border-slate-200 px-4 py-3 font-semibold">Dosya sinyali</th>
+            <th className="border-b border-slate-200 px-4 py-3 font-semibold">Belge işleme</th>
             <th className="border-b border-slate-200 px-4 py-3 font-semibold">İşlem</th>
           </tr>
         </thead>
@@ -65,14 +122,35 @@ function SubmissionTable({ submissions }: { submissions: SubmissionSummary[] }) 
                 )}
               </td>
               <td className="border-b border-slate-100 px-4 py-4 align-top">
-                <a
-                  className="secondary-button whitespace-nowrap"
-                  href={`/api/v1/competitions/${submission.competitionId}/submissions/${submission.id}/report`}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  Raporu aç
-                </a>
+                <AnalysisStatus
+                  error={analysisErrors[submission.id]}
+                  run={latestRuns[submission.id]}
+                />
+              </td>
+              <td className="border-b border-slate-100 px-4 py-4 align-top">
+                <div className="flex flex-col items-start gap-2">
+                  <a
+                    className="secondary-button whitespace-nowrap"
+                    href={`/api/v1/competitions/${submission.competitionId}/submissions/${submission.id}/report`}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Raporu aç
+                  </a>
+                  {latestRuns[submission.id]?.status === "QUEUED" ||
+                  latestRuns[submission.id]?.status === "PROCESSING" ? null : (
+                    <button
+                      className="primary-button whitespace-nowrap"
+                      disabled={startingSubmissionIds.includes(submission.id)}
+                      onClick={() => onStartAnalysis(submission.id)}
+                      type="button"
+                    >
+                      {startingSubmissionIds.includes(submission.id)
+                        ? "Başlatılıyor…"
+                        : "Analizi başlat"}
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
           ))}
@@ -89,6 +167,9 @@ export function SubmissionsPage() {
     null,
   );
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [latestRuns, setLatestRuns] = useState<Record<string, AnalysisRunResponse | null>>({});
+  const [analysisErrors, setAnalysisErrors] = useState<Record<string, string>>({});
+  const [startingSubmissionIds, setStartingSubmissionIds] = useState<string[]>([]);
   const [applicationCode, setApplicationCode] = useState("");
   const [projectTitle, setProjectTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -98,6 +179,40 @@ export function SubmissionsPage() {
     kind: "success" | "warning" | "error";
     text: string;
   } | null>(null);
+
+  const refreshAnalyses = useCallback(
+    async (submissionList: readonly SubmissionSummary[]) => {
+      if (!competitionId) return;
+      const results = await Promise.all(
+        submissionList.map(async (submission) => {
+          try {
+            const response = await apiRequest(
+              `/api/v1/competitions/${competitionId}/submissions/${submission.id}/analysis-runs`,
+              AnalysisRunListResponseSchema,
+            );
+            return { submissionId: submission.id, run: response.runHistory[0] ?? null };
+          } catch (error) {
+            return { submissionId: submission.id, error: errorMessage(error) };
+          }
+        }),
+      );
+      setLatestRuns((current) => {
+        const next = { ...current };
+        for (const result of results) {
+          if (!("error" in result)) next[result.submissionId] = result.run;
+        }
+        return next;
+      });
+      setAnalysisErrors(() => {
+        const next: Record<string, string> = {};
+        for (const result of results) {
+          if ("error" in result) next[result.submissionId] = result.error;
+        }
+        return next;
+      });
+    },
+    [competitionId],
+  );
 
   const refresh = useCallback(async () => {
     if (!competitionId) return;
@@ -113,14 +228,50 @@ export function SubmissionsPage() {
       setCategories(categoryResponse.categories);
       setCategoryId((current) => current || categoryResponse.categories[0]?.id || "");
       setLoadError(null);
+      await refreshAnalyses(submissionResponse.submissions);
     } catch (error) {
       setLoadError(errorMessage(error));
     }
-  }, [competitionId]);
+  }, [competitionId, refreshAnalyses]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (
+      !submissions ||
+      !Object.values(latestRuns).some(
+        (run) => run?.status === "QUEUED" || run?.status === "PROCESSING",
+      )
+    ) {
+      return;
+    }
+    const timer = window.setInterval(() => refreshAnalyses(submissions), 3_000);
+    return () => window.clearInterval(timer);
+  }, [latestRuns, refreshAnalyses, submissions]);
+
+  async function startAnalysis(submissionId: string) {
+    if (!competitionId || startingSubmissionIds.includes(submissionId)) return;
+    setStartingSubmissionIds((current) => [...current, submissionId]);
+    setAnalysisErrors((current) => {
+      const next = { ...current };
+      delete next[submissionId];
+      return next;
+    });
+    try {
+      const started = await apiRequest(
+        `/api/v1/competitions/${competitionId}/submissions/${submissionId}/analysis-runs`,
+        AnalysisRunResponseSchema,
+        { method: "POST" },
+      );
+      setLatestRuns((current) => ({ ...current, [submissionId]: started }));
+    } catch (error) {
+      setAnalysisErrors((current) => ({ ...current, [submissionId]: errorMessage(error) }));
+    } finally {
+      setStartingSubmissionIds((current) => current.filter((id) => id !== submissionId));
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -187,8 +338,8 @@ export function SubmissionsPage() {
         <p className="eyebrow">Özel belge deposu</p>
         <h1 className="page-title">Başvurular</h1>
         <p className="page-lead">
-          Proje bilgilerini ve PDF raporlarını yarışma kapsamında kaydedin. Bu aşamada raporlar
-          analiz edilmez veya puanlanmaz.
+          PDF raporlarını yarışma kapsamında kaydedin ve sayfa kimliğini koruyan metin çıkarımını
+          başlatın. Bu aşamada raporlar puanlanmaz veya semantik olarak değerlendirilmez.
         </p>
       </div>
 
@@ -321,7 +472,13 @@ export function SubmissionsPage() {
         ) : null}
         {submissions && submissions.length > 0 ? (
           <div className="mt-6">
-            <SubmissionTable submissions={submissions} />
+            <SubmissionTable
+              analysisErrors={analysisErrors}
+              latestRuns={latestRuns}
+              onStartAnalysis={startAnalysis}
+              startingSubmissionIds={startingSubmissionIds}
+              submissions={submissions}
+            />
           </div>
         ) : null}
       </section>

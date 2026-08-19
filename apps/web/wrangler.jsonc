@@ -20,5 +20,12 @@
       "binding": "DOCUMENTS",
       "bucket_name": "teknofest-ai-evaluationsystem-documents"
     }
+  ],
+  "workflows": [
+    {
+      "binding": "SUBMISSION_ANALYSIS",
+      "name": "submission-analysis",
+      "class_name": "SubmissionAnalysisWorkflow"
+    }
   ]
 }

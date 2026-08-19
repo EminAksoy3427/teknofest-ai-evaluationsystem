@@ -80,6 +80,9 @@ function storageStub(overrides: Partial<DocumentStorage> = {}): DocumentStorage 
     getSubmissionReport: async () => r2Object(),
     deleteSubmissionReport: async () => undefined,
     headSubmissionReport: async () => null,
+    putDocumentArtifact: async () => ({ etag: "artifact-etag" }),
+    getDocumentArtifact: async () => null,
+    headDocumentArtifact: async () => null,
     ...overrides,
   };
 }

@@ -30,4 +30,23 @@ describe("private submission document storage boundary", () => {
     expect(head).toHaveBeenCalledWith("key-a");
     expect(remove).toHaveBeenCalledWith("key-a");
   });
+
+  it("writes derived extraction artifacts as private JSON objects", async () => {
+    const put = vi.fn(async () => ({ etag: "artifact-etag" }) as R2Object);
+    const get = vi.fn(async () => ({ etag: "artifact-etag" }) as R2ObjectBody);
+    const head = vi.fn(async () => ({ etag: "artifact-etag" }) as R2Object);
+    const bucket = { put, get, head } as unknown as R2Bucket;
+    const body = '{"schemaVersion":"document-extraction/v1"}';
+
+    await expect(
+      documentStorage.putDocumentArtifact(bucket, "derived/submission/run/document.json", body),
+    ).resolves.toEqual({ etag: "artifact-etag" });
+    expect(put).toHaveBeenCalledWith("derived/submission/run/document.json", body, {
+      httpMetadata: { contentType: "application/json" },
+    });
+    await documentStorage.getDocumentArtifact(bucket, "derived/submission/run/document.json");
+    await documentStorage.headDocumentArtifact(bucket, "derived/submission/run/document.json");
+    expect(get).toHaveBeenCalledOnce();
+    expect(head).toHaveBeenCalledOnce();
+  });
 });

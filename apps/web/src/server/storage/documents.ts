@@ -2,6 +2,10 @@ export interface StoredSubmissionReport {
   etag: string;
 }
 
+export interface StoredDocumentArtifact {
+  etag: string;
+}
+
 export interface DocumentStorage {
   putSubmissionReport(
     binding: R2Bucket,
@@ -11,6 +15,13 @@ export interface DocumentStorage {
   getSubmissionReport(binding: R2Bucket, storageKey: string): Promise<R2ObjectBody | null>;
   deleteSubmissionReport(binding: R2Bucket, storageKey: string): Promise<void>;
   headSubmissionReport(binding: R2Bucket, storageKey: string): Promise<R2Object | null>;
+  putDocumentArtifact(
+    binding: R2Bucket,
+    storageKey: string,
+    body: string,
+  ): Promise<StoredDocumentArtifact>;
+  getDocumentArtifact(binding: R2Bucket, storageKey: string): Promise<R2ObjectBody | null>;
+  headDocumentArtifact(binding: R2Bucket, storageKey: string): Promise<R2Object | null>;
 }
 
 export const documentStorage: DocumentStorage = {
@@ -30,6 +41,21 @@ export const documentStorage: DocumentStorage = {
   },
 
   headSubmissionReport(binding, storageKey) {
+    return binding.head(storageKey);
+  },
+
+  async putDocumentArtifact(binding, storageKey, body) {
+    const stored = await binding.put(storageKey, body, {
+      httpMetadata: { contentType: "application/json" },
+    });
+    return { etag: stored.etag };
+  },
+
+  getDocumentArtifact(binding, storageKey) {
+    return binding.get(storageKey);
+  },
+
+  headDocumentArtifact(binding, storageKey) {
     return binding.head(storageKey);
   },
 };
