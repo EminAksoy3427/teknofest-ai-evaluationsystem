@@ -63,7 +63,21 @@ Sırlar yalnız Cloudflare secret/env mekanizmalarından okunacaktır. Raporlar 
 gelen metinler güvenilmeyen girdi olarak doğrulanacak, sınırlandırılacak ve yapay zekâ
 talimatı olarak kabul edilmeyecektir.
 
-## 8. Bilinçli olarak ertelenenler
+## 8. Yarışma yapılandırması
+
+Kimliği doğrulanmış kullanıcı MVP kapsamında yeni yarışma oluşturabilir; yarışma ve kurucuya
+ait `COMPETITION_MANAGER` üyeliği tek D1 batch işlemiyle atomik yazılır. Bu bootstrap yalnız
+yeni yarışmaya yetki verir. Diğer yapılandırma işlemleri yarışma üyeliği ve
+`competition:configure` izniyle sunucuda korunur.
+
+Kategori bağlamı, şablon yapısal profili ve rubrik kriterleri `packages/db` kalıcılık sınırında
+tutulur. Şablon ve rubrik sürümleri `DRAFT → ACTIVE → RETIRED` yaşam döngüsünü izler. Aktif ve
+emekli sürümler değişmez tarihsel kayıtlardır; yeni aktivasyon önceki aktif sürümü aynı atomik
+işlemde emekliye ayırır. Tek aktif sürüm ayrıca kısmi benzersiz veritabanı indeksleriyle korunur.
+Hazırlık durumu kalıcı bir bayrak değil, mevcut kategori ve aktif sürümlerden türetilmiş bir API
+projeksiyonudur. Ayrıntılar `docs/architecture/competition-configuration.md` içindedir.
+
+## 9. Bilinçli olarak ertelenenler
 
 Hakem ataması, yarışmacı sahipliği, global yönetim, başvuru, değerlendirme, production
 OAuth/D1, uzak D1 kaynağı, R2, OpenAI entegrasyonu, benzerlik analizi, Vectorize, Workflows

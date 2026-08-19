@@ -10,6 +10,7 @@ export const competitions = sqliteTable(
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
+    description: text("description").notNull().default(""),
     status: text("status", { enum: LIFECYCLE_STATUS_VALUES }).notNull().default("DRAFT"),
     expectedLanguage: text("expected_language").notNull().default("tr"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })

@@ -19,6 +19,7 @@
     "db:generate": "pnpm --filter @teknofest-ai/db db:generate",
     "db:migrate:local": "pnpm --filter @teknofest-ai/web db:migrate:local",
     "db:migrations:list:local": "pnpm --filter @teknofest-ai/web db:migrations:list:local",
+    "smoke:p2-01": "pnpm --filter @teknofest-ai/db smoke:p2-01",
     "cf:typegen": "pnpm --filter @teknofest-ai/web cf:typegen"
   },
   "devDependencies": {

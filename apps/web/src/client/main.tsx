@@ -1,93 +1,64 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes } from "react-router";
+import { BrowserRouter, Link, Route, Routes } from "react-router";
 
 import "./styles.css";
 import { authClient } from "./auth-client";
+import { DashboardPage } from "./dashboard-page";
+import { SetupPage } from "./setup-page";
 
-function AuthenticationState() {
-  const { data: session, error, isPending } = authClient.useSession();
+function LoginPage({ sessionError }: { sessionError: boolean }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (isPending) {
-    return <p className="text-sm text-neutral-500">Oturum durumu kontrol ediliyor…</p>;
-  }
-
-  if (session) {
-    return (
-      <div className="flex flex-wrap items-center gap-3">
-        <div>
-          <p className="font-medium text-neutral-900">{session.user.name}</p>
-          <p className="text-sm text-neutral-500">{session.user.email}</p>
+  return (
+    <main className="grid min-h-screen bg-slate-950 lg:grid-cols-[1.08fr_0.92fr]">
+      <section className="relative flex min-h-[24rem] items-end overflow-hidden px-6 py-12 text-white sm:px-12 lg:min-h-screen lg:px-16 lg:py-16">
+        <div className="absolute inset-0 bg-[linear-gradient(145deg,#0f172a_0%,#172554_58%,#1d4ed8_100%)]" />
+        <div className="absolute -top-24 right-0 h-72 w-72 rounded-full border-[64px] border-white/5" />
+        <div className="absolute top-16 right-20 h-32 w-32 rounded-full border border-cyan-300/30" />
+        <div className="relative max-w-2xl">
+          <p className="text-sm font-bold tracking-[0.2em] text-blue-200 uppercase">
+            T3 Vakfı Yapay Zekâ Creathonu · Problem 4
+          </p>
+          <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+            Yarışma değerlendirmesi için güvenilir yapılandırma temeli.
+          </h1>
+          <p className="mt-6 max-w-xl text-lg leading-8 text-slate-200">
+            Kategorileri, rapor yapısını ve değerlendirme ölçütlerini sürümlü biçimde hazırlayın.
+            Yapay zekâ yardımcıdır; nihai karar insandadır.
+          </p>
         </div>
-        <button
-          className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium hover:bg-neutral-50 disabled:opacity-50"
-          disabled={isSubmitting}
-          onClick={async () => {
-            setIsSubmitting(true);
-            await authClient.signOut();
-            window.location.reload();
-          }}
-          type="button"
-        >
-          Çıkış yap
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <button
-        className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
-        disabled={isSubmitting}
-        onClick={async () => {
-          setIsSubmitting(true);
-          await authClient.signIn.social({
-            provider: "google",
-            callbackURL: "/",
-          });
-          setIsSubmitting(false);
-        }}
-        type="button"
-      >
-        Google ile giriş yap
-      </button>
-      {error ? (
-        <p className="text-sm text-red-700" role="alert">
-          Oturum bilgisi alınamadı. Yerel kimlik doğrulama yapılandırmasını kontrol edin.
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function FoundationPage() {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-6 py-12 text-neutral-950">
-      <section className="w-full max-w-2xl rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
-        <p className="mb-3 text-sm font-semibold tracking-wide text-neutral-500 uppercase">
-          T3 Vakfı Yapay Zekâ Creathonu · Problem 4
-        </p>
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          TEKNOFEST AI Evaluation System
-        </h1>
-        <p className="mt-4 text-lg leading-8 text-neutral-600">
-          Kanıta dayalı, insan kontrollü yapay zekâ değerlendirme platformu.
-        </p>
-        <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-neutral-200 pt-6">
-          <span
-            className="rounded-full bg-neutral-900 px-3 py-1 text-sm font-medium text-white"
-            role="status"
+      </section>
+      <section className="flex items-center bg-slate-50 px-6 py-12 sm:px-12 lg:px-16">
+        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-7 shadow-xl shadow-slate-950/5 sm:p-10">
+          <p className="eyebrow">TEKNOFEST AI Evaluation System</p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
+            Çalışma alanına giriş
+          </h2>
+          <p className="mt-4 leading-7 text-slate-600">
+            Yarışma üyeliklerinizi ve yönetici kurulum akışını görüntülemek için Google hesabınızla
+            oturum açın.
+          </p>
+          <button
+            className="primary-button mt-8 w-full justify-center py-3"
+            disabled={isSubmitting}
+            onClick={async () => {
+              setIsSubmitting(true);
+              await authClient.signIn.social({ provider: "google", callbackURL: "/app" });
+              setIsSubmitting(false);
+            }}
+            type="button"
           >
-            P1-02 · Kimlik doğrulama temeli
-          </span>
-          <span className="text-sm text-neutral-500">React SPA · Hono API · Cloudflare Worker</span>
-        </div>
-        <div className="mt-6 border-t border-neutral-200 pt-6">
-          <AuthenticationState />
-          <p className="mt-3 text-xs text-neutral-500">
-            Bu aşama yalnız kimlik doğrulamayı kurar; yarışma yetkileri henüz verilmez.
+            {isSubmitting ? "Google’a yönlendiriliyor…" : "Google ile giriş yap"}
+          </button>
+          {sessionError ? (
+            <p className="mt-4 text-sm text-red-700" role="alert">
+              Oturum bilgisi alınamadı. Kimlik doğrulama yapılandırmasını kontrol edin.
+            </p>
+          ) : null}
+          <p className="mt-6 text-xs leading-5 text-slate-500">
+            Oturum açmak tek başına mevcut bir yarışmaya erişim vermez. Erişim, yarışma kapsamlı
+            üyelik üzerinden sunucuda doğrulanır.
           </p>
         </div>
       </section>
@@ -95,11 +66,71 @@ function FoundationPage() {
   );
 }
 
-function App() {
+function ProductHeader({ name, email }: { name: string; email: string }) {
+  const [isSigningOut, setIsSigningOut] = useState(false);
   return (
-    <Routes>
-      <Route path="*" element={<FoundationPage />} />
-    </Routes>
+    <header className="border-b border-slate-200 bg-white">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-8">
+        <Link className="flex items-center gap-3" to="/app">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-700 text-sm font-black text-white">
+            T3
+          </span>
+          <span>
+            <span className="block text-sm font-bold text-slate-950">TEKNOFEST AI</span>
+            <span className="block text-xs text-slate-500">Değerlendirme Sistemi</span>
+          </span>
+        </Link>
+        <div className="flex items-center gap-4">
+          <div className="hidden text-right sm:block">
+            <p className="text-sm font-semibold text-slate-900">{name}</p>
+            <p className="text-xs text-slate-500">{email}</p>
+          </div>
+          <button
+            className="secondary-button"
+            disabled={isSigningOut}
+            onClick={async () => {
+              setIsSigningOut(true);
+              await authClient.signOut();
+              window.location.assign("/");
+            }}
+            type="button"
+          >
+            {isSigningOut ? "Çıkılıyor…" : "Çıkış yap"}
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function SessionGate() {
+  const { data: session, error, isPending } = authClient.useSession();
+
+  if (isPending) {
+    return (
+      <main
+        className="grid min-h-screen place-items-center bg-slate-50 px-6 text-sm text-slate-600"
+        role="status"
+      >
+        Oturum durumu kontrol ediliyor…
+      </main>
+    );
+  }
+
+  if (!session) {
+    return <LoginPage sessionError={Boolean(error)} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-950">
+      <ProductHeader email={session.user.email} name={session.user.name} />
+      <Routes>
+        <Route element={<DashboardPage />} path="/" />
+        <Route element={<DashboardPage />} path="/app" />
+        <Route element={<SetupPage />} path="/app/competitions/:competitionId/setup" />
+        <Route element={<DashboardPage />} path="*" />
+      </Routes>
+    </div>
   );
 }
 
@@ -112,7 +143,7 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <SessionGate />
     </BrowserRouter>
   </StrictMode>,
 );

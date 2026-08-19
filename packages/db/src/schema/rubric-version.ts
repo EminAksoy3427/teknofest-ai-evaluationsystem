@@ -1,9 +1,8 @@
-import { LIFECYCLE_STATUS_VALUES } from "@teknofest-ai/shared";
 import { sql } from "drizzle-orm";
 import { check, index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { competitions } from "./competition";
-import { lifecycleStatusValuesSql } from "./lifecycle-status";
+import { PERSISTED_VERSION_STATUS_VALUES, versionStatusValuesSql } from "./lifecycle-status";
 
 export const rubricVersions = sqliteTable(
   "rubric_version",
@@ -14,8 +13,11 @@ export const rubricVersions = sqliteTable(
       .references(() => competitions.id, { onDelete: "cascade" }),
     versionNumber: integer("version_number").notNull(),
     label: text("label").notNull(),
-    status: text("status", { enum: LIFECYCLE_STATUS_VALUES }).notNull().default("DRAFT"),
+    status: text("status", { enum: PERSISTED_VERSION_STATUS_VALUES }).notNull().default("DRAFT"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
       .default(sql`(unixepoch() * 1000)`),
   },
@@ -25,7 +27,10 @@ export const rubricVersions = sqliteTable(
       table.versionNumber,
     ),
     index("rubric_version_competition_id_index").on(table.competitionId),
+    uniqueIndex("rubric_version_one_active_per_competition")
+      .on(table.competitionId)
+      .where(sql`${table.status} = 'ACTIVE'`),
     check("rubric_version_number_check", sql`${table.versionNumber} > 0`),
-    check("rubric_version_status_check", sql`${table.status} in ${lifecycleStatusValuesSql}`),
+    check("rubric_version_status_check", sql`${table.status} in ${versionStatusValuesSql}`),
   ],
 );

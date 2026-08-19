@@ -21,6 +21,10 @@ Bu kurallar, bu depoda çalışan tüm kodlama ajanları için geçerlidir.
 - Roller hiyerarşik değildir ve yetkilendirme daima sunucu tarafında uygulanmalıdır.
 - İstemcinin gönderdiği rol veya yarışma kimliğini veritabanı üyelik doğrulaması olmadan güvenilir saymayın.
 - Çapraz yarışma izolasyonunu yetkilendirme testlerinde açıkça koruyun.
+- Yapılandırma mutasyonları `competition:configure` izni gerektirir; nested kaynak sahipliğini route yarışmasıyla veritabanında doğrulayın.
+- Aktif ve emekli şablon/rubrik sürümleri değişmezdir; değişiklik yeni bir taslak sürümle yapılır.
+- Yapılandırma hazırlığını kalıcı bayrak olarak değil mevcut aktif sürümlerden türetin.
+- R2 aşamasından önce şablon dosya depolaması varsaymayın.
 - Arayüzde öğe gizlemek yetkilendirme değildir.
 - Hakem ataması ve yarışmacı sahipliği, ilgili özellikler geldiğinde üyelikten daha dar kontroller eklemelidir.
 - Better Auth `user`, `session`, `account` ve `verification` şemasının sahibidir; auth kullanıcısına rol sütunu eklemeyin.

@@ -13,6 +13,7 @@ export const categories = sqliteTable(
     name: text("name").notNull(),
     code: text("code").notNull(),
     description: text("description").notNull(),
+    guidance: text("guidance").notNull().default(""),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()

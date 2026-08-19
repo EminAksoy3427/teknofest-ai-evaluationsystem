@@ -13,10 +13,14 @@ export const criteria = sqliteTable(
     code: text("code").notNull(),
     title: text("title").notNull(),
     description: text("description").notNull(),
+    evidenceExpectation: text("evidence_expectation").notNull().default(""),
     maxScore: integer("max_score").notNull(),
     weightBasisPoints: integer("weight_basis_points").notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
       .notNull()
       .default(sql`(unixepoch() * 1000)`),
   },

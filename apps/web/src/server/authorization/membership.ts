@@ -1,8 +1,9 @@
 import { type CompetitionMembershipLookup, findCompetitionMembership } from "@teknofest-ai/db";
-import type { CompetitionRole } from "@teknofest-ai/shared";
+import type { CompetitionRole, Permission } from "@teknofest-ai/shared";
 
 import type { AuthRuntimeBindings } from "../auth/auth";
 import { AuthorizationError } from "./error";
+import { getPermissionsForRole } from "./policy";
 
 export async function getCompetitionMembership(
   environment: AuthRuntimeBindings,
@@ -38,6 +39,22 @@ export async function requireCompetitionRole(
   const membership = await requireCompetitionMembership(environment, userId, competitionId, lookup);
 
   if (!allowedRoles.includes(membership.role)) {
+    throw new AuthorizationError("FORBIDDEN");
+  }
+
+  return membership;
+}
+
+export async function requireCompetitionPermission(
+  environment: AuthRuntimeBindings,
+  userId: string,
+  competitionId: string,
+  permission: Permission,
+  lookup: CompetitionMembershipLookup = findCompetitionMembership,
+) {
+  const membership = await requireCompetitionMembership(environment, userId, competitionId, lookup);
+
+  if (!getPermissionsForRole(membership.role).includes(permission)) {
     throw new AuthorizationError("FORBIDDEN");
   }
 

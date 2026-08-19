@@ -24,9 +24,11 @@ otomatik kaynak oluşturmayı kapatır.
 - Kimlikler uygulamada `crypto.randomUUID()` gibi bir üreticiyle oluşturulan `TEXT`
   değerleridir; veritabanı kimlik üretmez.
 - Zaman damgaları Unix epoch milisaniyesi olarak `INTEGER` sütunlarda tutulur.
-- Yarışma ve sürüm durumları `DRAFT`, `ACTIVE`, `ARCHIVED` değerleriyle sınırlıdır.
-  Uygulama semantiğinin kaynağı `packages/shared/src/status.ts`, veritabanı koruması ise
-  `CHECK` constraint'leridir.
+- Yarışma durumları `DRAFT`, `ACTIVE`, `ARCHIVED`; yapılandırma sürümleri ise `DRAFT`,
+  `ACTIVE`, `RETIRED` semantiğini kullanır. P1-01'den kalabilecek `ARCHIVED` sürüm satırları
+  migration uyumluluğu için veritabanında okunabilir, uygulama API'sinde `RETIRED` olarak
+  projekte edilir ve yeni yazılmaz. Uygulama semantiğinin kaynağı
+  `packages/shared/src/status.ts`, veritabanı koruması ise `CHECK` constraint'leridir.
 - Veritabanı adları `snake_case`, TypeScript alanları `camelCase` biçimindedir.
 - `expected_language` varsayılanı mevcut Türkçe ürün bağlamı için `tr` değeridir.
 - `weight_basis_points` tam sayıdır ve `0..10000` aralığıyla sınırlandırılır.
@@ -55,8 +57,10 @@ sütunlarında sorgu indeksleri bulunur. Pozitif sürüm numarası ve puan ile n
 sıralama değerleri `CHECK` constraint'leriyle korunur.
 
 Şablon ve rubrik tanımları yarışma içinde artan `version_number` ile ayrı satırlarda
-sürümlenir. Bu temel yalnız sürüm metadata'sını saklar; aktif sürüm değiştirme veya yayınlama
-iş akışı ve yarışmada aktif sürüme döngüsel foreign key bilinçli olarak ertelenmiştir.
+sürümlenir. Yarışma başına yalnız bir `ACTIVE` şablon ve rubrik sürümüne kısmi benzersiz
+indeks izin verir. Aktivasyon, önceki aktifi `RETIRED` yapıp hedef taslağı etkinleştiren atomik
+D1 batch işlemidir. Şablon yapısal profili, paylaşılan Zod sözleşmesiyle doğrulanan JSON metni
+olarak kalıcılık sınırında serileştirilir; parse/stringify route veya UI'a dağılmaz.
 
 ## Migration iş akışı
 

@@ -2,7 +2,11 @@ import type { CompetitionMembershipLookup } from "@teknofest-ai/db";
 import { describe, expect, it } from "vitest";
 
 import type { AuthRuntimeBindings } from "../auth/auth";
-import { requireCompetitionMembership, requireCompetitionRole } from "./membership";
+import {
+  requireCompetitionMembership,
+  requireCompetitionPermission,
+  requireCompetitionRole,
+} from "./membership";
 import { getPermissionsForRole } from "./policy";
 import { requireAuthenticatedUser } from "./require-auth";
 
@@ -67,6 +71,18 @@ describe("server-side authorization helpers", () => {
         "user-a",
         "competition-a",
         ["COMPETITION_MANAGER"],
+        reviewerMembershipLookup,
+      ),
+    ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });
+  });
+
+  it("enforces the explicit permission instead of a client role claim", async () => {
+    await expect(
+      requireCompetitionPermission(
+        environment,
+        "user-a",
+        "competition-a",
+        "competition:configure",
         reviewerMembershipLookup,
       ),
     ).rejects.toMatchObject({ code: "FORBIDDEN", status: 403 });

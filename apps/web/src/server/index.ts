@@ -1,6 +1,9 @@
 import {
   assertDatabaseConnection,
+  type CompetitionConfigurationRepository,
   type CompetitionMembershipLookup,
+  ConfigurationRepositoryError,
+  competitionConfigurationRepository,
   findCompetitionMembership,
   listMembershipSummaries,
   type MembershipSummaryList,
@@ -16,23 +19,27 @@ import {
 } from "@teknofest-ai/shared";
 import { Hono } from "hono";
 
+import { ApiApplicationError, mapRepositoryError } from "./api-error";
 import { type AuthRuntimeBindings, createAuth } from "./auth/auth";
 import { resolveCurrentSession, type SessionResolver } from "./auth/session";
 import { AuthorizationError } from "./authorization/error";
 import { requireCompetitionMembership } from "./authorization/membership";
 import { getPermissionsForRole } from "./authorization/policy";
 import { requireAuthenticatedUser } from "./authorization/require-auth";
+import { registerCompetitionConfigurationRoutes } from "./competition-configuration-routes";
 
 interface AppDependencies {
   resolveSession: SessionResolver;
   findMembership: CompetitionMembershipLookup;
   listMemberships: MembershipSummaryList;
+  repository: CompetitionConfigurationRepository;
 }
 
 const defaultDependencies: AppDependencies = {
   resolveSession: resolveCurrentSession,
   findMembership: findCompetitionMembership,
   listMemberships: listMembershipSummaries,
+  repository: competitionConfigurationRepository,
 };
 
 export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
@@ -51,7 +58,19 @@ export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
       return context.json(createForbiddenResponse(), 403);
     }
 
-    return context.text("Internal Server Error", 500);
+    if (error instanceof ConfigurationRepositoryError) {
+      const mapped = mapRepositoryError(error);
+      return context.json(mapped.response, mapped.status);
+    }
+
+    if (error instanceof ApiApplicationError) {
+      return context.json(error.response, error.status);
+    }
+
+    return context.json(
+      { code: "INTERNAL_ERROR", message: "Beklenmeyen bir sunucu hatası oluştu." },
+      500,
+    );
   });
 
   app.on(["GET", "POST"], "/api/auth/*", (context) =>
@@ -116,6 +135,8 @@ export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
       }),
     );
   });
+
+  registerCompetitionConfigurationRoutes(app, dependencies);
 
   return app;
 }
