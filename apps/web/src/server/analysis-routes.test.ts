@@ -29,6 +29,7 @@ const run = {
   startedAt: null,
   completedAt: null,
   extraction: { pageCount: null, characterCount: null, warnings: [] },
+  checks: [],
   error: null,
 };
 
@@ -46,6 +47,7 @@ function repositoryStub(overrides: Partial<AnalysisRunRepository> = {}): Analysi
       competitionId === "competition-a" && submissionId === "submission-a" ? [run] : [],
     markAnalysisRunFailed: async () => undefined,
     markAnalysisRunProcessing: async () => undefined,
+    markAnalysisRunStructuralChecks: async () => undefined,
     markAnalysisRunSucceeded: async () => undefined,
     ...overrides,
   };
@@ -99,6 +101,13 @@ describe("analysis run authorization", () => {
     "returns 403 when %s starts an analysis",
     async (role) => {
       expect((await request(authenticatedApp(role))).status).toBe(403);
+    },
+  );
+
+  it.each(["REVIEWER", "EVALUATION_MANAGER", "CONTESTANT"] as const)(
+    "returns 403 when %s reads analysis checks",
+    async (role) => {
+      expect((await request(authenticatedApp(role), undefined, "GET")).status).toBe(403);
     },
   );
 
@@ -192,6 +201,49 @@ describe("analysis run safe reads", () => {
     expect(payload.runHistory).toEqual([run]);
     expect(JSON.stringify(payload)).not.toContain("documentArtifactKey");
     expect(JSON.stringify(payload)).not.toContain("pages");
+  });
+
+  it("returns validated compact checks without artifact keys or report text", async () => {
+    const completed = {
+      ...run,
+      status: "SUCCEEDED" as const,
+      stage: "STRUCTURAL_CHECKS" as const,
+      completedAt: 20,
+      extraction: { pageCount: 1, characterCount: 250, warnings: [] },
+      checks: [
+        {
+          id: "check-language",
+          analysisRunId: "run-a",
+          type: "LANGUAGE" as const,
+          status: "PASS" as const,
+          summary: "Dil uyumlu.",
+          details: {
+            checkType: "LANGUAGE" as const,
+            expectedLanguage: "tr",
+            detectedLanguage: "tr",
+            sampledCharacterCount: 250,
+            sampledPageCount: 1,
+            mixedLanguageSignal: false,
+            undeterminedPageCount: 0,
+            reason: "MATCH" as const,
+          },
+          createdAt: 15,
+          updatedAt: 15,
+        },
+      ],
+    };
+    const response = await request(
+      authenticatedApp(
+        "COMPETITION_MANAGER",
+        repositoryStub({ getAnalysisRun: async () => completed }),
+      ),
+      "/api/v1/competitions/competition-a/submissions/submission-a/analysis-runs/run-a",
+      "GET",
+    );
+    const payload = AnalysisRunResponseSchema.parse(await response.json());
+    expect(payload.checks[0]).toMatchObject({ type: "LANGUAGE", status: "PASS" });
+    expect(JSON.stringify(payload)).not.toContain("documentArtifactKey");
+    expect(JSON.stringify(payload)).not.toContain("full extracted report text");
   });
 
   it("uses a non-leaking 404 for a run outside the nested submission scope", async () => {

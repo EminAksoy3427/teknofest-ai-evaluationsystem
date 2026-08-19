@@ -2,6 +2,7 @@ import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloud
 import { analysisRunRepository } from "@teknofest-ai/db";
 
 import { encodeSafeFailure, processAnalysisRun, safeAnalysisFailure } from "./process-analysis-run";
+import { processStructuralChecks } from "./structural-checks";
 
 export interface SubmissionAnalysisWorkflowParams {
   analysisRunId: string;
@@ -20,6 +21,11 @@ const DATABASE_STEP = {
 const EXTRACTION_STEP = {
   retries: { limit: 3, delay: "2 seconds", backoff: "exponential" },
   timeout: "5 minutes",
+} as const;
+
+const STRUCTURAL_CHECK_STEP = {
+  retries: { limit: 3, delay: "2 seconds", backoff: "exponential" },
+  timeout: "1 minute",
 } as const;
 
 export class SubmissionAnalysisWorkflow extends WorkflowEntrypoint<
@@ -42,12 +48,26 @@ export class SubmissionAnalysisWorkflow extends WorkflowEntrypoint<
         }
       });
 
-      await step.do("analysis-run-success", DATABASE_STEP, async () => {
-        await analysisRunRepository.markAnalysisRunSucceeded(
+      await step.do("structural-checks-stage", DATABASE_STEP, async () => {
+        await analysisRunRepository.markAnalysisRunStructuralChecks(
           this.env.DB,
           analysisRunId,
           extraction,
         );
+        return { analysisRunId, stage: "STRUCTURAL_CHECKS" as const };
+      });
+
+      await step.do("structural-checks", STRUCTURAL_CHECK_STEP, async () => {
+        try {
+          await processStructuralChecks(this.env.DB, this.env.DOCUMENTS, analysisRunId);
+          return { analysisRunId, checked: true };
+        } catch (error) {
+          throw encodeSafeFailure(error);
+        }
+      });
+
+      await step.do("analysis-run-success", DATABASE_STEP, async () => {
+        await analysisRunRepository.markAnalysisRunSucceeded(this.env.DB, analysisRunId);
         return { analysisRunId, status: "SUCCEEDED" as const };
       });
 

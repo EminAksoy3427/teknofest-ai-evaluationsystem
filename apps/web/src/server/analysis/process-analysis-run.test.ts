@@ -38,6 +38,7 @@ function repositoryStub(
     startedAt: 2,
     completedAt: null,
     extraction: { pageCount: null, characterCount: null, warnings: [] },
+    checks: [],
     error: null,
   };
   return {
@@ -50,10 +51,24 @@ function repositoryStub(
       sourceSha256,
       sourceStorageKey: "private/source.pdf",
       documentArtifactKey: null,
+      templateVersionId: "template-v1",
+      templateStructuralProfile: {
+        expectedLanguage: "tr",
+        sections: [
+          {
+            key: "summary",
+            title: "Proje Özeti",
+            description: "",
+            required: true,
+            order: 1,
+          },
+        ],
+      },
     }),
     listAnalysisRuns: async () => [run],
     markAnalysisRunFailed: async () => undefined,
     markAnalysisRunProcessing: async () => undefined,
+    markAnalysisRunStructuralChecks: async () => undefined,
     markAnalysisRunSucceeded: async () => undefined,
     ...overrides,
   };

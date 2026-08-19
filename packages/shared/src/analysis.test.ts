@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { AnalysisRunResponseSchema, DocumentExtractionArtifactSchema } from "./analysis";
+import {
+  AnalysisCheckResponseSchema,
+  AnalysisRunResponseSchema,
+  DocumentExtractionArtifactSchema,
+} from "./analysis";
 
 const artifact = {
   schemaVersion: "document-extraction/v1" as const,
@@ -47,11 +51,64 @@ describe("analysis run response contract", () => {
       startedAt: 2,
       completedAt: 3,
       extraction: { pageCount: 2, characterCount: 11, warnings: [] },
+      checks: [],
       error: null,
     });
 
     expect(response).not.toHaveProperty("documentArtifactKey");
     expect(response.extraction).not.toHaveProperty("pages");
     expect(JSON.stringify(response)).not.toContain("Merhaba");
+  });
+
+  it("validates check details with a type discriminator and bounded evidence", () => {
+    const check = AnalysisCheckResponseSchema.parse({
+      id: "check-a",
+      analysisRunId: "run-a",
+      type: "SECTION_PRESENCE",
+      status: "PASS",
+      summary: "Zorunlu başlıklar bulundu.",
+      details: {
+        checkType: "SECTION_PRESENCE",
+        sections: [
+          {
+            sectionKey: "summary",
+            expectedTitle: "Proje Özeti",
+            required: true,
+            expectedOrder: 1,
+            found: true,
+            pageNumber: 2,
+            matchedText: "1. PROJE ÖZETİ",
+            occurrences: [{ pageNumber: 2, documentOrder: 0, matchedText: "1. PROJE ÖZETİ" }],
+          },
+        ],
+        missingRequiredSectionKeys: [],
+      },
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    if (check.type !== "SECTION_PRESENCE") throw new Error("Beklenmeyen kontrol türü.");
+    expect(check.details.sections[0]?.pageNumber).toBe(2);
+    expect(JSON.stringify(check)).not.toContain("Tam rapor metni");
+  });
+
+  it("rejects mismatched or malformed persisted check details", () => {
+    expect(() =>
+      AnalysisCheckResponseSchema.parse({
+        id: "check-a",
+        analysisRunId: "run-a",
+        type: "LANGUAGE",
+        status: "PASS",
+        summary: "Dil uyumlu.",
+        details: {
+          checkType: "TEMPLATE_STRUCTURE",
+          missingRequiredSectionKeys: [],
+          orderDeviation: false,
+          duplicateHeadingKeys: [],
+          extractionWarnings: [],
+        },
+        createdAt: 1,
+        updatedAt: 1,
+      }),
+    ).toThrow();
   });
 });

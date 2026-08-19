@@ -44,6 +44,15 @@ describe("Worker-compatible PDF text extraction", () => {
     );
   });
 
+  it("preserves explicit heading lines within a page", async () => {
+    const artifact = await extractDocument({
+      ...baseInput,
+      bytes: createSyntheticTextPdf(["Proje Özeti\nSentetik açıklama\nProblem Tanımı"]),
+    });
+
+    expect(artifact.pages[0]?.text).toBe("Proje Özeti\nSentetik açıklama\nProblem Tanımı");
+  });
+
   it("returns a neutral sparse-text warning without inventing OCR output", async () => {
     const artifact = await extractDocument({
       ...baseInput,

@@ -1,3 +1,4 @@
+export { analysisChecks } from "./analysis-check";
 export { analysisRuns } from "./analysis-run";
 export * from "./auth";
 export { categories } from "./category";

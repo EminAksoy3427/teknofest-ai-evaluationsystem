@@ -8,7 +8,7 @@ import { templateVersions } from "./template-version";
 
 export const ANALYSIS_RUN_STATUS_VALUES = ["QUEUED", "PROCESSING", "SUCCEEDED", "FAILED"] as const;
 
-export const ANALYSIS_STAGE_VALUES = ["INGEST_AND_EXTRACT"] as const;
+export const ANALYSIS_STAGE_VALUES = ["INGEST_AND_EXTRACT", "STRUCTURAL_CHECKS"] as const;
 
 export const analysisRuns = sqliteTable(
   "analysis_run",
@@ -55,7 +55,10 @@ export const analysisRuns = sqliteTable(
       "analysis_run_status_check",
       sql`${table.status} in ('QUEUED', 'PROCESSING', 'SUCCEEDED', 'FAILED')`,
     ),
-    check("analysis_run_stage_check", sql`${table.stage} = 'INGEST_AND_EXTRACT'`),
+    check(
+      "analysis_run_stage_check",
+      sql`${table.stage} in ('INGEST_AND_EXTRACT', 'STRUCTURAL_CHECKS')`,
+    ),
     check(
       "analysis_run_source_sha256_check",
       sql`length(${table.sourceSha256}) = 64 and ${table.sourceSha256} = lower(${table.sourceSha256})`,

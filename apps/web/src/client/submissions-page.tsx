@@ -17,6 +17,104 @@ function formatFileSize(bytes: number) {
   return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024);
 }
 
+const checkStatusLabels = {
+  PASS: "Uygun",
+  WARN: "İncelenmeli",
+  FAIL: "Uygun Değil",
+} as const;
+
+function checkStatusClass(status: "PASS" | "WARN" | "FAIL") {
+  if (status === "PASS") return "text-emerald-800";
+  if (status === "WARN") return "text-amber-800";
+  return "text-red-800";
+}
+
+function languageName(identifier: string | null) {
+  if (!identifier) return "Belirlenemedi";
+  try {
+    return new Intl.DisplayNames(["tr"], { type: "language" }).of(identifier) ?? identifier;
+  } catch {
+    return identifier;
+  }
+}
+
+function PrecheckResults({ run }: { run: AnalysisRunResponse }) {
+  if (run.checks.length === 0) {
+    return <p className="mt-2 text-slate-500">Bu tarihsel koşuda ön kontrol sonucu yok.</p>;
+  }
+  const labels = {
+    LANGUAGE: "Dil",
+    TEMPLATE_STRUCTURE: "Şablon Yapısı",
+    SECTION_PRESENCE: "Zorunlu Başlıklar",
+  } as const;
+  const sectionPresence = run.checks.find((check) => check.type === "SECTION_PRESENCE");
+  const sectionTitles = new Map(
+    sectionPresence?.details.sections.map((section) => [section.sectionKey, section.expectedTitle]),
+  );
+  const displaySectionKeys = (keys: readonly string[]) =>
+    keys.map((key) => sectionTitles.get(key) ?? key).join(", ");
+  return (
+    <details className="mt-2 min-w-64 text-slate-700">
+      <summary className="cursor-pointer font-semibold text-blue-800">Ön Kontroller</summary>
+      <div className="mt-2 space-y-3">
+        {run.checks.map((check) => (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3" key={check.type}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-semibold text-slate-900">{labels[check.type]}</span>
+              <span className={`font-semibold ${checkStatusClass(check.status)}`}>
+                {checkStatusLabels[check.status]}
+              </span>
+            </div>
+            <p className="mt-1 leading-5 text-slate-600">{check.summary}</p>
+            {check.type === "LANGUAGE" ? (
+              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-slate-600">
+                <dt>Beklenen dil</dt>
+                <dd className="font-medium text-slate-800">
+                  {languageName(check.details.expectedLanguage)}
+                </dd>
+                <dt>Baskın dil</dt>
+                <dd className="font-medium text-slate-800">
+                  {languageName(check.details.detectedLanguage)}
+                </dd>
+              </dl>
+            ) : null}
+            {check.type === "TEMPLATE_STRUCTURE" ? (
+              <ul className="mt-2 space-y-1 text-slate-600">
+                {check.details.missingRequiredSectionKeys.length > 0 ? (
+                  <li>
+                    Eksik zorunlu başlık:{" "}
+                    {displaySectionKeys(check.details.missingRequiredSectionKeys)}
+                  </li>
+                ) : null}
+                {check.details.orderDeviation ? <li>Bölüm sırası şablondan farklı.</li> : null}
+                {check.details.duplicateHeadingKeys.length > 0 ? (
+                  <li>
+                    Tekrarlanan başlık: {displaySectionKeys(check.details.duplicateHeadingKeys)}
+                  </li>
+                ) : null}
+              </ul>
+            ) : null}
+            {check.type === "SECTION_PRESENCE" ? (
+              <ul className="mt-2 space-y-1 text-slate-600">
+                {check.details.sections.map((section) => (
+                  <li key={section.sectionKey}>
+                    {section.expectedTitle}:{" "}
+                    {section.found
+                      ? `Bulundu · Sayfa ${section.pageNumber}`
+                      : section.required
+                        ? "Eksik"
+                        : "İsteğe bağlı · Bulunamadı"}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 function AnalysisStatus({
   run,
   error,
@@ -45,15 +143,23 @@ function AnalysisStatus({
       </div>
     );
   }
+  const hasPrechecks = run.checks.length > 0;
   return (
     <div className="text-xs text-emerald-800">
-      <p className="font-semibold">Metin çıkarıldı</p>
+      <p className="font-semibold">
+        {hasPrechecks ? "Deterministik ön kontroller tamamlandı" : "Metin çıkarımı tamamlandı"}
+      </p>
       <p className="mt-1 text-slate-600">
         {run.extraction.pageCount} sayfa · {run.extraction.characterCount} karakter
       </p>
       {run.extraction.warnings.includes("TEXT_SPARSE") ? (
         <p className="mt-1 font-medium text-amber-800">Metin seyrek; OCR gerekebilir.</p>
       ) : null}
+      {hasPrechecks ? (
+        <PrecheckResults run={run} />
+      ) : (
+        <p className="mt-2 text-slate-500">Bu tarihsel koşuda ön kontrol sonucu yok.</p>
+      )}
     </div>
   );
 }
@@ -81,7 +187,7 @@ function SubmissionTable({
             <th className="border-b border-slate-200 px-4 py-3 font-semibold">Rapor</th>
             <th className="border-b border-slate-200 px-4 py-3 font-semibold">Yükleme</th>
             <th className="border-b border-slate-200 px-4 py-3 font-semibold">Dosya sinyali</th>
-            <th className="border-b border-slate-200 px-4 py-3 font-semibold">Belge işleme</th>
+            <th className="border-b border-slate-200 px-4 py-3 font-semibold">Analiz</th>
             <th className="border-b border-slate-200 px-4 py-3 font-semibold">İşlem</th>
           </tr>
         </thead>
@@ -338,8 +444,9 @@ export function SubmissionsPage() {
         <p className="eyebrow">Özel belge deposu</p>
         <h1 className="page-title">Başvurular</h1>
         <p className="page-lead">
-          PDF raporlarını yarışma kapsamında kaydedin ve sayfa kimliğini koruyan metin çıkarımını
-          başlatın. Bu aşamada raporlar puanlanmaz veya semantik olarak değerlendirilmez.
+          PDF raporlarını yarışma kapsamında kaydedin; dil, şablon yapısı ve zorunlu başlıklar için
+          deterministik ön kontrolleri başlatın. Bölümlerin semantik içeriği bu aşamada kontrol
+          edilmez ve raporlar puanlanmaz.
         </p>
       </div>
 

@@ -4,11 +4,13 @@ import {
   AnalysisRunResponseSchema,
   type DocumentExtractionWarning,
   DocumentExtractionWarningSchema,
+  type TemplateStructuralProfile,
+  TemplateStructuralProfileSchema,
 } from "@teknofest-ai/shared";
 import { and, desc, eq, inArray } from "drizzle-orm";
-
+import { listAnalysisChecks } from "./analysis-check";
 import { createDb } from "./client";
-import { analysisRuns, submissionFiles, submissions } from "./schema";
+import { analysisRuns, submissionFiles, submissions, templateVersions } from "./schema";
 
 export type AnalysisRunRepositoryErrorCode = "NOT_FOUND" | "CONFLICT";
 export type AnalysisRunRepositoryErrorReason =
@@ -43,6 +45,8 @@ export interface AnalysisRunExecutionContext {
   sourceSha256: string;
   sourceStorageKey: string;
   documentArtifactKey: string | null;
+  templateVersionId: string;
+  templateStructuralProfile: TemplateStructuralProfile;
 }
 
 export interface AnalysisRunSuccessInput {
@@ -60,7 +64,10 @@ function parseWarnings(value: string): DocumentExtractionWarning[] {
   return DocumentExtractionWarningSchema.array().parse(JSON.parse(value));
 }
 
-function mapAnalysisRun(row: typeof analysisRuns.$inferSelect): AnalysisRunResponse {
+async function mapAnalysisRun(
+  binding: D1Database,
+  row: typeof analysisRuns.$inferSelect,
+): Promise<AnalysisRunResponse> {
   return AnalysisRunResponseSchema.parse({
     id: row.id,
     submissionId: row.submissionId,
@@ -78,6 +85,7 @@ function mapAnalysisRun(row: typeof analysisRuns.$inferSelect): AnalysisRunRespo
       characterCount: row.characterCount,
       warnings: parseWarnings(row.extractionWarnings),
     },
+    checks: await listAnalysisChecks(binding, row.id),
     error:
       row.errorCode && row.errorMessage ? { code: row.errorCode, message: row.errorMessage } : null,
   });
@@ -230,7 +238,7 @@ export async function listAnalysisRuns(
     )
     .orderBy(desc(analysisRuns.createdAt), desc(analysisRuns.id));
 
-  return rows.map(({ run }) => mapAnalysisRun(run));
+  return Promise.all(rows.map(({ run }) => mapAnalysisRun(binding, run)));
 }
 
 export async function getAnalysisRun(
@@ -240,7 +248,7 @@ export async function getAnalysisRun(
   analysisRunId: string,
 ): Promise<AnalysisRunResponse | null> {
   const row = await scopedAnalysisRunRow(binding, competitionId, submissionId, analysisRunId);
-  return row ? mapAnalysisRun(row) : null;
+  return row ? mapAnalysisRun(binding, row) : null;
 }
 
 export async function getAnalysisRunExecutionContext(
@@ -255,14 +263,24 @@ export async function getAnalysisRunExecutionContext(
       sourceSha256: analysisRuns.sourceSha256,
       sourceStorageKey: submissionFiles.storageKey,
       documentArtifactKey: analysisRuns.documentArtifactKey,
+      templateVersionId: analysisRuns.templateVersionId,
+      templateStructuralProfile: templateVersions.structuralProfile,
     })
     .from(analysisRuns)
     .innerJoin(submissions, eq(analysisRuns.submissionId, submissions.id))
     .innerJoin(submissionFiles, eq(submissionFiles.submissionId, submissions.id))
+    .innerJoin(templateVersions, eq(templateVersions.id, analysisRuns.templateVersionId))
     .where(eq(analysisRuns.id, analysisRunId))
     .limit(1);
 
-  return row ?? null;
+  return row
+    ? {
+        ...row,
+        templateStructuralProfile: TemplateStructuralProfileSchema.parse(
+          JSON.parse(row.templateStructuralProfile),
+        ),
+      }
+    : null;
 }
 
 export async function markAnalysisRunProcessing(
@@ -287,7 +305,7 @@ export async function markAnalysisRunProcessing(
   }
 }
 
-export async function markAnalysisRunSucceeded(
+export async function markAnalysisRunStructuralChecks(
   binding: D1Database,
   analysisRunId: string,
   input: AnalysisRunSuccessInput,
@@ -295,14 +313,15 @@ export async function markAnalysisRunSucceeded(
   const result = await createDb(binding)
     .update(analysisRuns)
     .set({
-      status: "SUCCEEDED",
+      status: "PROCESSING",
+      stage: "STRUCTURAL_CHECKS",
       documentArtifactKey: input.documentArtifactKey,
       pageCount: input.pageCount,
       characterCount: input.characterCount,
       extractionWarnings: JSON.stringify(input.warnings),
       errorCode: null,
       errorMessage: null,
-      completedAt: new Date(),
+      completedAt: null,
     })
     .where(
       and(
@@ -314,11 +333,42 @@ export async function markAnalysisRunSucceeded(
   if (result.meta.changes === 1) return;
   const existing = await getAnalysisRunExecutionContext(binding, analysisRunId);
   if (
-    existing?.status === "SUCCEEDED" &&
+    (existing?.status === "PROCESSING" || existing?.status === "SUCCEEDED") &&
     existing.documentArtifactKey === input.documentArtifactKey
   ) {
     return;
   }
+  throw new AnalysisRunRepositoryError("NOT_FOUND", "RESOURCE");
+}
+
+export async function markAnalysisRunSucceeded(
+  binding: D1Database,
+  analysisRunId: string,
+): Promise<void> {
+  const result = await binding
+    .prepare(
+      `UPDATE analysis_run
+       SET status = 'SUCCEEDED',
+           stage = 'STRUCTURAL_CHECKS',
+           error_code = null,
+           error_message = null,
+           completed_at = ?
+       WHERE id = ?
+         AND status = 'PROCESSING'
+         AND stage = 'STRUCTURAL_CHECKS'
+         AND document_artifact_key is not null
+         AND (
+           SELECT count(*)
+           FROM analysis_check
+           WHERE analysis_run_id = analysis_run.id
+             AND type in ('LANGUAGE', 'TEMPLATE_STRUCTURE', 'SECTION_PRESENCE')
+         ) = 3`,
+    )
+    .bind(Date.now(), analysisRunId)
+    .run();
+  if (result.meta.changes === 1) return;
+  const existing = await getAnalysisRunExecutionContext(binding, analysisRunId);
+  if (existing?.status === "SUCCEEDED") return;
   throw new AnalysisRunRepositoryError("NOT_FOUND", "RESOURCE");
 }
 
@@ -351,6 +401,7 @@ export const analysisRunRepository = {
   listAnalysisRuns,
   markAnalysisRunFailed,
   markAnalysisRunProcessing,
+  markAnalysisRunStructuralChecks,
   markAnalysisRunSucceeded,
 };
 

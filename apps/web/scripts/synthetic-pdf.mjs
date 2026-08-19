@@ -1,13 +1,38 @@
 function escapePdfText(value) {
-  return value.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)");
+  const encoded = new Map([
+    ["İ", "\\200"],
+    ["ı", "\\201"],
+    ["Ğ", "\\202"],
+    ["ğ", "\\203"],
+    ["Ş", "\\204"],
+    ["ş", "\\205"],
+    ["Ç", "\\307"],
+    ["ç", "\\347"],
+    ["Ö", "\\326"],
+    ["ö", "\\366"],
+    ["Ü", "\\334"],
+    ["ü", "\\374"],
+  ]);
+  return [...value]
+    .map((character) => encoded.get(character) ?? character)
+    .join("")
+    .replaceAll("\\", "\\\\")
+    .replaceAll("\\\\2", "\\2")
+    .replaceAll("\\\\3", "\\3")
+    .replaceAll("(", "\\(")
+    .replaceAll(")", "\\)");
 }
 
 export function createSyntheticTextPdf(pageTexts) {
   assertPageTexts(pageTexts);
+  const encoder = new TextEncoder();
   const objects = new Map();
   const pageReferences = [];
   objects.set(1, "<< /Type /Catalog /Pages 2 0 R >>");
-  objects.set(3, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  objects.set(
+    3,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding << /Type /Encoding /BaseEncoding /WinAnsiEncoding /Differences [128 /Idotaccent /dotlessi /Gbreve /gbreve /Scedilla /scedilla] >> >>",
+  );
   pageTexts.forEach((text, index) => {
     const pageId = 4 + index * 2;
     const contentId = pageId + 1;
@@ -16,15 +41,23 @@ export function createSyntheticTextPdf(pageTexts) {
       pageId,
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>`,
     );
-    const commands = text === "" ? "q Q" : `BT /F1 12 Tf 72 720 Td (${escapePdfText(text)}) Tj ET`;
-    objects.set(contentId, `<< /Length ${commands.length} >>\nstream\n${commands}\nendstream`);
+    const commands =
+      text === ""
+        ? "q Q"
+        : `BT /F1 12 Tf 14 TL 72 720 Td ${text
+            .split("\n")
+            .map((line, lineIndex) => `${lineIndex > 0 ? "T* " : ""}(${escapePdfText(line)}) Tj`)
+            .join(" ")} ET`;
+    objects.set(
+      contentId,
+      `<< /Length ${encoder.encode(commands).byteLength} >>\nstream\n${commands}\nendstream`,
+    );
   });
   objects.set(
     2,
     `<< /Type /Pages /Kids [${pageReferences.join(" ")}] /Count ${pageTexts.length} >>`,
   );
 
-  const encoder = new TextEncoder();
   let source = "%PDF-1.4\n%synthetic\n";
   const offsets = [0];
   const maximumObjectId = 3 + pageTexts.length * 2;

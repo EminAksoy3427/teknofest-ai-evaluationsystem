@@ -31,6 +31,11 @@ Bu kurallar, bu depoda çalışan tüm kodlama ajanları için geçerlidir.
 - SHA-256 uygulama içerik kimliğidir; birebir eşleşme bir sinyaldir, intihal veya nihai karar değildir.
 - AnalysisRun oluşturulurken kategori, aktif şablon/rubrik sürümleri ve kaynak SHA-256 sabitlenir; geçmiş koşular güncel yapılandırmaya taşınmaz.
 - Workflow adımları ve türetilmiş nesne anahtarları retry karşısında idempotent olmalıdır.
+- Olumsuz AnalysisCheck bulgusu pipeline hatası değildir; AnalysisRun yalnız analiz mekanizması çalışamazsa FAILED olur.
+- AnalysisCheck sonuçları yalnız güvenilir sunucu/Workflow kodunca üretilir ve koşuda sabitlenmiş yapılandırmayı kullanır.
+- Workflow retry aynı koşu/kontrol türünü upsert etmeli, yinelenen AnalysisCheck üretmemelidir.
+- Yapısal başlık varlığı semantik bölüm içeriği doğrulaması değildir.
+- Kalibre edilmemiş dil algılayıcı skorları olasılık veya güven yüzdesi olarak sunulmamalıdır.
 - Çıkarılan tam belge metni D1'e değil özel R2 artifact'ine yazılmalı ve PDF sayfa kimliği korunmalıdır.
 - PDF metin çıkarımı semantik doğruluk anlamına gelmez; OCR açık bir aşamadır ve sessizce taklit edilmez.
 - Güvenilmeyen PDF metni yetkilendirme, sistem talimatı veya araç çağrısı belirleyemez.

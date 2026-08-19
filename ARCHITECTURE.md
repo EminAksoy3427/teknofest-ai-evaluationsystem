@@ -50,8 +50,9 @@ Node sunucusu veya mikroservis yoktur.
   simülasyonunu kullanır.
 - **OpenAI:** Sağlayıcı adaptörü ve model seçimi ortam yapılandırmasından gelecektir. Domain
   mantığı belirli bir GPT-5 ailesi model adını bilmeyecektir.
-- **Workflows:** P2-03'te `SUBMISSION_ANALYSIS` yerel Workflow'u yalnız sayfa koruyan PDF metin
-  çıkarımını retry/idempotency sınırıyla orkestre eder. Yapay zekâ aşamaları eklenmemiştir.
+- **Workflows:** `SUBMISSION_ANALYSIS` yerel Workflow'u sayfa koruyan PDF metin çıkarımını ve
+  P3-01 deterministik dil/yapı/başlık ön kontrollerini retry/idempotency sınırıyla orkestre eder.
+  Yapay zekâ aşamaları eklenmemiştir.
 - **Vectorize:** Onaylanmış kullanım senaryosu oluştuğunda benzerlik/erişim indeksi.
 
 D1, özel yerel R2 ve yerel Workflow sınırları uygulanmıştır. OpenAI ve Vectorize sonraki
@@ -81,13 +82,19 @@ işlemde emekliye ayırır. Tek aktif sürüm ayrıca kısmi benzersiz veritaban
 Hazırlık durumu kalıcı bir bayrak değil, mevcut kategori ve aktif sürümlerden türetilmiş bir API
 projeksiyonudur. Ayrıntılar `docs/architecture/competition-configuration.md` içindedir.
 
-## 9. Belge çıkarımı
+## 9. Belge çıkarımı ve deterministik ön kontroller
 
 `AnalysisRun` oluşturulurken kategori, aktif şablon/rubrik sürümleri ve kaynak PDF SHA-256
 sabitlenir. Yerel Workflow özel R2 kaynağını doğrular, `unpdf` ile sayfa kimliğini koruyarak metin
 çıkarır ve `document-extraction/v1` artifact'ini deterministik özel R2 anahtarına yazar. D1 tam
 metin değil yalnız durum, sayaç, uyarı ve sunucu içi artifact metadata'sını taşır. Ayrıntılar
 `docs/architecture/analysis-pipeline.md` içindedir.
+
+Workflow daha sonra koşuda sabitlenmiş TemplateVersion profilini kullanarak baskın dil,
+zorunlu başlık varlığı ve ihtiyatlı bölüm sırası/tekrar sinyallerini üretir. Küçük, doğrulanmış
+`AnalysisCheck` sonuçları D1'de koşu ve tür başına tek satır olarak tutulur. Kontrol `FAIL`
+olabilirken başarılı çalışan pipeline `AnalysisRun SUCCEEDED` kalır. Başlık varlığı bölümün
+beklenen semantik içeriğini taşıdığını kanıtlamaz; semantik içerik kontrolü ertelenmiştir.
 
 ## 10. Bilinçli olarak ertelenenler
 

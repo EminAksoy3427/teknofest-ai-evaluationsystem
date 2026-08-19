@@ -1,4 +1,11 @@
 export {
+  type AnalysisCheckRepository,
+  type AnalysisCheckWriteInput,
+  analysisCheckRepository,
+  listAnalysisChecks,
+  upsertAnalysisChecks,
+} from "./analysis-check";
+export {
   type AnalysisRunExecutionContext,
   type AnalysisRunRepository,
   AnalysisRunRepositoryError,
@@ -12,6 +19,7 @@ export {
   listAnalysisRuns,
   markAnalysisRunFailed,
   markAnalysisRunProcessing,
+  markAnalysisRunStructuralChecks,
   markAnalysisRunSucceeded,
   type QueuedAnalysisRunInput,
 } from "./analysis-run";

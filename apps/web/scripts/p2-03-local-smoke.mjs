@@ -33,12 +33,17 @@ const templateV1Id = `p203-template-v1-${runSuffix}`;
 const rubricV1Id = `p203-rubric-v1-${runSuffix}`;
 const baseUrl = "http://127.0.0.1:5173";
 const pageTexts = [
-  "Synthetic first page with sufficient document extraction evidence and no real data.",
-  "Synthetic second page preserves page identity for future evidence navigation.",
+  "Proje Özeti\nBu sentetik proje yenilikçi ve sürdürülebilir bir teknoloji çözümü geliştirmektedir.\nKullanıcı ihtiyaçları araştırılmış ve güvenli bir yöntem tasarlanmıştır.",
+  "Problem Tanımı\nMevcut süreçlerde verimlilik ve erişilebilirlik sorunları bulunmaktadır.\nÇözüm Yaklaşımı\nÖnerilen sistem ölçülebilir ve açıklanabilir sonuçlar üretir.\nKaynakça\nYalnız sentetik kaynak.",
+];
+const englishPageTexts = [
+  "Proje Özeti\nThis synthetic project develops an innovative and sustainable technology solution.\nUser needs were researched and a secure method was designed for reliable outcomes.",
+  "Çözüm Yaklaşımı\nThe proposed system produces measurable explainable and accessible results.\nThis fixture contains no real submission data.",
 ];
 const sourcePdf = createSyntheticTextPdf(pageTexts);
 const storageKeys = [];
 const artifactKeys = [];
+const artifactExpectations = new Map();
 let server;
 
 function sql(value) {
@@ -158,7 +163,7 @@ try {
       `INSERT INTO competition (id, name, slug, description) VALUES (${sql(competitionId)}, 'P2-03 Synthetic Competition', ${sql(`p203-${runSuffix}`)}, 'Synthetic smoke only');`,
       `INSERT INTO competition_member (id, competition_id, user_id, role) VALUES (${sql(`p203-member-${runSuffix}`)}, ${sql(competitionId)}, ${sql(userId)}, 'COMPETITION_MANAGER');`,
       `INSERT INTO category (id, competition_id, name, code, description) VALUES (${sql(categoryId)}, ${sql(competitionId)}, 'Synthetic Category', 'synthetic', 'Synthetic only');`,
-      `INSERT INTO template_version (id, competition_id, version_number, label, status, structural_profile) VALUES (${sql(templateV1Id)}, ${sql(competitionId)}, 1, 'v1', 'ACTIVE', '{"expectedLanguage":"tr","sections":[{"key":"summary","title":"Summary","description":"","required":true,"order":1}]}');`,
+      `INSERT INTO template_version (id, competition_id, version_number, label, status, structural_profile) VALUES (${sql(templateV1Id)}, ${sql(competitionId)}, 1, 'v1', 'ACTIVE', '{"expectedLanguage":"tr","sections":[{"key":"summary","title":"Proje Özeti","description":"","required":true,"order":1},{"key":"problem","title":"Problem Tanımı","description":"","required":true,"order":2},{"key":"solution","title":"Çözüm Yaklaşımı","description":"","required":true,"order":3},{"key":"references","title":"Kaynakça","description":"","required":false,"order":4}]}');`,
       `INSERT INTO rubric_version (id, competition_id, version_number, label, status) VALUES (${sql(rubricV1Id)}, ${sql(competitionId)}, 1, 'v1', 'ACTIVE');`,
       `INSERT INTO criterion (id, rubric_version_id, code, title, description, evidence_expectation, max_score, weight_basis_points, sort_order) VALUES (${sql(`p203-criterion-v1-${runSuffix}`)}, ${sql(rubricV1Id)}, 'quality', 'Quality', 'Synthetic only', 'Synthetic evidence', 10, 10000, 1);`,
     ].join("\n"),
@@ -212,16 +217,91 @@ try {
   assert.equal(terminalR1.run.status, "SUCCEEDED");
   assert.equal(terminalR1.run.extraction.pageCount, 2);
   assert.ok(terminalR1.run.extraction.characterCount > 100);
+  assert.equal(terminalR1.run.stage, "STRUCTURAL_CHECKS");
+  assert.deepEqual(
+    Object.fromEntries(terminalR1.run.checks.map((check) => [check.type, check.status])),
+    { LANGUAGE: "PASS", SECTION_PRESENCE: "PASS", TEMPLATE_STRUCTURE: "PASS" },
+  );
+  const sectionCheckR1 = terminalR1.run.checks.find((check) => check.type === "SECTION_PRESENCE");
+  assert.deepEqual(
+    sectionCheckR1.details.sections.map((section) => [section.sectionKey, section.pageNumber]),
+    [
+      ["summary", 1],
+      ["problem", 2],
+      ["solution", 2],
+      ["references", 2],
+    ],
+  );
   assert.ok(!JSON.stringify(terminalR1.run).includes(pageTexts[0]));
-  artifactKeys.push(`derived/${submission.id}/${startedR1.id}/document.json`);
+  const r1ArtifactKey = `derived/${submission.id}/${startedR1.id}/document.json`;
+  artifactKeys.push(r1ArtifactKey);
+  artifactExpectations.set(r1ArtifactKey, {
+    sourceSha256: submission.file.sha256,
+    pageTexts,
+  });
+  const r1Checks = JSON.stringify(terminalR1.run.checks);
+
+  const englishSubmission = await upload(
+    cookie,
+    "P301-ENGLISH-MISSING",
+    createSyntheticTextPdf(englishPageTexts),
+  );
+  const englishStarted = await json(
+    await jsonRequest(
+      cookie,
+      `/api/v1/competitions/${competitionId}/submissions/${englishSubmission.id}/analysis-runs`,
+      "POST",
+    ),
+  );
+  const englishTerminal = await waitForTerminalRun(cookie, englishSubmission.id, englishStarted.id);
+  assert.equal(englishTerminal.run.status, "SUCCEEDED");
+  assert.deepEqual(
+    Object.fromEntries(englishTerminal.run.checks.map((check) => [check.type, check.status])),
+    { LANGUAGE: "FAIL", SECTION_PRESENCE: "FAIL", TEMPLATE_STRUCTURE: "FAIL" },
+  );
+  const englishArtifactKey = `derived/${englishSubmission.id}/${englishStarted.id}/document.json`;
+  artifactKeys.push(englishArtifactKey);
+  artifactExpectations.set(englishArtifactKey, {
+    sourceSha256: englishSubmission.file.sha256,
+    pageTexts: englishPageTexts,
+  });
+
+  const sparsePageTexts = ["Kısa sentetik metin."];
+  const sparseSubmission = await upload(
+    cookie,
+    "P301-SPARSE",
+    createSyntheticTextPdf(sparsePageTexts),
+  );
+  const sparseStarted = await json(
+    await jsonRequest(
+      cookie,
+      `/api/v1/competitions/${competitionId}/submissions/${sparseSubmission.id}/analysis-runs`,
+      "POST",
+    ),
+  );
+  const sparseTerminal = await waitForTerminalRun(cookie, sparseSubmission.id, sparseStarted.id);
+  assert.equal(sparseTerminal.run.status, "SUCCEEDED");
+  assert.equal(
+    sparseTerminal.run.checks.find((check) => check.type === "LANGUAGE")?.status,
+    "WARN",
+  );
+  const sparseArtifactKey = `derived/${sparseSubmission.id}/${sparseStarted.id}/document.json`;
+  artifactKeys.push(sparseArtifactKey);
+  artifactExpectations.set(sparseArtifactKey, {
+    sourceSha256: sparseSubmission.file.sha256,
+    pageTexts: sparsePageTexts,
+  });
 
   const templateV2 = await json(
     await jsonRequest(cookie, `/api/v1/competitions/${competitionId}/templates`, "POST", {
       label: "v2",
       structuralProfile: {
-        expectedLanguage: "tr",
+        expectedLanguage: "en",
         sections: [
-          { key: "new-summary", title: "New Summary", description: "", required: true, order: 1 },
+          { key: "summary", title: "Proje Özeti", description: "", required: true, order: 1 },
+          { key: "problem", title: "Problem Tanımı", description: "", required: true, order: 2 },
+          { key: "solution", title: "Çözüm Yaklaşımı", description: "", required: true, order: 3 },
+          { key: "plan", title: "Uygulama Planı", description: "", required: true, order: 4 },
         ],
       },
     }),
@@ -274,6 +354,7 @@ try {
   );
   assert.equal(historicalR1.templateVersionId, templateV1Id);
   assert.equal(historicalR1.rubricVersionId, rubricV1Id);
+  assert.equal(JSON.stringify(historicalR1.checks), r1Checks);
 
   const startedR2 = await json(
     await jsonRequest(
@@ -286,7 +367,16 @@ try {
   assert.equal(startedR2.rubricVersionId, rubricV2.id);
   const terminalR2 = await waitForTerminalRun(cookie, submission.id, startedR2.id);
   assert.equal(terminalR2.run.status, "SUCCEEDED");
-  artifactKeys.push(`derived/${submission.id}/${startedR2.id}/document.json`);
+  assert.deepEqual(
+    Object.fromEntries(terminalR2.run.checks.map((check) => [check.type, check.status])),
+    { LANGUAGE: "FAIL", SECTION_PRESENCE: "FAIL", TEMPLATE_STRUCTURE: "FAIL" },
+  );
+  const r2ArtifactKey = `derived/${submission.id}/${startedR2.id}/document.json`;
+  artifactKeys.push(r2ArtifactKey);
+  artifactExpectations.set(r2ArtifactKey, {
+    sourceSha256: submission.file.sha256,
+    pageTexts,
+  });
 
   const malformedSubmission = await upload(
     cookie,
@@ -334,21 +424,20 @@ try {
       "--local",
     ]);
     const artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
+    const expectation = artifactExpectations.get(artifactKey);
+    assert.ok(expectation);
     assert.equal(artifact.schemaVersion, "document-extraction/v1");
-    assert.equal(artifact.sourceSha256, submission.file.sha256);
-    assert.equal(artifact.pageCount, 2);
+    assert.equal(artifact.sourceSha256, expectation.sourceSha256);
+    assert.equal(artifact.pageCount, expectation.pageTexts.length);
     assert.deepEqual(
       artifact.pages.map((page) => [page.pageNumber, page.text]),
-      [
-        [1, pageTexts[0]],
-        [2, pageTexts[1]],
-      ],
+      expectation.pageTexts.map((text, pageIndex) => [pageIndex + 1, text]),
     );
     assert.ok(!("userId" in artifact));
     assert.ok(!("email" in artifact));
   }
 
-  console.log("P2-03 local Worker + D1 + R2 + Workflow + unpdf golden smoke: PASS");
+  console.log("P3-01 local Worker + D1 + R2 + Workflow + unpdf golden smoke: PASS");
 } finally {
   await stopServer();
   for (const storageKey of [...artifactKeys, ...storageKeys]) {

@@ -13,13 +13,16 @@
     "smoke:p2-02:r2": "node ./scripts/p2-02-r2-smoke.mjs",
     "smoke:p2-02": "node ./scripts/p2-02-local-smoke.mjs",
     "smoke:p2-03": "node ./scripts/p2-03-local-smoke.mjs",
+    "smoke:p3-01": "node ./scripts/p2-03-local-smoke.mjs",
     "cf:typegen": "wrangler types"
   },
   "dependencies": {
     "@teknofest-ai/db": "workspace:*",
     "@teknofest-ai/shared": "workspace:*",
     "better-auth": "1.7.0",
+    "franc-min": "6.2.0",
     "hono": "4.13.3",
+    "iso-639-3": "3.0.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-router": "8.3.0",

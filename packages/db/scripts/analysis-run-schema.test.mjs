@@ -10,8 +10,9 @@ const migrations = readdirSync(migrationDirectory)
   .filter((candidate) => candidate.endsWith(".sql"))
   .sort();
 
-assert.equal(migrations.length, 7, "P2-03 must extend the 0000-0005 chain with exactly 0006");
+assert.equal(migrations.length, 8, "P3-01 must extend the 0000-0006 chain with exactly 0007");
 assert.ok(migrations[6]?.startsWith("0006_"));
+assert.ok(migrations[7]?.startsWith("0007_"));
 
 function apply(database, filenames) {
   for (const filename of filenames) {
@@ -118,6 +119,62 @@ database
   .run();
 
 database.exec(`
+  INSERT INTO analysis_check (
+    id, analysis_run_id, type, status, summary, details_json, created_at, updated_at
+  ) VALUES
+    ('check-language', 'run-v1', 'LANGUAGE', 'PASS', 'Dil uyumlu.',
+     '{"checkType":"LANGUAGE","expectedLanguage":"tr","detectedLanguage":"tr","sampledCharacterCount":200,"sampledPageCount":1,"mixedLanguageSignal":false,"undeterminedPageCount":0,"reason":"MATCH"}', 110, 110),
+    ('check-template', 'run-v1', 'TEMPLATE_STRUCTURE', 'PASS', 'Yapı uyumlu.',
+     '{"checkType":"TEMPLATE_STRUCTURE","missingRequiredSectionKeys":[],"orderDeviation":false,"duplicateHeadingKeys":[],"extractionWarnings":[]}', 110, 110),
+    ('check-section', 'run-v1', 'SECTION_PRESENCE', 'PASS', 'Başlıklar bulundu.',
+     '{"checkType":"SECTION_PRESENCE","sections":[],"missingRequiredSectionKeys":[]}', 110, 110);
+`);
+assert.equal(
+  database
+    .prepare("SELECT count(*) AS count FROM analysis_check WHERE analysis_run_id = 'run-v1'")
+    .get().count,
+  3,
+  "A run must contain one authoritative row for each implemented check type",
+);
+assert.throws(
+  () =>
+    database.exec(`INSERT INTO analysis_check (
+    id, analysis_run_id, type, status, summary, details_json
+  ) VALUES ('duplicate-language', 'run-v1', 'LANGUAGE', 'FAIL', 'Duplicate', '{}')`),
+  /UNIQUE constraint failed/,
+  "A retry must not append a second row for the same run/type",
+);
+database.exec(`
+  INSERT INTO analysis_check (
+    id, analysis_run_id, type, status, summary, details_json, created_at, updated_at
+  ) VALUES ('retry-language', 'run-v1', 'LANGUAGE', 'FAIL', 'Retry', '{}', 120, 120)
+  ON CONFLICT (analysis_run_id, type) DO UPDATE SET
+    status = excluded.status,
+    summary = excluded.summary,
+    details_json = excluded.details_json,
+    updated_at = excluded.updated_at;
+`);
+assert.deepEqual(
+  {
+    ...database
+      .prepare(
+        "SELECT id, status, created_at, updated_at FROM analysis_check WHERE analysis_run_id = 'run-v1' AND type = 'LANGUAGE'",
+      )
+      .get(),
+  },
+  { id: "check-language", status: "FAIL", created_at: 110, updated_at: 120 },
+  "Retry upsert must preserve logical identity and creation time",
+);
+assert.throws(
+  () =>
+    database.exec(`INSERT INTO analysis_check (
+    id, analysis_run_id, type, status, summary, details_json
+  ) VALUES ('invalid-json', 'run-v1', 'FUTURE', 'PASS', 'Invalid', 'not-json')`),
+  /CHECK constraint failed/,
+  "Details must always be JSON even though application schemas enforce their shape",
+);
+
+database.exec(`
   UPDATE template_version SET status = 'RETIRED' WHERE id = 'template-v1';
   INSERT INTO template_version (
     id, competition_id, version_number, label, status, structural_profile
@@ -206,4 +263,33 @@ assert.equal(
 );
 upgradeDatabase.close();
 
-console.log("analysis run clean-chain, upgrade, concurrency, and version pinning: PASS");
+const p3UpgradeDatabase = new DatabaseSync(":memory:");
+p3UpgradeDatabase.exec("PRAGMA foreign_keys = ON");
+apply(p3UpgradeDatabase, migrations.slice(0, 7));
+seedFoundation(p3UpgradeDatabase);
+assert.equal(createRun(p3UpgradeDatabase, "historical-p2-run", 100).changes, 1);
+p3UpgradeDatabase.exec(`
+  UPDATE analysis_run
+  SET status = 'SUCCEEDED', completed_at = 101,
+      document_artifact_key = 'derived/submission-a/historical-p2-run/document.json',
+      page_count = 1, character_count = 10
+  WHERE id = 'historical-p2-run';
+`);
+apply(p3UpgradeDatabase, migrations.slice(7));
+assert.deepEqual(
+  {
+    ...p3UpgradeDatabase
+      .prepare("SELECT status, stage FROM analysis_run WHERE id = 'historical-p2-run'")
+      .get(),
+  },
+  { status: "SUCCEEDED", stage: "INGEST_AND_EXTRACT" },
+  "0006 to 0007 upgrade must preserve historical extraction-only runs",
+);
+assert.equal(
+  p3UpgradeDatabase.prepare("SELECT count(*) AS count FROM analysis_check").get().count,
+  0,
+  "Historical runs must not receive fabricated P3-01 checks",
+);
+p3UpgradeDatabase.close();
+
+console.log("analysis run/check clean-chain, upgrades, idempotency, and version pinning: PASS");
