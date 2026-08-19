@@ -2,6 +2,8 @@ import {
   type AnalysisErrorCode,
   type AnalysisRunResponse,
   AnalysisRunResponseSchema,
+  type CategorySnapshot,
+  CategorySnapshotSchema,
   type DocumentExtractionWarning,
   DocumentExtractionWarningSchema,
   type TemplateStructuralProfile,
@@ -36,6 +38,9 @@ export interface QueuedAnalysisRunInput {
   workflowInstanceId: string;
   competitionId: string;
   submissionId: string;
+  aiProvider: string;
+  modelId: string;
+  promptBundleVersion: string;
 }
 
 export interface AnalysisRunExecutionContext {
@@ -47,6 +52,11 @@ export interface AnalysisRunExecutionContext {
   documentArtifactKey: string | null;
   templateVersionId: string;
   templateStructuralProfile: TemplateStructuralProfile;
+  projectTitle: string;
+  aiProvider: string | null;
+  modelId: string | null;
+  promptBundleVersion: string | null;
+  categorySnapshot: CategorySnapshot | null;
 }
 
 export interface AnalysisRunSuccessInput {
@@ -77,6 +87,18 @@ async function mapAnalysisRun(
     templateVersionId: row.templateVersionId,
     rubricVersionId: row.rubricVersionId,
     sourceSha256: row.sourceSha256,
+    ai:
+      row.aiProvider && row.modelId && row.promptBundleVersion
+        ? {
+            provider: row.aiProvider,
+            modelId: row.modelId,
+            promptBundleVersion: row.promptBundleVersion,
+          }
+        : null,
+    categorySnapshot:
+      row.categorySnapshot === null
+        ? null
+        : CategorySnapshotSchema.parse(JSON.parse(row.categorySnapshot)),
     createdAt: timestamp(row.createdAt),
     startedAt: row.startedAt === null ? null : timestamp(row.startedAt),
     completedAt: row.completedAt === null ? null : timestamp(row.completedAt),
@@ -136,6 +158,10 @@ export async function createQueuedAnalysisRun(
            template_version_id,
            rubric_version_id,
            source_sha256,
+           ai_provider,
+           model_id,
+           prompt_bundle_version,
+           category_snapshot,
            status,
            stage,
            workflow_instance_id,
@@ -149,6 +175,16 @@ export async function createQueuedAnalysisRun(
            template_version.id,
            rubric_version.id,
            submission_file.sha256,
+           ?,
+           ?,
+           ?,
+           json_object(
+             'id', category.id,
+             'name', category.name,
+             'code', category.code,
+             'description', category.description,
+             'guidance', category.guidance
+           ),
            'QUEUED',
            'INGEST_AND_EXTRACT',
            ?,
@@ -175,7 +211,16 @@ export async function createQueuedAnalysisRun(
            )
          LIMIT 1`,
       )
-      .bind(input.id, input.workflowInstanceId, now, input.submissionId, input.competitionId)
+      .bind(
+        input.id,
+        input.aiProvider,
+        input.modelId,
+        input.promptBundleVersion,
+        input.workflowInstanceId,
+        now,
+        input.submissionId,
+        input.competitionId,
+      )
       .run();
   } catch (error) {
     if (isConcurrentRunConstraint(error)) {
@@ -265,6 +310,11 @@ export async function getAnalysisRunExecutionContext(
       documentArtifactKey: analysisRuns.documentArtifactKey,
       templateVersionId: analysisRuns.templateVersionId,
       templateStructuralProfile: templateVersions.structuralProfile,
+      projectTitle: submissions.projectTitle,
+      aiProvider: analysisRuns.aiProvider,
+      modelId: analysisRuns.modelId,
+      promptBundleVersion: analysisRuns.promptBundleVersion,
+      categorySnapshot: analysisRuns.categorySnapshot,
     })
     .from(analysisRuns)
     .innerJoin(submissions, eq(analysisRuns.submissionId, submissions.id))
@@ -279,6 +329,10 @@ export async function getAnalysisRunExecutionContext(
         templateStructuralProfile: TemplateStructuralProfileSchema.parse(
           JSON.parse(row.templateStructuralProfile),
         ),
+        categorySnapshot:
+          row.categorySnapshot === null
+            ? null
+            : CategorySnapshotSchema.parse(JSON.parse(row.categorySnapshot)),
       }
     : null;
 }
@@ -349,13 +403,43 @@ export async function markAnalysisRunSucceeded(
     .prepare(
       `UPDATE analysis_run
        SET status = 'SUCCEEDED',
-           stage = 'STRUCTURAL_CHECKS',
+           stage = 'SEMANTIC_CHECKS',
            error_code = null,
            error_message = null,
            completed_at = ?
        WHERE id = ?
          AND status = 'PROCESSING'
-         AND stage = 'STRUCTURAL_CHECKS'
+         AND stage = 'SEMANTIC_CHECKS'
+         AND document_artifact_key is not null
+         AND (
+           SELECT count(*)
+           FROM analysis_check
+           WHERE analysis_run_id = analysis_run.id
+             AND type in ('LANGUAGE', 'TEMPLATE_STRUCTURE', 'SECTION_PRESENCE', 'SECTION_CONTENT', 'CATEGORY_FIT')
+         ) = 5`,
+    )
+    .bind(Date.now(), analysisRunId)
+    .run();
+  if (result.meta.changes === 1) return;
+  const existing = await getAnalysisRunExecutionContext(binding, analysisRunId);
+  if (existing?.status === "SUCCEEDED") return;
+  throw new AnalysisRunRepositoryError("NOT_FOUND", "RESOURCE");
+}
+
+export async function markAnalysisRunSemanticChecks(
+  binding: D1Database,
+  analysisRunId: string,
+): Promise<void> {
+  const result = await binding
+    .prepare(
+      `UPDATE analysis_run
+       SET status = 'PROCESSING',
+           stage = 'SEMANTIC_CHECKS',
+           error_code = null,
+           error_message = null
+       WHERE id = ?
+         AND status = 'PROCESSING'
+         AND stage in ('STRUCTURAL_CHECKS', 'SEMANTIC_CHECKS')
          AND document_artifact_key is not null
          AND (
            SELECT count(*)
@@ -364,7 +448,7 @@ export async function markAnalysisRunSucceeded(
              AND type in ('LANGUAGE', 'TEMPLATE_STRUCTURE', 'SECTION_PRESENCE')
          ) = 3`,
     )
-    .bind(Date.now(), analysisRunId)
+    .bind(analysisRunId)
     .run();
   if (result.meta.changes === 1) return;
   const existing = await getAnalysisRunExecutionContext(binding, analysisRunId);
@@ -401,6 +485,7 @@ export const analysisRunRepository = {
   listAnalysisRuns,
   markAnalysisRunFailed,
   markAnalysisRunProcessing,
+  markAnalysisRunSemanticChecks,
   markAnalysisRunStructuralChecks,
   markAnalysisRunSucceeded,
 };

@@ -148,6 +148,34 @@ describe("deterministic language checks", () => {
 });
 
 describe("heading and template structural checks", () => {
+  it("keeps the historical P3-01 positive and negative milestone outcomes structural-only", () => {
+    const turkishChecks = runDeterministicPrechecks(
+      artifact([
+        `Proje Özeti\n${turkish}\nProblem Tanımı\n${turkish}\nÇözüm Yaklaşımı\n${turkish}`,
+      ]),
+      profile,
+      () => "tur",
+    );
+    expect(turkishChecks.map(({ type, status }) => [type, status])).toEqual([
+      ["LANGUAGE", "PASS"],
+      ["TEMPLATE_STRUCTURE", "PASS"],
+      ["SECTION_PRESENCE", "PASS"],
+    ]);
+
+    const negativeChecks = runDeterministicPrechecks(
+      artifact([`Proje Özeti\n${english}\nÇözüm Yaklaşımı\n${english}`]),
+      profile,
+      () => "eng",
+    );
+    expect(negativeChecks.map(({ type, status }) => [type, status])).toEqual([
+      ["LANGUAGE", "FAIL"],
+      ["TEMPLATE_STRUCTURE", "FAIL"],
+      ["SECTION_PRESENCE", "FAIL"],
+    ]);
+    expect(negativeChecks.every((check) => check.type !== "SECTION_CONTENT")).toBe(true);
+    expect(negativeChecks.every((check) => check.type !== "CATEGORY_FIT")).toBe(true);
+  });
+
   it("normalizes case, Turkish letters, numeric prefixes, whitespace, and trailing punctuation", () => {
     expect(normalizeHeading("  1.1  PROJE ÖZETİ: ")).toBe(normalizeHeading("Proje Özeti"));
     expect(normalizeHeading("PROBLEM TANIMI")).toBe(normalizeHeading("Problem Tanımı"));

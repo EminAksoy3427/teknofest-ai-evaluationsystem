@@ -1,7 +1,9 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
+import { OpenAIProvider } from "@teknofest-ai/ai";
 import { analysisRunRepository } from "@teknofest-ai/db";
-
+import { DocumentProcessingError } from "./document-extraction";
 import { encodeSafeFailure, processAnalysisRun, safeAnalysisFailure } from "./process-analysis-run";
+import { analyzeCategoryFit, analyzeSectionContent, persistSemanticCheck } from "./semantic-checks";
 import { processStructuralChecks } from "./structural-checks";
 
 export interface SubmissionAnalysisWorkflowParams {
@@ -11,6 +13,7 @@ export interface SubmissionAnalysisWorkflowParams {
 interface SubmissionAnalysisWorkflowEnvironment {
   DB: D1Database;
   DOCUMENTS: R2Bucket;
+  OPENAI_API_KEY: string;
 }
 
 const DATABASE_STEP = {
@@ -27,6 +30,34 @@ const STRUCTURAL_CHECK_STEP = {
   retries: { limit: 3, delay: "2 seconds", backoff: "exponential" },
   timeout: "1 minute",
 } as const;
+
+const SEMANTIC_API_STEP = {
+  retries: { limit: 3, delay: "5 seconds", backoff: "exponential" },
+  timeout: "2 minutes",
+} as const;
+
+async function providerForRun(
+  environment: SubmissionAnalysisWorkflowEnvironment,
+  analysisRunId: string,
+) {
+  const run = await analysisRunRepository.getAnalysisRunExecutionContext(
+    environment.DB,
+    analysisRunId,
+  );
+  if (!run?.modelId || !run.promptBundleVersion || !environment.OPENAI_API_KEY?.trim()) {
+    throw encodeSafeFailure(
+      new DocumentProcessingError(
+        "AI_CONFIGURATION_INVALID",
+        "Analiz koşusunun yapay zekâ yapılandırması eksik.",
+      ),
+    );
+  }
+  return new OpenAIProvider({
+    apiKey: environment.OPENAI_API_KEY,
+    modelId: run.modelId,
+    promptBundleVersion: run.promptBundleVersion,
+  });
+}
 
 export class SubmissionAnalysisWorkflow extends WorkflowEntrypoint<
   SubmissionAnalysisWorkflowEnvironment,
@@ -64,6 +95,55 @@ export class SubmissionAnalysisWorkflow extends WorkflowEntrypoint<
         } catch (error) {
           throw encodeSafeFailure(error);
         }
+      });
+
+      await step.do("semantic-checks-stage", DATABASE_STEP, async () => {
+        await analysisRunRepository.markAnalysisRunSemanticChecks(this.env.DB, analysisRunId);
+        return { analysisRunId, stage: "SEMANTIC_CHECKS" as const };
+      });
+
+      const sectionContent = await step.do(
+        "semantic-section-content-api",
+        SEMANTIC_API_STEP,
+        async () => {
+          try {
+            return await analyzeSectionContent(
+              this.env.DB,
+              this.env.DOCUMENTS,
+              analysisRunId,
+              await providerForRun(this.env, analysisRunId),
+            );
+          } catch (error) {
+            throw encodeSafeFailure(error);
+          }
+        },
+      );
+
+      await step.do("semantic-section-content-persist", DATABASE_STEP, async () => {
+        await persistSemanticCheck(this.env.DB, analysisRunId, sectionContent);
+        return { analysisRunId, type: "SECTION_CONTENT" as const };
+      });
+
+      const categoryFit = await step.do(
+        "semantic-category-fit-api",
+        SEMANTIC_API_STEP,
+        async () => {
+          try {
+            return await analyzeCategoryFit(
+              this.env.DB,
+              this.env.DOCUMENTS,
+              analysisRunId,
+              await providerForRun(this.env, analysisRunId),
+            );
+          } catch (error) {
+            throw encodeSafeFailure(error);
+          }
+        },
+      );
+
+      await step.do("semantic-category-fit-persist", DATABASE_STEP, async () => {
+        await persistSemanticCheck(this.env.DB, analysisRunId, categoryFit);
+        return { analysisRunId, type: "CATEGORY_FIT" as const };
       });
 
       await step.do("analysis-run-success", DATABASE_STEP, async () => {

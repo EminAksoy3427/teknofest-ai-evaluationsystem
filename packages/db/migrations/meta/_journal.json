@@ -57,6 +57,20 @@
       "when": 1787145456302,
       "tag": "0007_nebulous_roland_deschain",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1787157551192,
+      "tag": "0008_red_stranger",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1787157572905,
+      "tag": "0009_simple_the_santerians",
+      "breakpoints": true
     }
   ]
 }

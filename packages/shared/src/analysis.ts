@@ -4,12 +4,18 @@ import { ExpectedLanguageSchema, StableKeySchema } from "./competition-configura
 
 export const ANALYSIS_RUN_STATUS_VALUES = ["QUEUED", "PROCESSING", "SUCCEEDED", "FAILED"] as const;
 
-export const ANALYSIS_STAGE_VALUES = ["INGEST_AND_EXTRACT", "STRUCTURAL_CHECKS"] as const;
+export const ANALYSIS_STAGE_VALUES = [
+  "INGEST_AND_EXTRACT",
+  "STRUCTURAL_CHECKS",
+  "SEMANTIC_CHECKS",
+] as const;
 
 export const ANALYSIS_CHECK_TYPE_VALUES = [
   "LANGUAGE",
   "TEMPLATE_STRUCTURE",
   "SECTION_PRESENCE",
+  "SECTION_CONTENT",
+  "CATEGORY_FIT",
 ] as const;
 
 export const ANALYSIS_CHECK_STATUS_VALUES = ["PASS", "WARN", "FAIL"] as const;
@@ -30,6 +36,14 @@ export const ANALYSIS_ERROR_CODE_VALUES = [
   "PINNED_TEMPLATE_NOT_FOUND",
   "LANGUAGE_DETECTION_FAILED",
   "CHECK_PERSISTENCE_FAILED",
+  "AI_CONFIGURATION_INVALID",
+  "AI_NETWORK_ERROR",
+  "AI_RATE_LIMITED",
+  "AI_TIMEOUT",
+  "AI_REFUSAL",
+  "AI_INCOMPLETE_RESPONSE",
+  "AI_STRUCTURED_OUTPUT_INVALID",
+  "AI_EVIDENCE_INVALID",
   "ANALYSIS_INTERNAL_ERROR",
 ] as const;
 
@@ -42,6 +56,40 @@ export const MAX_LANGUAGE_SAMPLE_PAGES = 20;
 export const MAX_LANGUAGE_SAMPLE_CHARACTERS_PER_PAGE = 2_048;
 export const MAX_MATCHED_HEADING_TEXT_CHARACTERS = 160;
 export const MAX_HEADING_OCCURRENCES_PER_SECTION = 5;
+export const MAX_SEMANTIC_SECTION_PAGES = 6;
+export const MAX_SEMANTIC_SECTION_CHARACTERS = 12_000;
+export const MAX_CATEGORY_SAMPLE_PAGES = 12;
+export const MAX_CATEGORY_SAMPLE_CHARACTERS = 24_000;
+export const MAX_SEMANTIC_EVIDENCE_ITEMS = 5;
+export const MAX_SEMANTIC_EVIDENCE_EXCERPT_CHARACTERS = 400;
+export const MAX_SEMANTIC_REASON_CHARACTERS = 1_000;
+export const MAX_SEMANTIC_SIGNAL_ITEMS = 12;
+
+export const CategorySnapshotSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1).max(120),
+    code: StableKeySchema,
+    description: z.string().min(1).max(2_000),
+    guidance: z.string().max(2_000),
+  })
+  .strict();
+export type CategorySnapshot = z.infer<typeof CategorySnapshotSchema>;
+
+export const SemanticEvidenceSchema = z
+  .object({
+    page: z.number().int().positive().max(MAX_DOCUMENT_PAGES),
+    excerpt: z.string().min(1).max(MAX_SEMANTIC_EVIDENCE_EXCERPT_CHARACTERS),
+    verified: z.literal(true),
+  })
+  .strict();
+export type SemanticEvidence = z.infer<typeof SemanticEvidenceSchema>;
+
+export const SemanticEvidenceStrengthSchema = z.enum(["HIGH", "MEDIUM", "LOW"]);
+export type SemanticEvidenceStrength = z.infer<typeof SemanticEvidenceStrengthSchema>;
+
+export const SemanticSourceCoverageSchema = z.enum(["FULL", "SAMPLED", "MISSING_SECTION"]);
+export type SemanticSourceCoverage = z.infer<typeof SemanticSourceCoverageSchema>;
 
 export const AnalysisRunStatusSchema = z.enum(ANALYSIS_RUN_STATUS_VALUES);
 export type AnalysisRunStatus = z.infer<typeof AnalysisRunStatusSchema>;
@@ -210,10 +258,62 @@ export const TemplateStructureCheckDetailsSchema = z
   .strict();
 export type TemplateStructureCheckDetails = z.infer<typeof TemplateStructureCheckDetailsSchema>;
 
+export const SectionContentAssessmentSchema = z.enum([
+  "SUPPORTED",
+  "PARTIAL",
+  "NOT_SUPPORTED",
+  "NOT_EVALUATED",
+]);
+export type SectionContentAssessment = z.infer<typeof SectionContentAssessmentSchema>;
+
+export const SectionContentResultSchema = z
+  .object({
+    sectionKey: StableKeySchema,
+    title: z.string().min(1).max(160),
+    required: z.boolean(),
+    assessment: SectionContentAssessmentSchema,
+    reason: z.string().min(1).max(MAX_SEMANTIC_REASON_CHARACTERS),
+    evidenceStrength: SemanticEvidenceStrengthSchema,
+    evidence: z.array(SemanticEvidenceSchema).max(MAX_SEMANTIC_EVIDENCE_ITEMS),
+    missingExpectations: z.array(z.string().min(1).max(300)).max(MAX_SEMANTIC_SIGNAL_ITEMS),
+    sourceCoverage: SemanticSourceCoverageSchema,
+    startPage: z.number().int().positive().max(MAX_DOCUMENT_PAGES).nullable(),
+    endPage: z.number().int().positive().max(MAX_DOCUMENT_PAGES).nullable(),
+  })
+  .strict();
+export type SectionContentResult = z.infer<typeof SectionContentResultSchema>;
+
+export const SectionContentCheckDetailsSchema = z
+  .object({
+    checkType: z.literal("SECTION_CONTENT"),
+    sections: z.array(SectionContentResultSchema).max(100),
+  })
+  .strict();
+export type SectionContentCheckDetails = z.infer<typeof SectionContentCheckDetailsSchema>;
+
+export const CategoryFitAssessmentSchema = z.enum(["ALIGNED", "REVIEW", "MISALIGNED"]);
+export type CategoryFitAssessment = z.infer<typeof CategoryFitAssessmentSchema>;
+
+export const CategoryFitCheckDetailsSchema = z
+  .object({
+    checkType: z.literal("CATEGORY_FIT"),
+    assessment: CategoryFitAssessmentSchema,
+    reason: z.string().min(1).max(MAX_SEMANTIC_REASON_CHARACTERS),
+    evidenceStrength: SemanticEvidenceStrengthSchema,
+    evidence: z.array(SemanticEvidenceSchema).max(MAX_SEMANTIC_EVIDENCE_ITEMS),
+    alignmentSignals: z.array(z.string().min(1).max(300)).max(MAX_SEMANTIC_SIGNAL_ITEMS),
+    mismatchSignals: z.array(z.string().min(1).max(300)).max(MAX_SEMANTIC_SIGNAL_ITEMS),
+    sourceCoverage: z.enum(["FULL", "SAMPLED"]),
+  })
+  .strict();
+export type CategoryFitCheckDetails = z.infer<typeof CategoryFitCheckDetailsSchema>;
+
 export const AnalysisCheckDetailsSchema = z.discriminatedUnion("checkType", [
   LanguageCheckDetailsSchema,
   TemplateStructureCheckDetailsSchema,
   SectionPresenceCheckDetailsSchema,
+  SectionContentCheckDetailsSchema,
+  CategoryFitCheckDetailsSchema,
 ]);
 export type AnalysisCheckDetails = z.infer<typeof AnalysisCheckDetailsSchema>;
 
@@ -254,6 +354,30 @@ export const AnalysisCheckResponseSchema = z.discriminatedUnion("type", [
       updatedAt: z.number().int().nonnegative(),
     })
     .strict(),
+  z
+    .object({
+      id: z.string().min(1),
+      analysisRunId: z.string().min(1),
+      type: z.literal("SECTION_CONTENT"),
+      status: AnalysisCheckStatusSchema,
+      summary: z.string().min(1).max(500),
+      details: SectionContentCheckDetailsSchema,
+      createdAt: z.number().int().nonnegative(),
+      updatedAt: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z
+    .object({
+      id: z.string().min(1),
+      analysisRunId: z.string().min(1),
+      type: z.literal("CATEGORY_FIT"),
+      status: AnalysisCheckStatusSchema,
+      summary: z.string().min(1).max(500),
+      details: CategoryFitCheckDetailsSchema,
+      createdAt: z.number().int().nonnegative(),
+      updatedAt: z.number().int().nonnegative(),
+    })
+    .strict(),
 ]);
 export type AnalysisCheckResponse = z.infer<typeof AnalysisCheckResponseSchema>;
 
@@ -267,6 +391,15 @@ export const AnalysisRunResponseSchema = z
     templateVersionId: z.string().min(1),
     rubricVersionId: z.string().min(1),
     sourceSha256: z.string().regex(/^[a-f0-9]{64}$/),
+    ai: z
+      .object({
+        provider: z.string().min(1).max(40),
+        modelId: z.string().min(1).max(200),
+        promptBundleVersion: z.string().min(1).max(100),
+      })
+      .strict()
+      .nullable(),
+    categorySnapshot: CategorySnapshotSchema.nullable(),
     createdAt: z.number().int().nonnegative(),
     startedAt: z.number().int().nonnegative().nullable(),
     completedAt: z.number().int().nonnegative().nullable(),

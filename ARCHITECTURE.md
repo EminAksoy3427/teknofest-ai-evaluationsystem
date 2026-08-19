@@ -21,7 +21,7 @@ ve sorumluluk insandadır.
 - `packages/shared`: Framework bağımsız DTO, şema, enum ve yardımcılar.
 - `packages/ui`: Yeniden kullanılabilir görsel bileşenler ve tasarım tokenları. İş mantığı içermez.
 - `packages/db`: Drizzle şeması, üretici araçla oluşturulan migration'lar ve tipli D1 erişim sınırı.
-- `packages/ai`: **Planlanan** sağlayıcı, prompt ve yapılandırılmış çıktı sınırı; şu an runtime kodu yoktur.
+- `packages/ai`: Sağlayıcı adaptörü, sürümlü promptlar ve doğrulanmış yapılandırılmış çıktı sınırı.
 - `packages/config`: Gerçek bir ortak ihtiyaç oluştuğunda kullanılacak yapılandırma sınırı.
 
 UI iş mantığının sahibi olamaz. Domain/iş mantığı React'e bağımlı olamaz.
@@ -48,11 +48,11 @@ Node sunucusu veya mikroservis yoktur.
 - **R2:** Başvuru PDF gövdeleri özel `DOCUMENTS` binding'inde saklanır. Worker her okumayı
   yetkilendirir; public URL veya R2 kimlik bilgisi tarayıcıya verilmez. P2-02 yalnız yerel R2
   simülasyonunu kullanır.
-- **OpenAI:** Sağlayıcı adaptörü ve model seçimi ortam yapılandırmasından gelecektir. Domain
-  mantığı belirli bir GPT-5 ailesi model adını bilmeyecektir.
+- **OpenAI:** Resmi SDK'nın Responses API adaptörü araçsız ve `store:false` çalışır; model seçimi
+  ortamdan gelir ve koşu başında prompt sürümüyle birlikte sabitlenir.
 - **Workflows:** `SUBMISSION_ANALYSIS` yerel Workflow'u sayfa koruyan PDF metin çıkarımını ve
   P3-01 deterministik dil/yapı/başlık ön kontrollerini retry/idempotency sınırıyla orkestre eder.
-  Yapay zekâ aşamaları eklenmemiştir.
+  Ardından kanıt doğrulamalı bölüm içeriği ve kategori uyumu semantik kontrollerini çalıştırır.
 - **Vectorize:** Onaylanmış kullanım senaryosu oluştuğunda benzerlik/erişim indeksi.
 
 D1, özel yerel R2 ve yerel Workflow sınırları uygulanmıştır. OpenAI ve Vectorize sonraki

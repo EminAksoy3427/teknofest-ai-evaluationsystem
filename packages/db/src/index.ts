@@ -19,6 +19,7 @@ export {
   listAnalysisRuns,
   markAnalysisRunFailed,
   markAnalysisRunProcessing,
+  markAnalysisRunSemanticChecks,
   markAnalysisRunStructuralChecks,
   markAnalysisRunSucceeded,
   type QueuedAnalysisRunInput,

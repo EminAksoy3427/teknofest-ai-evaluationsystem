@@ -10,9 +10,11 @@ const migrations = readdirSync(migrationDirectory)
   .filter((candidate) => candidate.endsWith(".sql"))
   .sort();
 
-assert.equal(migrations.length, 8, "P3-01 must extend the 0000-0006 chain with exactly 0007");
+assert.equal(migrations.length, 10, "P3-02 must extend the unchanged 0000-0007 chain");
 assert.ok(migrations[6]?.startsWith("0006_"));
 assert.ok(migrations[7]?.startsWith("0007_"));
+assert.ok(migrations[8]?.startsWith("0008_"));
+assert.ok(migrations[9]?.startsWith("0009_"));
 
 function apply(database, filenames) {
   for (const filename of filenames) {
@@ -52,10 +54,14 @@ function seedFoundation(database) {
 const insertPinnedRun = `
   INSERT INTO analysis_run (
     id, submission_id, category_id, template_version_id, rubric_version_id,
-    source_sha256, status, stage, workflow_instance_id, extraction_warnings, created_at
+    source_sha256, ai_provider, model_id, prompt_bundle_version, category_snapshot,
+    status, stage, workflow_instance_id, extraction_warnings, created_at
   )
   SELECT ?, submission.id, category.id, template_version.id, rubric_version.id,
-    submission_file.sha256, 'QUEUED', 'INGEST_AND_EXTRACT', ?, '[]', ?
+    submission_file.sha256, 'OPENAI', ?, ?,
+    json_object('id', category.id, 'name', category.name, 'code', category.code,
+      'description', category.description, 'guidance', category.guidance),
+    'QUEUED', 'INGEST_AND_EXTRACT', ?, '[]', ?
   FROM submission
   INNER JOIN category
     ON category.id = submission.category_id
@@ -74,9 +80,32 @@ const insertPinnedRun = `
   LIMIT 1
 `;
 
-function createRun(database, id, createdAt) {
-  return database.prepare(insertPinnedRun).run(id, id, createdAt, "submission-a", "competition-a");
+function createRun(
+  database,
+  id,
+  createdAt,
+  modelId = "model-A",
+  promptVersion = "semantic-checks/v1",
+) {
+  return database
+    .prepare(insertPinnedRun)
+    .run(id, modelId, promptVersion, id, createdAt, "submission-a", "competition-a");
 }
+
+const insertHistoricalRun = `
+  INSERT INTO analysis_run (
+    id, submission_id, category_id, template_version_id, rubric_version_id,
+    source_sha256, status, stage, workflow_instance_id, extraction_warnings, created_at
+  )
+  SELECT ?, submission.id, category.id, template_version.id, rubric_version.id,
+    submission_file.sha256, 'QUEUED', 'INGEST_AND_EXTRACT', ?, '[]', ?
+  FROM submission
+  INNER JOIN category ON category.id = submission.category_id
+  INNER JOIN submission_file ON submission_file.submission_id = submission.id
+  INNER JOIN template_version ON template_version.competition_id = submission.competition_id AND template_version.status = 'ACTIVE'
+  INNER JOIN rubric_version ON rubric_version.competition_id = submission.competition_id AND rubric_version.status = 'ACTIVE'
+  WHERE submission.id = ? AND submission.competition_id = ? LIMIT 1
+`;
 
 const database = new DatabaseSync(":memory:");
 database.exec("PRAGMA foreign_keys = ON");
@@ -88,7 +117,8 @@ assert.deepEqual(
   {
     ...database
       .prepare(
-        `SELECT category_id, template_version_id, rubric_version_id, source_sha256
+        `SELECT category_id, template_version_id, rubric_version_id, source_sha256,
+                ai_provider, model_id, prompt_bundle_version, json_extract(category_snapshot, '$.description') AS category_description
        FROM analysis_run WHERE id = 'run-v1'`,
       )
       .get(),
@@ -98,6 +128,10 @@ assert.deepEqual(
     template_version_id: "template-v1",
     rubric_version_id: "rubric-v1",
     source_sha256: "a".repeat(64),
+    ai_provider: "OPENAI",
+    model_id: "model-A",
+    prompt_bundle_version: "semantic-checks/v1",
+    category_description: "Synthetic only",
   },
   "R1 must pin category, active versions, and source hash at creation",
 );
@@ -129,6 +163,10 @@ database.exec(`
     ('check-section', 'run-v1', 'SECTION_PRESENCE', 'PASS', 'Başlıklar bulundu.',
      '{"checkType":"SECTION_PRESENCE","sections":[],"missingRequiredSectionKeys":[]}', 110, 110);
 `);
+
+database.exec(
+  `UPDATE category SET description = 'Description B', guidance = 'Guidance B' WHERE id = 'category-a';`,
+);
 assert.equal(
   database
     .prepare("SELECT count(*) AS count FROM analysis_check WHERE analysis_run_id = 'run-v1'")
@@ -201,17 +239,42 @@ assert.deepEqual(
   { template_version_id: "template-v1", rubric_version_id: "rubric-v1" },
   "Activating v2 must not float R1 to current configuration",
 );
-assert.equal(createRun(database, "run-v2", 200).changes, 1);
+assert.equal(createRun(database, "run-v2", 200, "model-B", "semantic-checks/v2").changes, 1);
 assert.deepEqual(
   {
     ...database
       .prepare(
-        "SELECT template_version_id, rubric_version_id FROM analysis_run WHERE id = 'run-v2'",
+        `SELECT template_version_id, rubric_version_id, model_id, prompt_bundle_version,
+                json_extract(category_snapshot, '$.description') AS category_description
+         FROM analysis_run WHERE id = 'run-v2'`,
       )
       .get(),
   },
-  { template_version_id: "template-v2", rubric_version_id: "rubric-v2" },
-  "R2 must pin the newly active versions",
+  {
+    template_version_id: "template-v2",
+    rubric_version_id: "rubric-v2",
+    model_id: "model-B",
+    prompt_bundle_version: "semantic-checks/v2",
+    category_description: "Description B",
+  },
+  "R2 must pin newly active versions, model, prompt, and category values",
+);
+assert.deepEqual(
+  {
+    ...database
+      .prepare(
+        `SELECT model_id, prompt_bundle_version,
+                json_extract(category_snapshot, '$.description') AS category_description
+         FROM analysis_run WHERE id = 'run-v1'`,
+      )
+      .get(),
+  },
+  {
+    model_id: "model-A",
+    prompt_bundle_version: "semantic-checks/v1",
+    category_description: "Synthetic only",
+  },
+  "R1 semantic context must not float after environment or category changes",
 );
 
 database
@@ -267,7 +330,12 @@ const p3UpgradeDatabase = new DatabaseSync(":memory:");
 p3UpgradeDatabase.exec("PRAGMA foreign_keys = ON");
 apply(p3UpgradeDatabase, migrations.slice(0, 7));
 seedFoundation(p3UpgradeDatabase);
-assert.equal(createRun(p3UpgradeDatabase, "historical-p2-run", 100).changes, 1);
+assert.equal(
+  p3UpgradeDatabase
+    .prepare(insertHistoricalRun)
+    .run("historical-p2-run", "historical-p2-run", 100, "submission-a", "competition-a").changes,
+  1,
+);
 p3UpgradeDatabase.exec(`
   UPDATE analysis_run
   SET status = 'SUCCEEDED', completed_at = 101,
@@ -289,6 +357,17 @@ assert.equal(
   p3UpgradeDatabase.prepare("SELECT count(*) AS count FROM analysis_check").get().count,
   0,
   "Historical runs must not receive fabricated P3-01 checks",
+);
+assert.deepEqual(
+  {
+    ...p3UpgradeDatabase
+      .prepare(
+        "SELECT ai_provider, model_id, prompt_bundle_version, category_snapshot FROM analysis_run WHERE id = 'historical-p2-run'",
+      )
+      .get(),
+  },
+  { ai_provider: null, model_id: null, prompt_bundle_version: null, category_snapshot: null },
+  "Historical pre-P3-02 runs must keep nullable AI metadata without fabrication",
 );
 p3UpgradeDatabase.close();
 

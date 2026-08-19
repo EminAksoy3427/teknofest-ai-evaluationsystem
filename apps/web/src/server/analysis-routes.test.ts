@@ -14,6 +14,8 @@ const environment = {
   DB: {} as D1Database,
   DOCUMENTS: {} as R2Bucket,
   SUBMISSION_ANALYSIS: {} as Workflow,
+  OPENAI_API_KEY: "test-key-not-a-real-credential",
+  OPENAI_MODEL: "gpt-5-test",
 } as AuthRuntimeBindings;
 
 const run = {
@@ -25,6 +27,14 @@ const run = {
   templateVersionId: "template-v1",
   rubricVersionId: "rubric-v1",
   sourceSha256: "a".repeat(64),
+  ai: { provider: "OPENAI", modelId: "gpt-5-test", promptBundleVersion: "semantic-checks/v1" },
+  categorySnapshot: {
+    id: "category-a",
+    name: "Yapay Zekâ",
+    code: "yapay-zeka",
+    description: "Sentetik kategori açıklaması.",
+    guidance: "Sentetik kapsam notu.",
+  },
   createdAt: 10,
   startedAt: null,
   completedAt: null,
@@ -47,6 +57,7 @@ function repositoryStub(overrides: Partial<AnalysisRunRepository> = {}): Analysi
       competitionId === "competition-a" && submissionId === "submission-a" ? [run] : [],
     markAnalysisRunFailed: async () => undefined,
     markAnalysisRunProcessing: async () => undefined,
+    markAnalysisRunSemanticChecks: async () => undefined,
     markAnalysisRunStructuralChecks: async () => undefined,
     markAnalysisRunSucceeded: async () => undefined,
     ...overrides,
@@ -127,6 +138,9 @@ describe("analysis run authorization", () => {
     expect(create.mock.calls[0]?.[1]).toMatchObject({
       competitionId: "competition-a",
       submissionId: "submission-a",
+      aiProvider: "OPENAI",
+      modelId: "gpt-5-test",
+      promptBundleVersion: "semantic-checks/v1",
     });
     const generated = create.mock.calls[0]?.[1].id;
     expect(generated).toMatch(/^[0-9a-f-]{36}$/);

@@ -4,6 +4,7 @@ import {
   AnalysisRunResponseSchema,
   CategoryListResponseSchema,
   MAX_SUBMISSION_PDF_BYTES,
+  type SemanticEvidenceStrength,
   SubmissionListResponseSchema,
   SubmissionResponseSchema,
   type SubmissionSummary,
@@ -18,9 +19,9 @@ function formatFileSize(bytes: number) {
 }
 
 const checkStatusLabels = {
-  PASS: "Uygun",
+  PASS: "Olumlu",
   WARN: "İncelenmeli",
-  FAIL: "Uygun Değil",
+  FAIL: "Olumsuz sinyal",
 } as const;
 
 function checkStatusClass(status: "PASS" | "WARN" | "FAIL") {
@@ -38,7 +39,21 @@ function languageName(identifier: string | null) {
   }
 }
 
-function PrecheckResults({ run }: { run: AnalysisRunResponse }) {
+const evidenceStrengthLabels = {
+  HIGH: "Yüksek",
+  MEDIUM: "Orta",
+  LOW: "Düşük",
+} as const satisfies Record<SemanticEvidenceStrength, string>;
+
+function EvidenceStrength({ strength }: { strength: SemanticEvidenceStrength }) {
+  return (
+    <p className="mt-2 text-sm font-medium text-slate-700">
+      Kanıt Gücü: {evidenceStrengthLabels[strength]}
+    </p>
+  );
+}
+
+export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
   if (run.checks.length === 0) {
     return <p className="mt-2 text-slate-500">Bu tarihsel koşuda ön kontrol sonucu yok.</p>;
   }
@@ -46,6 +61,8 @@ function PrecheckResults({ run }: { run: AnalysisRunResponse }) {
     LANGUAGE: "Dil",
     TEMPLATE_STRUCTURE: "Şablon Yapısı",
     SECTION_PRESENCE: "Zorunlu Başlıklar",
+    SECTION_CONTENT: "Bölüm İçeriği",
+    CATEGORY_FIT: "Kategori Uyumu",
   } as const;
   const sectionPresence = run.checks.find((check) => check.type === "SECTION_PRESENCE");
   const sectionTitles = new Map(
@@ -55,7 +72,7 @@ function PrecheckResults({ run }: { run: AnalysisRunResponse }) {
     keys.map((key) => sectionTitles.get(key) ?? key).join(", ");
   return (
     <details className="mt-2 min-w-64 text-slate-700">
-      <summary className="cursor-pointer font-semibold text-blue-800">Ön Kontroller</summary>
+      <summary className="cursor-pointer font-semibold text-blue-800">Analiz sonuçları</summary>
       <div className="mt-2 space-y-3">
         {run.checks.map((check) => (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3" key={check.type}>
@@ -108,6 +125,49 @@ function PrecheckResults({ run }: { run: AnalysisRunResponse }) {
                 ))}
               </ul>
             ) : null}
+            {check.type === "SECTION_CONTENT" ? (
+              <div className="mt-3 space-y-3">
+                {check.details.sections.map((section) => (
+                  <div
+                    className="rounded-md border border-slate-200 bg-white p-2"
+                    key={section.sectionKey}
+                  >
+                    <p className="font-semibold text-slate-800">
+                      {section.title} · {section.assessment.replaceAll("_", " ")}
+                    </p>
+                    <p className="mt-1 text-slate-600">{section.reason}</p>
+                    <EvidenceStrength strength={section.evidenceStrength} />
+                    {section.evidence.map((evidence) => (
+                      <blockquote
+                        className="mt-2 border-l-2 border-blue-300 pl-2 text-slate-600"
+                        key={`${evidence.page}-${evidence.excerpt}`}
+                      >
+                        “{evidence.excerpt}”{" "}
+                        <span className="font-semibold">— Sayfa {evidence.page}</span>
+                      </blockquote>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {check.type === "CATEGORY_FIT" ? (
+              <div className="mt-2 text-slate-600">
+                <p>{check.details.reason}</p>
+                <EvidenceStrength strength={check.details.evidenceStrength} />
+                {check.details.evidence.map((evidence) => (
+                  <blockquote
+                    className="mt-2 border-l-2 border-blue-300 pl-2"
+                    key={`${evidence.page}-${evidence.excerpt}`}
+                  >
+                    “{evidence.excerpt}”{" "}
+                    <span className="font-semibold">— Sayfa {evidence.page}</span>
+                  </blockquote>
+                ))}
+                <p className="mt-2 font-medium text-slate-700">
+                  Bu sinyal kategori değişikliği veya nihai ret kararı değildir.
+                </p>
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
@@ -147,7 +207,11 @@ function AnalysisStatus({
   return (
     <div className="text-xs text-emerald-800">
       <p className="font-semibold">
-        {hasPrechecks ? "Deterministik ön kontroller tamamlandı" : "Metin çıkarımı tamamlandı"}
+        {run.stage === "SEMANTIC_CHECKS"
+          ? "Kanıta dayalı analiz tamamlandı"
+          : hasPrechecks
+            ? "Deterministik ön kontroller tamamlandı"
+            : "Metin çıkarımı tamamlandı"}
       </p>
       <p className="mt-1 text-slate-600">
         {run.extraction.pageCount} sayfa · {run.extraction.characterCount} karakter
@@ -156,7 +220,7 @@ function AnalysisStatus({
         <p className="mt-1 font-medium text-amber-800">Metin seyrek; OCR gerekebilir.</p>
       ) : null}
       {hasPrechecks ? (
-        <PrecheckResults run={run} />
+        <AnalysisResults run={run} />
       ) : (
         <p className="mt-2 text-slate-500">Bu tarihsel koşuda ön kontrol sonucu yok.</p>
       )}
@@ -444,9 +508,9 @@ export function SubmissionsPage() {
         <p className="eyebrow">Özel belge deposu</p>
         <h1 className="page-title">Başvurular</h1>
         <p className="page-lead">
-          PDF raporlarını yarışma kapsamında kaydedin; dil, şablon yapısı ve zorunlu başlıklar için
-          deterministik ön kontrolleri başlatın. Bölümlerin semantik içeriği bu aşamada kontrol
-          edilmez ve raporlar puanlanmaz.
+          PDF raporlarını yarışma kapsamında kaydedin; deterministik kontrolleri ve kanıta dayalı
+          bölüm içeriği/kategori uyumu sinyallerini başlatın. Yapay zekâ sonuçları karar desteğidir;
+          raporlar puanlanmaz ve nihai karar daima insana aittir.
         </p>
       </div>
 

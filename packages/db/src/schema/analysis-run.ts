@@ -8,7 +8,11 @@ import { templateVersions } from "./template-version";
 
 export const ANALYSIS_RUN_STATUS_VALUES = ["QUEUED", "PROCESSING", "SUCCEEDED", "FAILED"] as const;
 
-export const ANALYSIS_STAGE_VALUES = ["INGEST_AND_EXTRACT", "STRUCTURAL_CHECKS"] as const;
+export const ANALYSIS_STAGE_VALUES = [
+  "INGEST_AND_EXTRACT",
+  "STRUCTURAL_CHECKS",
+  "SEMANTIC_CHECKS",
+] as const;
 
 export const analysisRuns = sqliteTable(
   "analysis_run",
@@ -27,6 +31,10 @@ export const analysisRuns = sqliteTable(
       .notNull()
       .references(() => rubricVersions.id, { onDelete: "restrict" }),
     sourceSha256: text("source_sha256").notNull(),
+    aiProvider: text("ai_provider"),
+    modelId: text("model_id"),
+    promptBundleVersion: text("prompt_bundle_version"),
+    categorySnapshot: text("category_snapshot"),
     status: text("status", { enum: ANALYSIS_RUN_STATUS_VALUES }).notNull().default("QUEUED"),
     stage: text("stage", { enum: ANALYSIS_STAGE_VALUES }).notNull().default("INGEST_AND_EXTRACT"),
     workflowInstanceId: text("workflow_instance_id").notNull(),
@@ -57,7 +65,7 @@ export const analysisRuns = sqliteTable(
     ),
     check(
       "analysis_run_stage_check",
-      sql`${table.stage} in ('INGEST_AND_EXTRACT', 'STRUCTURAL_CHECKS')`,
+      sql`${table.stage} in ('INGEST_AND_EXTRACT', 'STRUCTURAL_CHECKS', 'SEMANTIC_CHECKS')`,
     ),
     check(
       "analysis_run_source_sha256_check",
@@ -72,6 +80,10 @@ export const analysisRuns = sqliteTable(
       sql`${table.characterCount} is null or ${table.characterCount} >= 0`,
     ),
     check("analysis_run_warnings_json_check", sql`json_valid(${table.extractionWarnings})`),
+    check(
+      "analysis_run_ai_snapshot_check",
+      sql`(${table.aiProvider} is null and ${table.modelId} is null and ${table.promptBundleVersion} is null and ${table.categorySnapshot} is null) or (${table.aiProvider} is not null and ${table.modelId} is not null and ${table.promptBundleVersion} is not null and ${table.categorySnapshot} is not null and json_valid(${table.categorySnapshot}))`,
+    ),
     check(
       "analysis_run_completion_check",
       sql`(${table.status} not in ('SUCCEEDED', 'FAILED')) or ${table.completedAt} is not null`,

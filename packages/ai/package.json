@@ -3,5 +3,21 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Gelecekteki yapay zekâ sağlayıcı, prompt ve yapılandırılmış çıktı sınırı."
+  "description": "Yapay zekâ sağlayıcı, sürümlü prompt ve yapılandırılmış çıktı sınırı.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@teknofest-ai/shared": "workspace:*",
+    "openai": "6.15.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "4.1.11"
+  }
 }

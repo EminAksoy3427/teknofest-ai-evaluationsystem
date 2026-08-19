@@ -1,6 +1,8 @@
+import { SEMANTIC_PROMPT_BUNDLE_VERSION } from "@teknofest-ai/ai";
 import type { AnalysisRunRepository, CompetitionMembershipLookup } from "@teknofest-ai/db";
 import { AnalysisRunListResponseSchema, AnalysisRunResponseSchema } from "@teknofest-ai/shared";
 import type { Hono } from "hono";
+import { readAIConfiguration } from "./ai/env";
 import type { SubmissionAnalysisWorkflowParams } from "./analysis/submission-analysis-workflow";
 import { ApiApplicationError } from "./api-error";
 import type { AuthRuntimeBindings } from "./auth/auth";
@@ -73,6 +75,15 @@ export function registerAnalysisRoutes(
       const competitionId = await requireAnalysisPermission(context, dependencies);
       const submissionId = requiredParameter(context.req.param("submissionId"), "submissionId");
       const analysisRunId = crypto.randomUUID();
+      let aiConfiguration: ReturnType<typeof readAIConfiguration>;
+      try {
+        aiConfiguration = readAIConfiguration(context.env);
+      } catch {
+        throw new ApiApplicationError(
+          { code: "INTERNAL_ERROR", message: "Yapay zekâ sağlayıcı yapılandırması geçersiz." },
+          500,
+        );
+      }
       const created = await dependencies.analysisRunRepository.createQueuedAnalysisRun(
         context.env.DB,
         {
@@ -80,6 +91,9 @@ export function registerAnalysisRoutes(
           workflowInstanceId: analysisRunId,
           competitionId,
           submissionId,
+          aiProvider: aiConfiguration.provider,
+          modelId: aiConfiguration.modelId,
+          promptBundleVersion: SEMANTIC_PROMPT_BUNDLE_VERSION,
         },
       );
 

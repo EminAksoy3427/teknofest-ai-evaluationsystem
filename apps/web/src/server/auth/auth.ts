@@ -2,10 +2,10 @@ import { createDb } from "@teknofest-ai/db";
 import * as schema from "@teknofest-ai/db/schema";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-
+import type { AIBindings } from "../ai/env";
 import { type AuthBindings, readAuthConfiguration } from "./env";
 
-export type AuthRuntimeBindings = Env & AuthBindings;
+export type AuthRuntimeBindings = Env & AuthBindings & AIBindings;
 
 export function createAuth(environment: AuthRuntimeBindings) {
   const configuration = readAuthConfiguration(environment);

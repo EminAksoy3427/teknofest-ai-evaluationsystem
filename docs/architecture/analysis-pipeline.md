@@ -2,11 +2,12 @@
 
 ## Sınır
 
-Pipeline `INGEST_AND_EXTRACT → STRUCTURAL_CHECKS` aşamalarını uygular. PDF özel R2 nesnesinden
+Pipeline `INGEST_AND_EXTRACT → STRUCTURAL_CHECKS → SEMANTIC_CHECKS` aşamalarını uygular. PDF özel R2 nesnesinden
 okunur, sayfa kimliği korunarak metin çıkarılır ve sürümlü `document-extraction/v1` artifact'i
 özel R2'ye yazılır. Ardından sabitlenmiş şablon sürümüyle deterministik dil, şablon yapısı ve
-zorunlu başlık varlığı kontrolleri çalışır. Semantik bölüm içeriği, kategori uyumu, benzerlik,
-rubrik puanlama, geri bildirim ve yapay zekâ bu aşamada yoktur.
+zorunlu başlık varlığı kontrolleri çalışır. Ardından araçsız OpenAI Responses çağrılarıyla
+`SECTION_CONTENT` ve `CATEGORY_FIT` karar-destek sinyalleri üretilir. Benzerlik, rubrik puanlama
+ve geri bildirim yoktur.
 
 PDF ve çıkarılan metin güvenilmeyen girdidir. İçerik hiçbir zaman yetkilendirme, Workflow
 kimliği, R2 anahtarı, sistem talimatı veya araç çağrısı belirlemez.
@@ -24,6 +25,8 @@ Koşu oluşturma sorgusu tek D1 yazımında şunları sabitler:
 - kriteri bulunan o anda `ACTIVE` olan `RubricVersion`,
 - yetkili `SubmissionFile.sha256`,
 - deterministik Workflow instance kimliği olarak `analysisRunId`.
+- kategori adı/kodu/açıklaması/kapsam notu snapshot'ı,
+- AI sağlayıcısı, ortamdan seçilen model kimliği ve prompt paketi sürümü.
 
 Aktif sürümler daha sonra değişse de eski koşunun yabancı anahtarları değişmez. Bu, sonraki
 analiz aşamalarının tarihsel girdisini yeniden üretilebilir tutar.
@@ -31,7 +34,7 @@ analiz aşamalarının tarihsel girdisini yeniden üretilebilir tutar.
 ## Yaşam döngüsü
 
 Durumlar `QUEUED → PROCESSING → SUCCEEDED | FAILED` biçimindedir. Aşama durumdan ayrıdır ve
-`INGEST_AND_EXTRACT → STRUCTURAL_CHECKS` ilerler. `SUCCEEDED` yalnız kaynak okuma, SHA-256
+`INGEST_AND_EXTRACT → STRUCTURAL_CHECKS → SEMANTIC_CHECKS` ilerler. `SUCCEEDED` yalnız kaynak okuma, SHA-256
 doğrulama, çıkarım, Zod artifact doğrulama, R2 yazımı, üç doğrulanmış kontrolün D1'e yazımı ve
 D1 finalizasyonu tamamlandıktan sonra yazılır. Bir kontrolün `FAIL` olması koşuyu `FAILED`
 yapmaz; bu, analiz mekanizmasının başarıyla olumsuz bir iş bulgusu üretmesidir.

@@ -11,6 +11,7 @@ const SERVER_CONFIGURATION_KEYS = [
   "GOOGLE_CLIENT_SECRET",
   "BETTER_AUTH_SECRET",
   "BETTER_AUTH_URL",
+  "OPENAI_API_KEY",
 ];
 
 function normalizeOutputPath(filePath) {

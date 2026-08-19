@@ -10,8 +10,8 @@
   "scripts": {
     "dev": "pnpm --filter @teknofest-ai/web dev",
     "build": "pnpm --filter @teknofest-ai/web build",
-    "typecheck": "pnpm --filter @teknofest-ai/shared typecheck && pnpm --filter @teknofest-ai/db typecheck && pnpm --filter @teknofest-ai/web typecheck",
-    "test": "pnpm --filter @teknofest-ai/shared test && pnpm --filter @teknofest-ai/db test && pnpm --filter @teknofest-ai/web test",
+    "typecheck": "pnpm --filter @teknofest-ai/shared typecheck && pnpm --filter @teknofest-ai/ai typecheck && pnpm --filter @teknofest-ai/db typecheck && pnpm --filter @teknofest-ai/web typecheck",
+    "test": "pnpm --filter @teknofest-ai/shared test && pnpm --filter @teknofest-ai/ai test && pnpm --filter @teknofest-ai/db test && pnpm --filter @teknofest-ai/web test",
     "lint": "biome check .",
     "format": "biome format --write .",
     "format:check": "biome format .",
@@ -24,6 +24,7 @@
     "smoke:p2-02": "pnpm --filter @teknofest-ai/web smoke:p2-02",
     "smoke:p2-03": "pnpm --filter @teknofest-ai/web smoke:p2-03",
     "smoke:p3-01": "pnpm --filter @teknofest-ai/web smoke:p3-01",
+    "smoke:p3-02": "pnpm --filter @teknofest-ai/web smoke:p3-02",
     "cf:typegen": "pnpm --filter @teknofest-ai/web cf:typegen"
   },
   "devDependencies": {

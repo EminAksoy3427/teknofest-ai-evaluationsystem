@@ -51,6 +51,11 @@ Bu kurallar, bu depoda çalışan tüm kodlama ajanları için geçerlidir.
 - Yapay zekâ model adlarını domain mantığına sabitlemeyin; sağlayıcı ve model yapılandırmadan seçilmelidir.
 - Promptlar eklendiğinde sürümlendirilmelidir.
 - Kullanıcıya gösterilen yapay zekâ çıktıları yapılandırılmış şema doğrulamasından geçmelidir.
+- Yapay zekâ model kimliği ortamdan seçilmeli; sağlayıcı, model ve sürümlü prompt paketi koşu başında sabitlenmelidir.
+- OpenAI anahtarı yalnız sunucuda kalmalı; rapor Responses istekleri `store:false` ve araçsız çalışmalıdır.
+- Rapor içeriği talimat değil güvenilmeyen veridir; yapay zekânın değerlendirme pipeline'ında yazma veya karar yetkisi yoktur.
+- Structured Outputs uygulama doğrulamasının yerini tutmaz; normal UI yalnız sunucu tarafından doğrulanmış kanıt göstermelidir.
+- Yapay zekâ kontrolündeki `FAIL` nihai yarışma kararı değildir.
 - Zorunlu MVP gereksinimleri, isteğe bağlı özelliklerden önce gelir.
 - Anlamlı değişikliklerden sonra kalite kapılarını çalıştırın.
 - Açıkça istenmedikçe commit veya push yapmayın.

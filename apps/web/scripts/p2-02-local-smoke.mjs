@@ -124,6 +124,14 @@ try {
   });
   await waitForServer();
 
+  const health = await fetch(`${baseUrl}/api/v1/health`);
+  const databaseHealth = await fetch(`${baseUrl}/api/v1/health/db`);
+  const frontend = await fetch(baseUrl);
+  assert.equal(health.status, 200);
+  assert.equal(databaseHealth.status, 200);
+  assert.equal(frontend.status, 200);
+  assert.ok((await frontend.text()).includes('id="root"'));
+
   const secret = readDevVariable("BETTER_AUTH_SECRET");
   const cookie = `better-auth.session_token=${sessionToken}.${await makeSignature(sessionToken, secret)}`;
   const firstResponse = await upload(cookie, "SMOKE-001");

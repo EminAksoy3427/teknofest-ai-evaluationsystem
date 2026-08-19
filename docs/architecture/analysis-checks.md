@@ -1,5 +1,17 @@
 # AnalysisCheck Mimarisi
 
+## Semantik kontroller
+
+`SECTION_CONTENT`, sabitlenmiş şablon profilindeki başlıklarla deterministik segmentlenen bölüm
+gövdelerini tek toplu çağrıda değerlendirir. `SUPPORTED/PARTIAL/NOT_SUPPORTED/NOT_EVALUATED`
+sonuçları aggregate `PASS/WARN/FAIL` politikasına girer; eksik başlığın başarısızlığı
+`SECTION_PRESENCE` kontrolünde kalır. Örnekleme veya zayıf kanıt güçlü sonucu engeller.
+
+`CATEGORY_FIT`, yalnız sabitlenmiş kategori snapshot'ına karşı `ALIGNED/REVIEW/MISALIGNED`
+üretir ve bunları `PASS/WARN/FAIL` sinyaline eşler. `FAIL` nihai ret değildir ve kategori mutasyonu
+yoktur. Her normal UI kanıtı sayfa kimliği ve ihtiyatlı birebir normalize alıntıyla sunucuda
+doğrulanır. Sayısal confidence, chain-of-thought, tam belge veya ham sağlayıcı cevabı saklanmaz.
+
 ## Durum ayrımı
 
 `AnalysisRun.status`, analiz mekanizmasının yaşam döngüsüdür: `QUEUED`, `PROCESSING`,

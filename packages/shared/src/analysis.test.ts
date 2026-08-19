@@ -47,6 +47,8 @@ describe("analysis run response contract", () => {
       templateVersionId: "template-v1",
       rubricVersionId: "rubric-v1",
       sourceSha256: "a".repeat(64),
+      ai: null,
+      categorySnapshot: null,
       createdAt: 1,
       startedAt: 2,
       completedAt: 3,

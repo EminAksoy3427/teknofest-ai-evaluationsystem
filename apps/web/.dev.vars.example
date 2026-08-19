@@ -2,3 +2,5 @@ GOOGLE_CLIENT_ID=replace_me
 GOOGLE_CLIENT_SECRET=replace_me
 BETTER_AUTH_SECRET=replace_me
 BETTER_AUTH_URL=http://localhost:5173
+OPENAI_API_KEY=replace_me
+OPENAI_MODEL=replace_me

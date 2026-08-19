@@ -1,6 +1,7 @@
 # @teknofest-ai/ai
 
-Gelecekte yapay zekâ sağlayıcı adaptörlerini, sürümlü promptları ve doğrulanmış yapılandırılmış
-çıktıları barındıracaktır. Birincil sağlayıcı OpenAI API olacak; GPT-5 ailesindeki gerçek model
-ortam yapılandırmasından seçilecek ve domain mantığına sabitlenmeyecektir. P0-01 kapsamında
-SDK, anahtar, prompt, sağlayıcı arayüzü veya model çağrısı yoktur.
+Yapay zekâ sağlayıcı adaptörlerini, sürümlü promptları ve doğrulanmış yapılandırılmış çıktıları
+barındırır. P3-02 OpenAI adaptörü resmi JavaScript SDK'sıyla Responses API kullanır. GPT-5
+ailesindeki gerçek model ortam yapılandırmasından seçilir ve `AnalysisRun` başında prompt paketiyle
+birlikte sabitlenir. Rapor çağrıları `store:false`, araçsız ve strict Structured Outputs ile
+çalışır; sonuçlar uygulama Zod şemasıyla yeniden doğrulanır.
