@@ -17,6 +17,7 @@
     "smoke:p3-02": "vitest run src/server/analysis/document-extraction.test.ts src/server/analysis/process-analysis-run.test.ts src/server/analysis/structural-checks.test.ts src/server/analysis/semantic-checks.test.ts src/server/analysis/submission-analysis-workflow.test.ts",
     "smoke:p4-01a": "vitest run src/server/analysis/similarity.test.ts src/server/analysis/similarity-persistence.test.ts src/server/analysis/similarity-candidate-cap.test.ts src/server/analysis/submission-analysis-workflow.test.ts src/server/analysis-routes.test.ts src/client/submissions-page.test.tsx",
     "smoke:p4-01b": "vitest run src/server/analysis/semantic-similarity-provider.test.ts src/server/analysis/semantic-similarity-integration.test.ts src/server/analysis/similarity.test.ts src/server/analysis/similarity-persistence.test.ts src/server/analysis/similarity-candidate-cap.test.ts src/server/analysis/submission-analysis-workflow.test.ts src/server/analysis-routes.test.ts src/client/submissions-page.test.tsx",
+    "smoke:p4-01b:remote": "tsx scripts/p4-01b-remote-smoke.ts",
     "cf:typegen": "wrangler types"
   },
   "dependencies": {
@@ -39,6 +40,7 @@
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "6.0.5",
     "tailwindcss": "4.3.3",
+    "tsx": "4.23.12",
     "typescript": "7.0.2",
     "vite": "8.2.1",
     "vitest": "4.1.11",

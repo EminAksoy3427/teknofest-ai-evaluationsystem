@@ -46,9 +46,21 @@ Durum özeti:
   semantik bölüm kanıtı, degraded lexical mod.
 - **YERELDE DOĞRULANDI:** yukarıdakilerin tümü, deterministik test sağlayıcısı ve gerçek üretilmiş
   şema üzerinde (`pnpm smoke:p4-01b`).
-- **UZAK DOĞRULAMA GEREKLİ:** gerçek Workers AI gömme çağrısı, gerçek Vectorize index'i, gerçek
-  cosine skor aralığı ve gerçek eventual-consistency gecikmesi. Hiçbir uzak kaynak oluşturulmadı ve
-  hiçbir Workers AI çağrısı yapılmadı.
+- **UZAK DOĞRULANDI (DEVELOPMENT):** Gerçek bir Workers AI çağrısı `@cf/baai/bge-m3` çıktısının
+  1024 boyutlu olduğunu doğrulamıştır. Bu doğrulamadan sonra `teknofest-similarity-dev` adlı bir
+  DEVELOPMENT Vectorize index'i (dimensions=1024, metric=cosine) ve `competitionId` metadata
+  index'i oluşturulmuştur. `apps/web/scripts/p4-01b-remote-smoke.ts`, production
+  `WorkersAIEmbeddingProvider` ve `VectorizeSimilarityVectorProvider` sınıflarını gerçek Cloudflare
+  REST uç noktalarına karşı çalıştırarak bir sentetik senaryoyu doğrulamıştır: paraphrase edilmiş
+  iki bölüm arasındaki gerçek semantik skor (`0.77`) alakasız bir bölüme göre olan skordan (`0.55`)
+  daha yüksek çıkmış, hibrit mod `HYBRID` olarak raporlanmış ve ayrı bir yarışmaya ait kaynağa
+  neredeyse birebir aynı bir bölüm hiçbir sorguda (kısıtlı veya kısıtsız) geri dönmemiştir. Gerçek
+  cosine skorları `[-1, 1]` aralığında gözlenmiş, eventual-consistency gecikmesi upsert mutation
+  kimliğinin index `info` uç noktasında işlenmesi beklenerek doğrulanmıştır.
+- **HÂLÂ UZAK DOĞRULAMA GEREKTİREN:** production Vectorize index'i (henüz adlandırılıp
+  oluşturulmamıştır) ve gerçek dağıtılmış bir Worker üzerinden `env.AI` / `env.VECTORIZE`
+  binding'leriyle uçtan uca çalışma; bu smoke, binding arayüzüyle aynı dar sözleşmeyi REST
+  üzerinden karşılayan bir test-only adaptör kullanmıştır (gerçek Worker binding'i değil).
 - **ERTELENDİ:** eşik kalibrasyonu, risk kuyruğu ve toplam risk skoru.
 
 ### Sağlayıcı mimarisi
@@ -117,10 +129,29 @@ devre dışı kalmaz, hata verir: bu bir operatör yapılandırma hatasıdır.
 
 ### Uzak sağlama
 
-Workers AI ve Vectorize'ın yerel emülasyonu yoktur. Binding'lerin bildirilmesi `wrangler dev`'i
-uzak proxy moduna geçirir; bu yerel smoke'ları bozar ve gerçek ücretli Workers AI çağrısı üretir.
-Bu nedenle `apps/web/wrangler.jsonc` içindeki `ai` ve `vectorize` blokları yorumlanmış hâlde
-bırakılmıştır ve uzak index sağlamasıyla aynı değişiklikte etkinleştirilmelidir.
+Workers AI ve Vectorize'ın yerel emülasyonu yoktur. Binding'lerin bildirilmesi `wrangler dev`/Vite
+oturumunu uzak proxy moduna geçirir. Bu, bir DEVELOPMENT index'i sağlanırken ampirik olarak
+doğrulanmıştır: binding'ler `apps/web/wrangler.jsonc` üst seviyesinde etkinleştirildiğinde,
+`scripts/p2-02-local-smoke.mjs` tarafından başlatılan yerel Vite/Worker oturumu hazır olamamış ve
+`smoke:p2-03` bu nedenle başarısız olmuştur. Bu yüzden `ai` ve `vectorize` blokları
+`apps/web/wrangler.jsonc` üst seviyesinde bilinçli olarak yorumlanmış bırakılmıştır; etkinleştirme,
+yerel smoke'ların bare `wrangler dev`/`vite` oturumuna bağımlı olmadığı bir değişiklikte (örn. yalnız
+açık bir dağıtım veya `--remote` oturumu için kullanılan adlandırılmış bir `env` bloğu) yapılmalıdır.
+
+DEVELOPMENT index'i (`teknofest-similarity-dev`) ve gerçek Workers AI çağrısı, Worker binding'i
+etkinleştirilmeden doğrulanmıştır: `apps/web/scripts/p4-01b-remote-smoke.ts`, `env.AI` /
+`env.VECTORIZE` ile aynı dar arayüzü (`WorkersAIBinding.run`, `SimilarityVectorizeBinding.upsert`
+/`query`) Cloudflare REST uç noktaları üzerinden karşılayan test-only adaptörler enjekte ederek
+production sağlayıcı sınıflarını gerçek uzak kaynaklara karşı çalıştırır:
+
+```bash
+CLOUDFLARE_API_TOKEN=... npx tsx scripts/p4-01b-remote-smoke.ts
+# veya WRANGLER_OAUTH_TOML=<wrangler config dosyası> ile mevcut `wrangler login` oturumunu kullanır
+```
+
+Bu script CI'ye veya yerel kalite kapılarına dahil değildir; gerçek, ücretli çağrılar ürettiği için
+elle ve nadiren çalıştırılır. Production index'i sağlanırken `wrangler.jsonc` üst seviye binding'i
+yukarıdaki kısıtla birlikte etkinleştirilmelidir.
 
 ## Eşikler ve birebir eşleşme
 

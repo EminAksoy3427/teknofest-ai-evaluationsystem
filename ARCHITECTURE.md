@@ -55,15 +55,23 @@ Node sunucusu veya mikroservis yoktur.
   Ardından kanıt doğrulamalı bölüm içeriği ve kategori uyumu semantik kontrollerini, son olarak
   `SIMILARITY_CHECKS` aşamasında deterministik lexical benzerlik sinyalini çalıştırır.
 - **Workers AI:** P4-01B çok dilli gömme adaptörü uygulanmıştır (`@cf/baai/bge-m3`, 1024 boyut,
-  ortamdan yapılandırılabilir). Binding henüz etkin değildir ve hiçbir Workers AI çağrısı
-  yapılmamıştır.
+  ortamdan yapılandırılabilir). P4-01B uzak doğrulaması tamamlandı: gerçek bir Workers AI çağrısı
+  modelin döndürdüğü vektör boyutunun gerçekten 1024 olduğunu doğrulamıştır. Worker binding'i
+  `apps/web/wrangler.jsonc` içinde hâlâ devre dışıdır (aşağıya bakınız).
 - **Vectorize:** P4-01B production adaptörü, deterministik vektör kimliği ve yarışma kapsamlı
-  metadata filtresiyle uygulanmıştır. Uzak index oluşturulmamıştır; boyut ve cosine metriği index
-  oluşturulurken sabitlenir ve sonradan değiştirilemez.
+  metadata filtresiyle uygulanmıştır. Bir DEVELOPMENT index'i (`teknofest-similarity-dev`,
+  dimensions=1024, metric=cosine, `competitionId` metadata index'i) oluşturulmuş ve gerçek
+  Workers AI + Vectorize çağrılarıyla sentetik bir senaryo üzerinde doğrulanmıştır: paraphrase
+  edilmiş iki bölüm arasındaki semantik skor alakasız bir bölüme göre daha yüksek çıkmış, ayrı bir
+  yarışmaya ait neredeyse aynı metin hiçbir zaman geri döndürülmemiştir. Production index'i henüz
+  adlandırılıp oluşturulmamıştır; boyut ve cosine metriği index oluşturulurken sabitlenir ve
+  sonradan değiştirilemez.
 
 D1, özel yerel R2 ve yerel Workflow sınırları uygulanmıştır. OpenAI Responses adaptörü
-uygulanmıştır. Workers AI ve Vectorize adaptörleri uygulanmış ancak uzak doğrulama bekliyor;
-uzak/production kaynak kurulumu yapılmamıştır.
+uygulanmıştır. Workers AI ve Vectorize adaptörleri uygulanmış ve DEVELOPMENT kaynaklarına karşı
+uzak doğrulanmıştır; production kaynak kurulumu ve dağıtım yapılmamıştır. Worker binding'leri,
+yerel `wrangler dev`/Vite oturumlarını uzak proxy moduna geçirip yerel smoke'ları bozmamak için
+`wrangler.jsonc` içinde bilinçli olarak yorumlanmış bırakılmıştır.
 
 ## 7. Güvenlik sınırı
 
@@ -125,12 +133,18 @@ P4-01B ile uygulananlar:
 - lexical + semantik hibrit skoru ve iki katkıyı açıklayan bölüm kanıtı
 - şeffaf degraded lexical mod (`semanticStatus`)
 
-P4-01B'de uzak doğrulama bekleyenler:
+P4-01B'de DEVELOPMENT kaynaklarına karşı uzak doğrulanan (P4-01B remote task):
 
-- gerçek Workers AI gömme çağrısı ve gerçek çıktı boyutu
-- gerçek Vectorize index'i, gerçek cosine skor aralığı ve eventual-consistency gecikmesi
+- gerçek Workers AI gömme çağrısı: `@cf/baai/bge-m3` gerçekten 1024 boyutlu vektör döndürür
+- gerçek `teknofest-similarity-dev` Vectorize index'i (dimensions=1024, metric=cosine) ve
+  `competitionId` metadata index'i
+- gerçek cosine skorları ve eventual-consistency gecikmesi (upsert mutation kimliği index
+  `info` uç noktasında işlenene kadar sorgu beklenmiştir)
+- yarışma kapsamlı filtreleme: ayrı bir yarışmaya ait, kaynağa neredeyse birebir aynı bir bölüm
+  hiçbir sorguda geri dönmemiştir
 
-Hâlâ ertelenenler: eşik kalibrasyonu, toplam risk skoru ve risk kuyruğu.
+Production Vectorize index'i henüz adlandırılıp oluşturulmamış, Worker binding'i etkin değil ve
+dağıtım yapılmamıştır. Hâlâ ertelenenler: eşik kalibrasyonu, toplam risk skoru ve risk kuyruğu.
 
 `SimilarityPair` tarihsel bir gözlemdir: yarışma kimliği, başvuru kimlikleri ve AnalysisRun
 kimlikleri değişmezdir. Yeni bir AnalysisRun eski satırı güncellemez, yeni bir tarihsel satır
@@ -142,6 +156,7 @@ sinyalidir; intihal, kopya veya nihai karar değildir ve `FAIL` üretmez. Ayrın
 
 Başvuru PDF depolaması özel R2 ve D1 metadata ayrımıyla uygulanmıştır; ayrıntılar
 `docs/architecture/document-storage.md` içindedir. Hakem ataması, yarışmacı sahipliği, global
-yönetim, production OAuth/D1, uzak D1/R2/Workflow kaynağı, OCR, gerçek Vectorize/Workers AI
-semantik benzerliği (P4-01B), rubrik yapay zekâsı, geri bildirim üretimi, hakem çalışma alanı ve
-risk kuyruğu gibi diğer iş özellikleri ertelenmiştir.
+yönetim, production OAuth/D1, uzak D1/R2/Workflow kaynağı, OCR, production Vectorize/Workers AI
+index'i ve dağıtımı (P4-01B DEVELOPMENT kaynaklarına karşı uzak doğrulanmıştır), rubrik yapay
+zekâsı, geri bildirim üretimi, hakem çalışma alanı ve risk kuyruğu gibi diğer iş özellikleri
+ertelenmiştir.

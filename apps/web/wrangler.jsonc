@@ -21,23 +21,30 @@
       "bucket_name": "teknofest-ai-evaluationsystem-documents"
     }
   ],
-  // P4-01B semantic similarity bindings. Deliberately NOT enabled yet.
+  // P4-01B semantic similarity bindings. Deliberately NOT enabled at the top level.
   //
-  // Workers AI and Vectorize have no local emulation: declaring either binding switches
-  // `wrangler dev` / the Vite plugin into remote proxy mode, which requires a registered
-  // workers.dev subdomain, breaks every local smoke gate, and would issue real billable Workers AI
-  // calls from a developer machine. The binding is also useless until the remote Vectorize index
-  // exists, because its dimension and distance metric are immutable after creation.
+  // Remote verification is DONE: a real Workers AI embedding call against `@cf/baai/bge-m3`
+  // confirmed a 1024-dimension output, and the `teknofest-similarity-dev` Vectorize index
+  // (dimensions=1024, metric=cosine, competitionId metadata index) has been created and exercised
+  // by `scripts/p4-01b-remote-smoke.ts` through the real production provider classes over the
+  // Cloudflare REST API. See docs/architecture/similarity.md, "Uzak sağlama".
   //
-  // Enable the block below in the same change that provisions the remote index (see
-  // docs/architecture/similarity.md, "Uzak sağlama"). Until then similarity runs lexical-only and
-  // the SIMILARITY check reports `semanticStatus: "DISABLED"`.
+  // The binding itself stays disabled here because declaring `ai/vectorize` at the top level
+  // switches `wrangler dev` / the Vite plugin into remote proxy mode for EVERY local session,
+  // including the ones spawned by `scripts/p2-02-local-smoke.mjs` (and transitively
+  // `smoke:p2-03`) — confirmed by reproduction: enabling this block made that dev server fail to
+  // become ready. It also requires a registered workers.dev subdomain, which this task does not
+  // provision. Enable this block only in a change that also moves local smokes off a bare
+  // `wrangler dev`/`vite` session (e.g. a named `env` block used solely for an authorized deploy
+  // or an explicit `--remote` session), and only once a production Vectorize index has been
+  // named. Until then similarity runs lexical-only and the SIMILARITY check reports
+  // `semanticStatus: "DISABLED"`.
   //
   // "ai": { "binding": "AI" },
   // "vectorize": [
   //   {
   //     "binding": "SIMILARITY_VECTORS",
-  //     "index_name": "teknofest-ai-evaluationsystem-similarity"
+  //     "index_name": "teknofest-similarity-dev"
   //   }
   // ],
   "workflows": [

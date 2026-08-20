@@ -14,16 +14,20 @@ diskalifiye kararı değildir ve `FAIL` üretmez.
 | Alan | Durum |
 | --- | --- |
 | Gömme sağlayıcı sınırı ve doğrulanmış yanıt sözleşmesi | UYGULANDI, YERELDE DOĞRULANDI |
-| Workers AI adaptörü (`@cf/baai/bge-m3`, 1024) | UYGULANDI, UZAK DOĞRULAMA GEREKLİ |
-| Vectorize adaptörü, deterministik vektör kimliği, metadata filtresi | UYGULANDI, UZAK DOĞRULAMA GEREKLİ |
+| Workers AI adaptörü (`@cf/baai/bge-m3`, 1024) | UYGULANDI, UZAK DOĞRULANDI (DEVELOPMENT) |
+| Vectorize adaptörü, deterministik vektör kimliği, metadata filtresi | UYGULANDI, UZAK DOĞRULANDI (DEVELOPMENT) |
 | Koşuya sabitlenmiş semantik skor ve tarihsel izolasyon | UYGULANDI, YERELDE DOĞRULANDI |
 | Hibrit skor ve semantik bölüm kanıtı | UYGULANDI, YERELDE DOĞRULANDI |
 | Degraded lexical mod (`semanticStatus`) | UYGULANDI, YERELDE DOĞRULANDI |
-| Gerçek Workers AI çağrısı / gerçek Vectorize index'i | UZAK DOĞRULAMA GEREKLİ |
+| Gerçek Workers AI çağrısı / gerçek DEVELOPMENT Vectorize index'i | UZAK DOĞRULANDI (bu görev) |
+| Production Vectorize index'i, Worker binding etkinleştirme, dağıtım | ERTELENDİ |
 | Eşik kalibrasyonu, risk kuyruğu, toplam risk skoru | ERTELENDİ |
 
-Hiçbir uzak Cloudflare kaynağı oluşturulmadı, hiçbir Workers AI veya OpenAI ağ çağrısı yapılmadı ve
-dağıtım yapılmadı.
+Bu görevde oluşturulan tek uzak Cloudflare kaynağı: DEVELOPMENT Vectorize index'i
+`teknofest-similarity-dev` (dimensions=1024, metric=cosine) ve onun `competitionId` metadata
+index'i. Gerçek Workers AI (`@cf/baai/bge-m3`) ve Vectorize REST çağrıları yapılmıştır; hiçbir
+OpenAI ağ çağrısı yapılmadı, hiçbir Worker dağıtılmadı, hiçbir remote D1/R2/Workflow mutasyonu
+oluşmadı.
 
 ## Mimari kararlar
 
@@ -50,23 +54,35 @@ Migration üretilmemiştir; `0010` P4-01A'nın son migration'ıdır.
 
 ## Uzak sağlama adımı
 
-Yerel emülasyon olmadığı için `apps/web/wrangler.jsonc` içindeki `ai` ve `vectorize` blokları
-yorumlanmış bırakılmıştır. Etkinleştirme, index sağlamasıyla aynı değişiklikte yapılmalıdır:
+Bir tek gerçek Workers AI gömme çağrısı (`@cf/baai/bge-m3`), Vectorize index'i oluşturulmadan önce
+çıktı boyutunun gerçekten `1024` olduğunu doğrulamıştır. Bu doğrulamadan sonra DEVELOPMENT index'i
+oluşturulmuştur:
 
 ```bash
-npx wrangler vectorize create teknofest-ai-evaluationsystem-similarity \
-  --dimensions=1024 --metric=cosine
+npx wrangler vectorize create teknofest-similarity-dev --dimensions=1024 --metric=cosine
 
-# Yarışma izolasyonu filtresi için metadata indeksi vektörlerden ÖNCE oluşturulmalıdır.
-npx wrangler vectorize create-metadata-index teknofest-ai-evaluationsystem-similarity \
+# Yarışma izolasyonu filtresi için metadata indeksi vektörlerden ÖNCE oluşturulmuştur.
+npx wrangler vectorize create-metadata-index teknofest-similarity-dev \
   --property-name=competitionId --type=string
 ```
 
 Boyut ve metrik index oluşturulduktan sonra değiştirilemez. Metadata indeksi vektörler eklendikten
 sonra oluşturulursa mevcut vektörlerin metadata'sı indekslenmez ve yeniden upsert gerekir.
 
-Uzak doğrulamada teyit edilecekler: gerçek gömme çıktı boyutunun `1024` olduğu, cosine `score`
-aralığının beklendiği gibi olduğu ve upsert görünürlük gecikmesi.
+Uzak doğrulamada teyit edilenler: gerçek gömme çıktı boyutunun `1024` olduğu, gerçek cosine
+`score` değerlerinin `[-1, 1]` aralığında gözlendiği ve upsert görünürlük gecikmesinin (mutation
+kimliğinin index `info` uç noktasında işlenmesi beklenerek) doğru şekilde ele alınabildiği
+(`apps/web/scripts/p4-01b-remote-smoke.ts`).
+
+Yerel emülasyon olmadığı için `apps/web/wrangler.jsonc` içindeki `ai` ve `vectorize` blokları üst
+seviyede hâlâ yorumlanmış bırakılmıştır: binding'lerin üst seviyede etkinleştirilmesi
+`wrangler dev`/Vite oturumunu uzak proxy moduna geçirdiğinden, `scripts/p2-02-local-smoke.mjs`
+tarafından başlatılan yerel oturum hazır olamamış ve `smoke:p2-03` başarısız olmuştur (ampirik
+olarak doğrulanmıştır). Bu nedenle uzak doğrulama, `env.AI`/`env.VECTORIZE` ile aynı dar arayüzü
+Cloudflare REST uç noktaları üzerinden karşılayan test-only bir adaptör aracılığıyla, gerçek Worker
+binding'i etkinleştirilmeden yapılmıştır. Binding'in üst seviyede etkinleştirilmesi, yerel
+smoke'ların bare `wrangler dev`/`vite` oturumuna bağımlı olmadığı ve bir production index'inin
+adlandırıldığı ayrı bir değişikliğe bırakılmıştır.
 
 ## Kabul sınırları
 
