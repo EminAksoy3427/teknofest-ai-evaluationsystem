@@ -163,6 +163,7 @@ export {
   type HealthResponse,
   HealthResponseSchema,
 } from "./health";
+export * from "./similarity";
 export {
   type CompetitionStatus,
   CompetitionStatusSchema,

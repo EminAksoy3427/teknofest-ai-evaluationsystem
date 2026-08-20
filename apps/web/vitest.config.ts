@@ -11,5 +11,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Defensive: blocks any outbound OpenAI request from the automated suite.
+    setupFiles: ["./src/server/test-fixtures/openai-network-guard.ts"],
   },
 });

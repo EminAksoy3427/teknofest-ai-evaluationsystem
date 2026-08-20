@@ -33,9 +33,6 @@ yalnız `verified:true` kanıt çıkar. Sayısal güven yüzdesi gösterilmez.
 
 ## Canlı sağlayıcı doğrulama durumu
 
-P3-02 otomatik testleri ve fake-provider doğrulaması geçmiştir. Gerçek OpenAI sağlayıcısına çağrı
-henüz çalıştırılmamıştır; yerel `OPENAI_API_KEY` ve `OPENAI_MODEL` kimlik bilgileri
-yapılandırılmamıştır. Canlı bağlantı doğrulaması bilinçli olarak **P3-02A — Live OpenAI Provider
-Smoke** işine ertelenmiştir. P3-02A yalnız sentetik veri kullanacak; gerçek bir TEKNOFEST raporu
-hiçbir koşulda kullanılmayacaktır. Bu nedenle mevcut doğrulama, sağlayıcının production ortamında
-doğrulandığı anlamına gelmez.
+P3-02 otomatik testleri, fake-provider doğrulaması ve P3-02A canlı OpenAI provider smoke'u
+sentetik veriyle geçmiştir. Bu smoke gerçek TEKNOFEST raporu kullanmamış ve production deployment
+doğrulaması yapmamıştır. P4-01A benzerlik testleri canlı OpenAI ağı gerektirmez.

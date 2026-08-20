@@ -1,4 +1,9 @@
-import { type AnalysisRunRepository, AnalysisRunRepositoryError } from "@teknofest-ai/db";
+import {
+  type AnalysisRunRepository,
+  AnalysisRunRepositoryError,
+  type SimilarityPairRepository,
+  similarityPairRepository,
+} from "@teknofest-ai/db";
 import {
   AnalysisRunListResponseSchema,
   AnalysisRunResponseSchema,
@@ -58,6 +63,7 @@ function repositoryStub(overrides: Partial<AnalysisRunRepository> = {}): Analysi
     markAnalysisRunFailed: async () => undefined,
     markAnalysisRunProcessing: async () => undefined,
     markAnalysisRunSemanticChecks: async () => undefined,
+    markAnalysisRunSimilarityChecks: async () => undefined,
     markAnalysisRunStructuralChecks: async () => undefined,
     markAnalysisRunSucceeded: async () => undefined,
     ...overrides,
@@ -74,6 +80,7 @@ function authenticatedApp(
   role: Role,
   repository: AnalysisRunRepository = repositoryStub(),
   starter: AnalysisWorkflowStarter = workflowStarter,
+  pairs: SimilarityPairRepository = similarityPairRepository,
 ) {
   return createApp({
     resolveSession: async () => ({
@@ -85,6 +92,7 @@ function authenticatedApp(
         : null,
     analysisRunRepository: repository,
     analysisWorkflowStarter: starter,
+    similarityPairRepository: pairs,
   });
 }
 
@@ -154,6 +162,67 @@ describe("analysis run authorization", () => {
       "/api/v1/competitions/competition-b/submissions/submission-a/analysis-runs",
     );
     expect(response.status).toBe(403);
+  });
+});
+
+describe("similarity authorization and isolation", () => {
+  const pairRepository = (
+    listSubmissionSimilarity: SimilarityPairRepository["listSubmissionSimilarity"],
+  ): SimilarityPairRepository => ({
+    ...similarityPairRepository,
+    listSubmissionSimilarity,
+  });
+
+  it.each(["REVIEWER", "EVALUATION_MANAGER", "CONTESTANT"] as const)(
+    "returns 403 when %s reads similarity",
+    async (role) => {
+      const list = vi.fn<SimilarityPairRepository["listSubmissionSimilarity"]>(async () => ({
+        analysisRunId: null,
+        pairs: [],
+      }));
+      const response = await request(
+        authenticatedApp(role, repositoryStub(), workflowStarter, pairRepository(list)),
+        "/api/v1/competitions/competition-a/submissions/submission-a/similarity",
+        "GET",
+      );
+      expect(response.status).toBe(403);
+      expect(list).not.toHaveBeenCalled();
+    },
+  );
+
+  it("allows the competition manager without exposing another competition", async () => {
+    const list = vi.fn<SimilarityPairRepository["listSubmissionSimilarity"]>(
+      async (_db, competitionId, submissionId) => {
+        if (competitionId !== "competition-a" || submissionId !== "submission-a") {
+          throw new AnalysisRunRepositoryError("NOT_FOUND", "SUBMISSION");
+        }
+        return { analysisRunId: "run-current", pairs: [] };
+      },
+    );
+    const app = authenticatedApp(
+      "COMPETITION_MANAGER",
+      repositoryStub(),
+      workflowStarter,
+      pairRepository(list),
+    );
+    const allowed = await request(
+      app,
+      "/api/v1/competitions/competition-a/submissions/submission-a/similarity",
+      "GET",
+    );
+    expect(allowed.status).toBe(200);
+    expect(await allowed.json()).toEqual({
+      submissionId: "submission-a",
+      analysisRunId: "run-current",
+      pairs: [],
+    });
+    const denied = await request(
+      app,
+      "/api/v1/competitions/competition-b/submissions/submission-a/similarity",
+      "GET",
+    );
+    expect(denied.status).toBe(403);
+    expect(list).toHaveBeenCalledTimes(1);
   });
 });
 

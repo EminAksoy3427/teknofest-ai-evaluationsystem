@@ -28,6 +28,8 @@ export const submissions = sqliteTable(
       table.competitionId,
       table.applicationCode,
     ),
+    // Parent key for competition-scoped composite foreign keys such as SimilarityPair ownership.
+    uniqueIndex("submission_competition_scope_unique").on(table.competitionId, table.id),
     index("submission_competition_id_index").on(table.competitionId),
     index("submission_category_id_index").on(table.categoryId),
   ],

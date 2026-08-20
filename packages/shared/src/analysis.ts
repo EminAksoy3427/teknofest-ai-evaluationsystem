@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ExpectedLanguageSchema, StableKeySchema } from "./competition-configuration";
+import { SimilarityCheckDetailsSchema } from "./similarity";
 
 export const ANALYSIS_RUN_STATUS_VALUES = ["QUEUED", "PROCESSING", "SUCCEEDED", "FAILED"] as const;
 
@@ -8,6 +9,7 @@ export const ANALYSIS_STAGE_VALUES = [
   "INGEST_AND_EXTRACT",
   "STRUCTURAL_CHECKS",
   "SEMANTIC_CHECKS",
+  "SIMILARITY_CHECKS",
 ] as const;
 
 export const ANALYSIS_CHECK_TYPE_VALUES = [
@@ -16,6 +18,7 @@ export const ANALYSIS_CHECK_TYPE_VALUES = [
   "SECTION_PRESENCE",
   "SECTION_CONTENT",
   "CATEGORY_FIT",
+  "SIMILARITY",
 ] as const;
 
 export const ANALYSIS_CHECK_STATUS_VALUES = ["PASS", "WARN", "FAIL"] as const;
@@ -44,6 +47,7 @@ export const ANALYSIS_ERROR_CODE_VALUES = [
   "AI_INCOMPLETE_RESPONSE",
   "AI_STRUCTURED_OUTPUT_INVALID",
   "AI_EVIDENCE_INVALID",
+  "SIMILARITY_PROCESSING_FAILED",
   "ANALYSIS_INTERNAL_ERROR",
 ] as const;
 
@@ -314,6 +318,7 @@ export const AnalysisCheckDetailsSchema = z.discriminatedUnion("checkType", [
   SectionPresenceCheckDetailsSchema,
   SectionContentCheckDetailsSchema,
   CategoryFitCheckDetailsSchema,
+  SimilarityCheckDetailsSchema,
 ]);
 export type AnalysisCheckDetails = z.infer<typeof AnalysisCheckDetailsSchema>;
 
@@ -374,6 +379,18 @@ export const AnalysisCheckResponseSchema = z.discriminatedUnion("type", [
       status: AnalysisCheckStatusSchema,
       summary: z.string().min(1).max(500),
       details: CategoryFitCheckDetailsSchema,
+      createdAt: z.number().int().nonnegative(),
+      updatedAt: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z
+    .object({
+      id: z.string().min(1),
+      analysisRunId: z.string().min(1),
+      type: z.literal("SIMILARITY"),
+      status: AnalysisCheckStatusSchema,
+      summary: z.string().min(1).max(500),
+      details: SimilarityCheckDetailsSchema,
       createdAt: z.number().int().nonnegative(),
       updatedAt: z.number().int().nonnegative(),
     })

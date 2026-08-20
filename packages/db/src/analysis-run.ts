@@ -45,6 +45,7 @@ export interface QueuedAnalysisRunInput {
 
 export interface AnalysisRunExecutionContext {
   id: string;
+  competitionId?: string;
   submissionId: string;
   status: "QUEUED" | "PROCESSING" | "SUCCEEDED" | "FAILED";
   sourceSha256: string;
@@ -303,6 +304,7 @@ export async function getAnalysisRunExecutionContext(
   const [row] = await createDb(binding)
     .select({
       id: analysisRuns.id,
+      competitionId: submissions.competitionId,
       submissionId: analysisRuns.submissionId,
       status: analysisRuns.status,
       sourceSha256: analysisRuns.sourceSha256,
@@ -403,20 +405,20 @@ export async function markAnalysisRunSucceeded(
     .prepare(
       `UPDATE analysis_run
        SET status = 'SUCCEEDED',
-           stage = 'SEMANTIC_CHECKS',
+           stage = 'SIMILARITY_CHECKS',
            error_code = null,
            error_message = null,
            completed_at = ?
        WHERE id = ?
          AND status = 'PROCESSING'
-         AND stage = 'SEMANTIC_CHECKS'
+         AND stage = 'SIMILARITY_CHECKS'
          AND document_artifact_key is not null
          AND (
            SELECT count(*)
            FROM analysis_check
            WHERE analysis_run_id = analysis_run.id
-             AND type in ('LANGUAGE', 'TEMPLATE_STRUCTURE', 'SECTION_PRESENCE', 'SECTION_CONTENT', 'CATEGORY_FIT')
-         ) = 5`,
+             AND type in ('LANGUAGE', 'TEMPLATE_STRUCTURE', 'SECTION_PRESENCE', 'SECTION_CONTENT', 'CATEGORY_FIT', 'SIMILARITY')
+         ) = 6`,
     )
     .bind(Date.now(), analysisRunId)
     .run();
@@ -456,6 +458,36 @@ export async function markAnalysisRunSemanticChecks(
   throw new AnalysisRunRepositoryError("NOT_FOUND", "RESOURCE");
 }
 
+export async function markAnalysisRunSimilarityChecks(
+  binding: D1Database,
+  analysisRunId: string,
+): Promise<void> {
+  const result = await binding
+    .prepare(
+      `UPDATE analysis_run
+       SET status = 'PROCESSING',
+           stage = 'SIMILARITY_CHECKS',
+           error_code = null,
+           error_message = null
+       WHERE id = ?
+         AND status = 'PROCESSING'
+         AND stage in ('SEMANTIC_CHECKS', 'SIMILARITY_CHECKS')
+         AND document_artifact_key is not null
+         AND (
+           SELECT count(*)
+           FROM analysis_check
+           WHERE analysis_run_id = analysis_run.id
+             AND type in ('LANGUAGE', 'TEMPLATE_STRUCTURE', 'SECTION_PRESENCE', 'SECTION_CONTENT', 'CATEGORY_FIT')
+         ) = 5`,
+    )
+    .bind(analysisRunId)
+    .run();
+  if (result.meta.changes === 1) return;
+  const existing = await getAnalysisRunExecutionContext(binding, analysisRunId);
+  if (existing?.status === "SUCCEEDED") return;
+  throw new AnalysisRunRepositoryError("NOT_FOUND", "RESOURCE");
+}
+
 export async function markAnalysisRunFailed(
   binding: D1Database,
   analysisRunId: string,
@@ -486,6 +518,7 @@ export const analysisRunRepository = {
   markAnalysisRunFailed,
   markAnalysisRunProcessing,
   markAnalysisRunSemanticChecks,
+  markAnalysisRunSimilarityChecks,
   markAnalysisRunStructuralChecks,
   markAnalysisRunSucceeded,
 };

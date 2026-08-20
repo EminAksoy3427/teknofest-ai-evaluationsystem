@@ -12,6 +12,13 @@ sonuçları aggregate `PASS/WARN/FAIL` politikasına girer; eksik başlığın b
 yoktur. Her normal UI kanıtı sayfa kimliği ve ihtiyatlı birebir normalize alıntıyla sunucuda
 doğrulanır. Sayısal confidence, chain-of-thought, tam belge veya ham sağlayıcı cevabı saklanmaz.
 
+## Benzerlik kontrolü
+
+`SIMILARITY`, bounded aynı-yarışma adayları üzerinde çalışan deterministik inceleme sinyalidir.
+`LOW` sonucu `PASS`, `MEDIUM/HIGH` sonucu `WARN` olur; benzerlik bir politika ihlali veya intihal
+kararı olmadığı için `FAIL` üretilmez. İki taraflı bounded alıntılar doğrudan doğrulanmış extraction
+artifact'inden gelir ve sayfa kimliğini korur. P4-01A yalnız `LEXICAL_ONLY` production modundadır.
+
 ## Durum ayrımı
 
 `AnalysisRun.status`, analiz mekanizmasının yaşam döngüsüdür: `QUEUED`, `PROCESSING`,
@@ -43,11 +50,14 @@ keyfî istemci türüne izin vermez.
 koşu, artifact veya yinelenen başlık bulgusu üretmez. Başlık kanıtı 160 karakter ve bölüm başına
 beş oluşumla sınırlıdır. Tam rapor metni yalnız özel R2 artifact'inde kalır.
 
-## P3-01 kapsamı
+## Uygulanan kapsam
 
 - `LANGUAGE`: bounded sayfa örnekleriyle baskın dil ve karma/seyrek sinyali
 - `SECTION_PRESENCE`: yapılandırılmış başlığın varlığı ve sayfa kanıtı
 - `TEMPLATE_STRUCTURE`: zorunlu başlık, sıra, tekrar ve çıkarım uyarılarının aggregate sonucu
+- `SECTION_CONTENT`: bölüm gövdesi için kanıta dayalı semantik sinyal
+- `CATEGORY_FIT`: sabitlenmiş kategori snapshot'ına karşı semantik sinyal
+- `SIMILARITY`: canonical aynı-yarışma çiftlerinde review-only lexical sinyal
 
-Başlık varlığı semantik içerik uygunluğu değildir. Bölüm içeriği, kategori uyumu, benzerlik,
-rubrik yapay zekâsı ve diğer Problem 4 kontrolleri sonraki milestone'lara ertelenmiştir.
+Başlık varlığı semantik içerik uygunluğu değildir. Rubrik yapay zekâsı, feedback ve diğer
+Problem 4 kontrolleri sonraki milestone'lara ertelenmiştir.

@@ -2,12 +2,12 @@
 
 ## Sınır
 
-Pipeline `INGEST_AND_EXTRACT → STRUCTURAL_CHECKS → SEMANTIC_CHECKS` aşamalarını uygular. PDF özel R2 nesnesinden
+Pipeline `INGEST_AND_EXTRACT → STRUCTURAL_CHECKS → SEMANTIC_CHECKS → SIMILARITY_CHECKS` aşamalarını uygular. PDF özel R2 nesnesinden
 okunur, sayfa kimliği korunarak metin çıkarılır ve sürümlü `document-extraction/v1` artifact'i
 özel R2'ye yazılır. Ardından sabitlenmiş şablon sürümüyle deterministik dil, şablon yapısı ve
 zorunlu başlık varlığı kontrolleri çalışır. Ardından araçsız OpenAI Responses çağrılarıyla
-`SECTION_CONTENT` ve `CATEGORY_FIT` karar-destek sinyalleri üretilir. Benzerlik, rubrik puanlama
-ve geri bildirim yoktur.
+`SECTION_CONTENT` ve `CATEGORY_FIT` karar-destek sinyalleri üretilir. Son olarak aynı-yarışma
+bounded adaylarında lexical benzerlik sinyali üretilir. Rubrik puanlama ve geri bildirim yoktur.
 
 PDF ve çıkarılan metin güvenilmeyen girdidir. İçerik hiçbir zaman yetkilendirme, Workflow
 kimliği, R2 anahtarı, sistem talimatı veya araç çağrısı belirlemez.
@@ -34,8 +34,8 @@ analiz aşamalarının tarihsel girdisini yeniden üretilebilir tutar.
 ## Yaşam döngüsü
 
 Durumlar `QUEUED → PROCESSING → SUCCEEDED | FAILED` biçimindedir. Aşama durumdan ayrıdır ve
-`INGEST_AND_EXTRACT → STRUCTURAL_CHECKS → SEMANTIC_CHECKS` ilerler. `SUCCEEDED` yalnız kaynak okuma, SHA-256
-doğrulama, çıkarım, Zod artifact doğrulama, R2 yazımı, üç doğrulanmış kontrolün D1'e yazımı ve
+`INGEST_AND_EXTRACT → STRUCTURAL_CHECKS → SEMANTIC_CHECKS → SIMILARITY_CHECKS` ilerler. `SUCCEEDED` yalnız kaynak okuma, SHA-256
+doğrulama, çıkarım, Zod artifact doğrulama, R2 yazımı, altı doğrulanmış kontrolün D1'e yazımı ve
 D1 finalizasyonu tamamlandıktan sonra yazılır. Bir kontrolün `FAIL` olması koşuyu `FAILED`
 yapmaz; bu, analiz mekanizmasının başarıyla olumsuz bir iş bulgusu üretmesidir.
 
@@ -52,8 +52,10 @@ simülasyonunu kullanır. Uygulanan dayanıklı adımlar:
 1. koşuyu idempotent biçimde `PROCESSING` yap,
 2. kaynağı al, doğrula, çıkar ve deterministik artifact anahtarına yaz,
 3. çıkarım metadata'sını yaz ve aşamayı idempotent biçimde `STRUCTURAL_CHECKS` yap,
-4. sabitlenmiş şablon ve artifact ile kontrolleri koşu/tür anahtarında upsert et,
-5. üç kontrol kalıcıysa koşuyu idempotent biçimde `SUCCEEDED` yap.
+4. sabitlenmiş şablon ve artifact ile yapısal kontrolleri koşu/tür anahtarında upsert et,
+5. semantik kontrolleri ayrı provider/persistence adımlarında kalıcılaştır,
+6. bounded aynı-yarışma adaylarıyla lexical `SIMILARITY` kontrolü ve canonical pair'leri upsert et,
+7. altı kontrol kalıcıysa koşuyu idempotent biçimde `SUCCEEDED` yap.
 
 Adımlar sınırlı exponential retry kullanır. Workflow payload'ı yalnız `analysisRunId` taşır.
 Artifact anahtarı `derived/{submissionId}/{analysisRunId}/document.json` biçimindedir; retry
@@ -125,7 +127,8 @@ kalır.
 ## AnalysisCheck kalıcılığı
 
 Küçük ve sorgulanabilir bulgular `analysis_check` tablosunda tutulur. Türler `LANGUAGE`,
-`TEMPLATE_STRUCTURE` ve `SECTION_PRESENCE`; durumlar koşu yaşam döngüsünden ayrı `PASS/WARN/FAIL`
+`TEMPLATE_STRUCTURE`, `SECTION_PRESENCE`, `SECTION_CONTENT`, `CATEGORY_FIT` ve `SIMILARITY`;
+durumlar koşu yaşam döngüsünden ayrı `PASS/WARN/FAIL`
 değerleridir. `(analysis_run_id, type)` benzersizliği retry'da ikinci bir yetkili sonuç oluşmasını
 engeller. `details_json` yazılmadan ve okunurken tür ayrımlı paylaşılan Zod şemalarından geçer.
 Tam belge metni veya sınırsız alıntı D1'e yazılmaz. Gelecek kontrol türleri için DB `type`
@@ -141,3 +144,40 @@ pinlenmiş sürüm kimlikleri, sayaçlar, uyarılar ve güvenli hata görür. Lo
 başvuru, aşama, sayaç ve güvenli hata kodu taşıyabilir; çıkarılmış metin loglanmaz. Kontroller
 yalnız `AnalysisCheck → AnalysisRun → Submission → Competition` zincirinden yetkilendirilmiş
 yönetici yanıtına eklenir; artifact anahtarı ve tam metin açığa çıkmaz.
+
+## Semantik benzerlik aşaması (P4-01B)
+
+`SIMILARITY_CHECKS` aşaması artık Workers AI ve Vectorize binding'leri mevcutsa production semantik
+sağlayıcısını kullanır; yoksa lexical-only çalışır ve kontrol `semanticStatus: "DISABLED"` raporlar.
+Aşama kendi bölüm vektörlerini indeksler ve yalnız P4-01A aday sözleşmesinin seçtiği AnalysisRun
+kümesi içinde sorgular; bu nedenle aday üst sınırı ve kalıcı satır kardinalitesi değişmez. Sağlayıcı
+veya index hatası koşuyu başarısız etmez, `DEGRADED` olarak raporlanır ve semantik skor uydurulmaz.
+Ayrıntılar `docs/architecture/similarity.md` içindedir.
+
+## Milestone aşama izolasyonu ve tarihsel smoke'lar
+
+Tarihsel milestone smoke'ları (`smoke:p2-03`, `smoke:p3-01`) yalnız kendi milestone sözleşmesini
+doğrular ve semantik aşamaya hiç girmez. Doğru değişmez, geliştirici makinesinin OpenAI
+yapılandırmasına SAHİP OLMAMASI değil, bu aşamaların OpenAI'yi KULLANMAMASIDIR. P3-02A canlı
+sağlayıcı smoke'u tamamlandıktan sonra geliştiricinin geçerli yerel OpenAI kimlik bilgileri
+bulunması meşrudur; tarihsel smoke'lar bu kimlik bilgilerinin silinmesini veya değiştirilmesini
+asla gerektirmez. Wrapper ortam durumunu yalnız `YES/NO` olarak raporlar, değer okumaz ve bunun
+üzerine hiçbir assertion kurmaz.
+
+İzolasyon varsayım değil, uygulanmış bir özelliktir:
+
+- `processAnalysisRun` ve `processStructuralChecks` modül grafiğinden `@teknofest-ai/ai`, OpenAI
+  sağlayıcısı veya herhangi bir semantik modül erişilebilir değildir; semantik sağlayıcı
+  `analyzeSectionContent`/`analyzeCategoryFit` çağrılarına açık parametre olarak verilir.
+- Tarihsel dilim dosya listesi `semantic`, `similarity` veya `category-fit` içeren bir test
+  dosyasını kabul etmez.
+- Çocuk süreç ortamından `OPENAI_API_KEY` ve `OPENAI_MODEL` silinir; geliştiricinin `.dev.vars`
+  dosyasına dokunulmaz.
+- P2-03 canlı yerel Worker dilimi hiç `AnalysisRun` oluşturmaz; smoke bunu `analysis_run` sayısının
+  değişmediğini doğrulayarak kanıtlar, böylece `SEMANTIC_CHECKS` erişilemez kalır.
+- Test-only ağ koruması, otomatik test paketinden çıkan her OpenAI isteğini sayar ve engeller.
+
+Milestone aşama harness'ı üretim aşama fonksiyonlarını doğrudan çağırır; smoke script'ine
+uygulama mantığı kopyalanmaz. Production P3-02 davranışı değişmemiştir: gerçek bir AnalysisRun hâlâ
+geçerli ve pinlenmiş yapay zekâ yapılandırması ister ve production kod yoluna fake sağlayıcı
+fallback'i eklenmemiştir.

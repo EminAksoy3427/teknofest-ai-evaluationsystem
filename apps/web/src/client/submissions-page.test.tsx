@@ -111,3 +111,58 @@ describe("semantic analysis evidence strength UI", () => {
     );
   }
 });
+
+describe("manager similarity signal UI", () => {
+  it("renders lexical-only review language and bounded two-sided evidence without a verdict", () => {
+    const check: AnalysisCheckResponse = {
+      id: "check-similarity",
+      analysisRunId: "run-1",
+      type: "SIMILARITY",
+      status: "WARN",
+      summary: "Yüksek benzerlik sinyali bulundu. Uzman incelemesi önerilir.",
+      details: {
+        checkType: "SIMILARITY",
+        mode: "LEXICAL_ONLY",
+        semanticStatus: "DISABLED",
+        level: "HIGH",
+        candidateCount: 1,
+        topMatches: [
+          {
+            otherSubmissionId: "submission-2",
+            otherAnalysisRunId: "run-2",
+            applicationCode: "APP-002",
+            projectTitle: "Sentetik benzer proje",
+            exactDocumentMatch: false,
+            combinedScore: 0.8,
+            lexicalScore: 0.8,
+            semanticScore: null,
+            sectionMatches: [
+              {
+                sourceSubmissionId: "submission-1",
+                otherSubmissionId: "submission-2",
+                sectionKey: "summary",
+                sectionTitle: "Proje Özeti",
+                otherSectionKey: "summary",
+                otherSectionTitle: "Proje Özeti",
+                sourcePage: 2,
+                otherPage: 4,
+                lexicalScore: 0.8,
+                semanticScore: null,
+                sourceExcerpt: "Sentetik kaynak alıntısı.",
+                otherExcerpt: "Sentetik karşılaştırma alıntısı.",
+              },
+            ],
+          },
+        ],
+      },
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const markup = renderToStaticMarkup(<AnalysisResults run={runWith(check)} />);
+    expect(markup).toContain("Lexical ön analiz · Semantik sağlayıcı bağlı değil");
+    expect(markup).toContain("Uzman incelemesi önerilir");
+    expect(markup).toContain("Sayfa 2");
+    expect(markup).toContain("Sayfa 4");
+    expect(markup).not.toMatch(/İntihal|Kopya|Hile|Diskalifiye/iu);
+  });
+});

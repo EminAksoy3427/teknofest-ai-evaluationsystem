@@ -10,8 +10,10 @@ import {
   findCompetitionMembership,
   listMembershipSummaries,
   type MembershipSummaryList,
+  type SimilarityPairRepository,
   type SubmissionRepository,
   SubmissionRepositoryError,
+  similarityPairRepository,
   submissionRepository,
 } from "@teknofest-ai/db";
 import {
@@ -56,6 +58,7 @@ interface AppDependencies {
   documentStorage: DocumentStorage;
   analysisRunRepository: AnalysisRunRepository;
   analysisWorkflowStarter: AnalysisWorkflowStarter;
+  similarityPairRepository: SimilarityPairRepository;
 }
 
 const defaultDependencies: AppDependencies = {
@@ -67,6 +70,7 @@ const defaultDependencies: AppDependencies = {
   documentStorage,
   analysisRunRepository,
   analysisWorkflowStarter,
+  similarityPairRepository,
 };
 
 export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {

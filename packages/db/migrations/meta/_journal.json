@@ -71,6 +71,13 @@
       "when": 1787157572905,
       "tag": "0009_simple_the_santerians",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1787209322418,
+      "tag": "0010_yummy_sharon_ventura",
+      "breakpoints": true
     }
   ]
 }

@@ -88,6 +88,7 @@ function repositoryStub(
     markAnalysisRunFailed: async () => undefined,
     markAnalysisRunProcessing: async () => undefined,
     markAnalysisRunSemanticChecks: async () => undefined,
+    markAnalysisRunSimilarityChecks: async () => undefined,
     markAnalysisRunStructuralChecks: async () => undefined,
     markAnalysisRunSucceeded: async () => undefined,
     ...overrides,

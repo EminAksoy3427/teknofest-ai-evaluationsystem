@@ -29,6 +29,10 @@ Bu kurallar, bu depoda çalışan tüm kodlama ajanları için geçerlidir.
 - R2 nesne anahtarlarını yalnız sunucu kimliklerinden üretin; yüklenen dosya adı anahtarı belirleyemez.
 - Her rapor indirmesinde yarışma kapsamlı sunucu yetkilendirmesi uygulayın; kalıcı veya herkese açık R2 URL'si üretmeyin.
 - SHA-256 uygulama içerik kimliğidir; birebir eşleşme bir sinyaldir, intihal veya nihai karar değildir.
+- Benzerlik uzman inceleme sinyalidir; intihal veya nihai karar değildir ve exact eşleşme de bunu değiştirmez.
+- Çapraz yarışma benzerliği yasaktır; vector sağlayıcısı dahil her aday yolu yarışma filtresi uygulamalıdır.
+- Benzerlik çiftleri canonical sıralanmalı; fake semantic sağlayıcı yalnız testte kullanılmalıdır.
+- Benzerlik eşikleri evrensel gerçek değil, golden setle kalibre edilecek sürümlü politikadır.
 - AnalysisRun oluşturulurken kategori, aktif şablon/rubrik sürümleri ve kaynak SHA-256 sabitlenir; geçmiş koşular güncel yapılandırmaya taşınmaz.
 - Workflow adımları ve türetilmiş nesne anahtarları retry karşısında idempotent olmalıdır.
 - Olumsuz AnalysisCheck bulgusu pipeline hatası değildir; AnalysisRun yalnız analiz mekanizması çalışamazsa FAILED olur.

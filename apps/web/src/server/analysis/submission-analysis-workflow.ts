@@ -4,13 +4,18 @@ import { analysisRunRepository } from "@teknofest-ai/db";
 import { DocumentProcessingError } from "./document-extraction";
 import { encodeSafeFailure, processAnalysisRun, safeAnalysisFailure } from "./process-analysis-run";
 import { analyzeCategoryFit, analyzeSectionContent, persistSemanticCheck } from "./semantic-checks";
+import { processSimilarityChecks, similarityStageDependencies } from "./similarity";
+import {
+  createSimilarityVectorProvider,
+  type SimilarityVectorBindings,
+} from "./similarity-vector-composition";
 import { processStructuralChecks } from "./structural-checks";
 
 export interface SubmissionAnalysisWorkflowParams {
   analysisRunId: string;
 }
 
-interface SubmissionAnalysisWorkflowEnvironment {
+interface SubmissionAnalysisWorkflowEnvironment extends SimilarityVectorBindings {
   DB: D1Database;
   DOCUMENTS: R2Bucket;
   OPENAI_API_KEY: string;
@@ -144,6 +149,30 @@ export class SubmissionAnalysisWorkflow extends WorkflowEntrypoint<
       await step.do("semantic-category-fit-persist", DATABASE_STEP, async () => {
         await persistSemanticCheck(this.env.DB, analysisRunId, categoryFit);
         return { analysisRunId, type: "CATEGORY_FIT" as const };
+      });
+
+      await step.do("similarity-checks-stage", DATABASE_STEP, async () => {
+        await analysisRunRepository.markAnalysisRunSimilarityChecks(this.env.DB, analysisRunId);
+        return { analysisRunId, stage: "SIMILARITY_CHECKS" as const };
+      });
+
+      await step.do("similarity-checks", SEMANTIC_API_STEP, async () => {
+        try {
+          // The production semantic provider is used whenever the Workers AI and Vectorize
+          // bindings exist; otherwise similarity stays lexical-only. No test provider is reachable
+          // from this path.
+          const vectorProvider = createSimilarityVectorProvider(this.env);
+          await processSimilarityChecks(this.env.DB, this.env.DOCUMENTS, analysisRunId, {
+            ...similarityStageDependencies(),
+            vectorProvider,
+          });
+          return {
+            analysisRunId,
+            semantic: vectorProvider ? ("ENABLED" as const) : ("DISABLED" as const),
+          };
+        } catch (error) {
+          throw encodeSafeFailure(error);
+        }
       });
 
       await step.do("analysis-run-success", DATABASE_STEP, async () => {

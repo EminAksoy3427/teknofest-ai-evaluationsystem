@@ -1,6 +1,14 @@
 import { SEMANTIC_PROMPT_BUNDLE_VERSION } from "@teknofest-ai/ai";
-import type { AnalysisRunRepository, CompetitionMembershipLookup } from "@teknofest-ai/db";
-import { AnalysisRunListResponseSchema, AnalysisRunResponseSchema } from "@teknofest-ai/shared";
+import type {
+  AnalysisRunRepository,
+  CompetitionMembershipLookup,
+  SimilarityPairRepository,
+} from "@teknofest-ai/db";
+import {
+  AnalysisRunListResponseSchema,
+  AnalysisRunResponseSchema,
+  SubmissionSimilarityResponseSchema,
+} from "@teknofest-ai/shared";
 import type { Hono } from "hono";
 import { readAIConfiguration } from "./ai/env";
 import type { SubmissionAnalysisWorkflowParams } from "./analysis/submission-analysis-workflow";
@@ -30,6 +38,7 @@ export interface AnalysisRouteDependencies {
   findMembership: CompetitionMembershipLookup;
   analysisRunRepository: AnalysisRunRepository;
   analysisWorkflowStarter: AnalysisWorkflowStarter;
+  similarityPairRepository: SimilarityPairRepository;
 }
 
 function requiredParameter(value: string | undefined, name: string): string {
@@ -69,6 +78,52 @@ export function registerAnalysisRoutes(
   app: Hono<{ Bindings: AuthRuntimeBindings }>,
   dependencies: AnalysisRouteDependencies,
 ) {
+  // Without `analysisRunId` the response is derived from the submission's current AnalysisRun.
+  // With `analysisRunId` it stays pinned to that historical run and never floats forward.
+  app.get(
+    "/api/v1/competitions/:competitionId/submissions/:submissionId/similarity",
+    async (context) => {
+      const competitionId = await requireAnalysisPermission(context, dependencies);
+      const submissionId = requiredParameter(context.req.param("submissionId"), "submissionId");
+      const requestedRunId = context.req.query("analysisRunId");
+      if (requestedRunId === undefined) {
+        const current = await dependencies.similarityPairRepository.listSubmissionSimilarity(
+          context.env.DB,
+          competitionId,
+          submissionId,
+        );
+        return context.json(
+          SubmissionSimilarityResponseSchema.parse({
+            submissionId,
+            analysisRunId: current.analysisRunId,
+            pairs: current.pairs,
+          }),
+        );
+      }
+      const analysisRunId = requiredParameter(requestedRunId, "analysisRunId");
+      const run = await dependencies.analysisRunRepository.getAnalysisRun(
+        context.env.DB,
+        competitionId,
+        submissionId,
+        analysisRunId,
+      );
+      if (!run) {
+        throw new ApiApplicationError(
+          { code: "NOT_FOUND", message: "Analiz kaydı bulunamadı." },
+          404,
+        );
+      }
+      const pairs = await dependencies.similarityPairRepository.listAnalysisRunSimilarity(
+        context.env.DB,
+        competitionId,
+        run.id,
+      );
+      return context.json(
+        SubmissionSimilarityResponseSchema.parse({ submissionId, analysisRunId: run.id, pairs }),
+      );
+    },
+  );
+
   app.post(
     "/api/v1/competitions/:competitionId/submissions/:submissionId/analysis-runs",
     async (context) => {

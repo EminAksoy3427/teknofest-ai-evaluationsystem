@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   markProcessing: vi.fn(),
   markStructural: vi.fn(),
   markSemantic: vi.fn(),
+  markSimilarity: vi.fn(),
   markSucceeded: vi.fn(),
   markFailed: vi.fn(),
   getContext: vi.fn(),
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   section: vi.fn(),
   category: vi.fn(),
   persist: vi.fn(),
+  similarity: vi.fn(),
 }));
 
 vi.mock("@teknofest-ai/db", () => ({
@@ -19,6 +21,7 @@ vi.mock("@teknofest-ai/db", () => ({
     markAnalysisRunProcessing: mocks.markProcessing,
     markAnalysisRunStructuralChecks: mocks.markStructural,
     markAnalysisRunSemanticChecks: mocks.markSemantic,
+    markAnalysisRunSimilarityChecks: mocks.markSimilarity,
     markAnalysisRunSucceeded: mocks.markSucceeded,
     markAnalysisRunFailed: mocks.markFailed,
     getAnalysisRunExecutionContext: mocks.getContext,
@@ -39,6 +42,10 @@ vi.mock("./semantic-checks", () => ({
   analyzeSectionContent: mocks.section,
   analyzeCategoryFit: mocks.category,
   persistSemanticCheck: mocks.persist,
+}));
+vi.mock("./similarity", () => ({
+  processSimilarityChecks: mocks.similarity,
+  similarityStageDependencies: () => ({}),
 }));
 
 import { SubmissionAnalysisWorkflow } from "./submission-analysis-workflow";
@@ -116,11 +123,14 @@ describe("semantic Workflow durability", () => {
       "semantic-section-content-persist",
       "semantic-category-fit-api",
       "semantic-category-fit-persist",
+      "similarity-checks-stage",
+      "similarity-checks",
       "analysis-run-success",
     ]);
     expect(mocks.persist).toHaveBeenNthCalledWith(1, expect.anything(), "run-a", sectionCheck);
     expect(mocks.persist).toHaveBeenNthCalledWith(2, expect.anything(), "run-a", categoryCheck);
     expect(mocks.markSucceeded).toHaveBeenCalledOnce();
+    expect(mocks.similarity).toHaveBeenCalledOnce();
     expect(mocks.markFailed).not.toHaveBeenCalled();
   });
 

@@ -20,6 +20,7 @@ export {
   markAnalysisRunFailed,
   markAnalysisRunProcessing,
   markAnalysisRunSemanticChecks,
+  markAnalysisRunSimilarityChecks,
   markAnalysisRunStructuralChecks,
   markAnalysisRunSucceeded,
   type QueuedAnalysisRunInput,
@@ -57,6 +58,20 @@ export {
   type MembershipSummaryList,
 } from "./competition-membership";
 export * from "./schema";
+export {
+  type CanonicalSimilarityPairIdentity,
+  canonicalSimilarityPairIdentity,
+  canonicalSubmissionPair,
+  type EligibleSimilarityRun,
+  listAnalysisRunSimilarity,
+  listEligibleCompetitionRuns,
+  listSubmissionSimilarity,
+  resolveCurrentSubmissionAnalysisRunId,
+  type SimilarityPairRepository,
+  type SimilarityPairWriteInput,
+  similarityPairRepository,
+  upsertSimilarityPair,
+} from "./similarity-pair";
 export {
   categoryBelongsToCompetition,
   countCompetitionFilesBySha256,

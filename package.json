@@ -25,6 +25,8 @@
     "smoke:p2-03": "pnpm --filter @teknofest-ai/web smoke:p2-03",
     "smoke:p3-01": "pnpm --filter @teknofest-ai/web smoke:p3-01",
     "smoke:p3-02": "pnpm --filter @teknofest-ai/web smoke:p3-02",
+    "smoke:p4-01a": "pnpm --filter @teknofest-ai/web smoke:p4-01a",
+    "smoke:p4-01b": "pnpm --filter @teknofest-ai/web smoke:p4-01b",
     "cf:typegen": "pnpm --filter @teknofest-ai/web cf:typegen"
   },
   "devDependencies": {

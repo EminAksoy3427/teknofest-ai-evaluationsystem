@@ -5,6 +5,8 @@ import {
   CategoryListResponseSchema,
   MAX_SUBMISSION_PDF_BYTES,
   type SemanticEvidenceStrength,
+  SIMILARITY_HIGH_THRESHOLD,
+  SIMILARITY_MEDIUM_THRESHOLD,
   SubmissionListResponseSchema,
   SubmissionResponseSchema,
   type SubmissionSummary,
@@ -63,6 +65,7 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
     SECTION_PRESENCE: "Zorunlu Başlıklar",
     SECTION_CONTENT: "Bölüm İçeriği",
     CATEGORY_FIT: "Kategori Uyumu",
+    SIMILARITY: "Benzerlik",
   } as const;
   const sectionPresence = run.checks.find((check) => check.type === "SECTION_PRESENCE");
   const sectionTitles = new Map(
@@ -168,6 +171,73 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
                 </p>
               </div>
             ) : null}
+            {check.type === "SIMILARITY" ? (
+              <div className="mt-3 text-slate-600">
+                <p className="font-semibold text-slate-800">
+                  {check.details.level === "HIGH"
+                    ? "Yüksek"
+                    : check.details.level === "MEDIUM"
+                      ? "Orta"
+                      : "Düşük"}{" "}
+                  benzerlik sinyali
+                </p>
+                <p className="mt-1 font-medium text-blue-800">
+                  {check.details.semanticStatus === "AVAILABLE"
+                    ? "Hibrit benzerlik analizi · Lexical + semantik"
+                    : check.details.semanticStatus === "DEGRADED"
+                      ? "Lexical ön analiz · Semantik analiz bu koşuda tamamlanamadı"
+                      : "Lexical ön analiz · Semantik sağlayıcı bağlı değil"}
+                </p>
+                {check.details.topMatches.map((match) => (
+                  <div
+                    className="mt-3 rounded-md border border-slate-200 bg-white p-3"
+                    key={match.otherSubmissionId}
+                  >
+                    <p className="font-semibold text-slate-900">
+                      {match.applicationCode} · {match.projectTitle}
+                    </p>
+                    <p className="mt-1">
+                      Sinyal düzeyi:{" "}
+                      {match.combinedScore >= SIMILARITY_HIGH_THRESHOLD
+                        ? "Yüksek"
+                        : match.combinedScore >= SIMILARITY_MEDIUM_THRESHOLD
+                          ? "Orta"
+                          : "Düşük"}
+                      {match.exactDocumentMatch ? " · Birebir belge eşleşmesi" : ""}
+                    </p>
+                    <p className="mt-1 text-xs">
+                      Lexical katkı: {match.lexicalScore.toFixed(2)} · Semantik katkı:{" "}
+                      {match.semanticScore === null ? "yok" : match.semanticScore.toFixed(2)}
+                    </p>
+                    {match.sectionMatches.map((section) => (
+                      <div
+                        className="mt-3 grid gap-2 lg:grid-cols-2"
+                        key={`${section.sectionKey}-${section.otherSectionKey}`}
+                      >
+                        <blockquote className="border-l-2 border-blue-300 pl-2">
+                          <span className="font-semibold">
+                            {section.sectionTitle} · Sayfa {section.sourcePage}
+                          </span>
+                          <br />“{section.sourceExcerpt}”
+                        </blockquote>
+                        <blockquote className="border-l-2 border-amber-300 pl-2">
+                          <span className="font-semibold">
+                            {section.otherSectionTitle} · Sayfa {section.otherPage}
+                          </span>
+                          <br />“{section.otherExcerpt}”
+                        </blockquote>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                {check.details.level === "HIGH" ? (
+                  <p className="mt-3 font-semibold text-amber-800">Uzman incelemesi önerilir.</p>
+                ) : null}
+                <p className="mt-2 font-medium text-slate-700">
+                  Benzerlik bir inceleme sinyalidir; nihai yarışma kararı değildir.
+                </p>
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
@@ -207,11 +277,13 @@ function AnalysisStatus({
   return (
     <div className="text-xs text-emerald-800">
       <p className="font-semibold">
-        {run.stage === "SEMANTIC_CHECKS"
-          ? "Kanıta dayalı analiz tamamlandı"
-          : hasPrechecks
-            ? "Deterministik ön kontroller tamamlandı"
-            : "Metin çıkarımı tamamlandı"}
+        {run.stage === "SIMILARITY_CHECKS"
+          ? "Benzerlik sinyalleriyle analiz tamamlandı"
+          : run.stage === "SEMANTIC_CHECKS"
+            ? "Kanıta dayalı analiz tamamlandı"
+            : hasPrechecks
+              ? "Deterministik ön kontroller tamamlandı"
+              : "Metin çıkarımı tamamlandı"}
       </p>
       <p className="mt-1 text-slate-600">
         {run.extraction.pageCount} sayfa · {run.extraction.characterCount} karakter

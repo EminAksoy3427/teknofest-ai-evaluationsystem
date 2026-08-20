@@ -21,6 +21,25 @@
       "bucket_name": "teknofest-ai-evaluationsystem-documents"
     }
   ],
+  // P4-01B semantic similarity bindings. Deliberately NOT enabled yet.
+  //
+  // Workers AI and Vectorize have no local emulation: declaring either binding switches
+  // `wrangler dev` / the Vite plugin into remote proxy mode, which requires a registered
+  // workers.dev subdomain, breaks every local smoke gate, and would issue real billable Workers AI
+  // calls from a developer machine. The binding is also useless until the remote Vectorize index
+  // exists, because its dimension and distance metric are immutable after creation.
+  //
+  // Enable the block below in the same change that provisions the remote index (see
+  // docs/architecture/similarity.md, "Uzak sağlama"). Until then similarity runs lexical-only and
+  // the SIMILARITY check reports `semanticStatus: "DISABLED"`.
+  //
+  // "ai": { "binding": "AI" },
+  // "vectorize": [
+  //   {
+  //     "binding": "SIMILARITY_VECTORS",
+  //     "index_name": "teknofest-ai-evaluationsystem-similarity"
+  //   }
+  // ],
   "workflows": [
     {
       "binding": "SUBMISSION_ANALYSIS",

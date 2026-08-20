@@ -10,11 +10,12 @@ const migrations = readdirSync(migrationDirectory)
   .filter((candidate) => candidate.endsWith(".sql"))
   .sort();
 
-assert.equal(migrations.length, 10, "P3-02 must extend the unchanged 0000-0007 chain");
+assert.equal(migrations.length, 11, "P4-01A must extend the unchanged 0000-0009 chain");
 assert.ok(migrations[6]?.startsWith("0006_"));
 assert.ok(migrations[7]?.startsWith("0007_"));
 assert.ok(migrations[8]?.startsWith("0008_"));
 assert.ok(migrations[9]?.startsWith("0009_"));
+assert.ok(migrations[10]?.startsWith("0010_"));
 
 function apply(database, filenames) {
   for (const filename of filenames) {

@@ -52,11 +52,18 @@ Node sunucusu veya mikroservis yoktur.
   ortamdan gelir ve koşu başında prompt sürümüyle birlikte sabitlenir.
 - **Workflows:** `SUBMISSION_ANALYSIS` yerel Workflow'u sayfa koruyan PDF metin çıkarımını ve
   P3-01 deterministik dil/yapı/başlık ön kontrollerini retry/idempotency sınırıyla orkestre eder.
-  Ardından kanıt doğrulamalı bölüm içeriği ve kategori uyumu semantik kontrollerini çalıştırır.
-- **Vectorize:** Onaylanmış kullanım senaryosu oluştuğunda benzerlik/erişim indeksi.
+  Ardından kanıt doğrulamalı bölüm içeriği ve kategori uyumu semantik kontrollerini, son olarak
+  `SIMILARITY_CHECKS` aşamasında deterministik lexical benzerlik sinyalini çalıştırır.
+- **Workers AI:** P4-01B çok dilli gömme adaptörü uygulanmıştır (`@cf/baai/bge-m3`, 1024 boyut,
+  ortamdan yapılandırılabilir). Binding henüz etkin değildir ve hiçbir Workers AI çağrısı
+  yapılmamıştır.
+- **Vectorize:** P4-01B production adaptörü, deterministik vektör kimliği ve yarışma kapsamlı
+  metadata filtresiyle uygulanmıştır. Uzak index oluşturulmamıştır; boyut ve cosine metriği index
+  oluşturulurken sabitlenir ve sonradan değiştirilemez.
 
-D1, özel yerel R2 ve yerel Workflow sınırları uygulanmıştır. OpenAI ve Vectorize sonraki
-milestone'lara planlanmıştır; uzak/production kaynak kurulumu yapılmamıştır.
+D1, özel yerel R2 ve yerel Workflow sınırları uygulanmıştır. OpenAI Responses adaptörü
+uygulanmıştır. Workers AI ve Vectorize adaptörleri uygulanmış ancak uzak doğrulama bekliyor;
+uzak/production kaynak kurulumu yapılmamıştır.
 
 ## 7. Güvenlik sınırı
 
@@ -94,11 +101,47 @@ Workflow daha sonra koşuda sabitlenmiş TemplateVersion profilini kullanarak ba
 zorunlu başlık varlığı ve ihtiyatlı bölüm sırası/tekrar sinyallerini üretir. Küçük, doğrulanmış
 `AnalysisCheck` sonuçları D1'de koşu ve tür başına tek satır olarak tutulur. Kontrol `FAIL`
 olabilirken başarılı çalışan pipeline `AnalysisRun SUCCEEDED` kalır. Başlık varlığı bölümün
-beklenen semantik içeriğini taşıdığını kanıtlamaz; semantik içerik kontrolü ertelenmiştir.
+beklenen semantik içeriğini taşıdığını kanıtlamaz; bu nedenle P3-02 kanıt doğrulamalı bölüm
+içeriği ve kategori uyumu kontrollerini ayrıca çalıştırır.
 
-## 10. Bilinçli olarak ertelenenler
+## 10. Benzerlik sinyali
+
+P4-01A ile uygulananlar:
+
+- koşuda sabitlenmiş şablon başlıklarına göre bölümlenmiş, 5-token shingle Jaccard'ına dayanan
+  deterministik ve açıklanabilir lexical benzerlik
+- `SimilarityPair` kalıcılığı: yarışma, canonical başvuru çifti ve iki immutable AnalysisRun
+  kimliğiyle tarihsel gözlem satırları
+- pinlenmiş kaynak SHA-256 eşitliğinden türeyen birebir belge (`exactDocumentMatch`) sinyali
+- aynı-yarışma izolasyonu: aday sorgusu, kalıcılık, API ve UI dahil her yolda zorunlu
+- `LEXICAL_ONLY` production modu ve nullable semantik skor taşıyan hibrit skor sözleşmesi
+- `SimilarityVectorProvider` sağlayıcı soyutlaması; fake in-memory uygulama yalnız test fixture'ı
+
+P4-01B ile uygulananlar:
+
+- Workers AI çok dilli gömme sağlayıcısı ve doğrulanmış yanıt sözleşmesi
+- Vectorize production adaptörü, deterministik vektör kimliği ve `competitionId` metadata filtresi
+- aday AnalysisRun kümesine sabitlenmiş semantik en yakın komşu (topK) araması
+- lexical + semantik hibrit skoru ve iki katkıyı açıklayan bölüm kanıtı
+- şeffaf degraded lexical mod (`semanticStatus`)
+
+P4-01B'de uzak doğrulama bekleyenler:
+
+- gerçek Workers AI gömme çağrısı ve gerçek çıktı boyutu
+- gerçek Vectorize index'i, gerçek cosine skor aralığı ve eventual-consistency gecikmesi
+
+Hâlâ ertelenenler: eşik kalibrasyonu, toplam risk skoru ve risk kuyruğu.
+
+`SimilarityPair` tarihsel bir gözlemdir: yarışma kimliği, başvuru kimlikleri ve AnalysisRun
+kimlikleri değişmezdir. Yeni bir AnalysisRun eski satırı güncellemez, yeni bir tarihsel satır
+üretir. Aynı koşu çiftinin retry'ı yalnız ölçülen değerleri uzlaştırır. Benzerlik bir inceleme
+sinyalidir; intihal, kopya veya nihai karar değildir ve `FAIL` üretmez. Ayrıntılar
+`docs/architecture/similarity.md` içindedir.
+
+## 11. Bilinçli olarak ertelenenler
 
 Başvuru PDF depolaması özel R2 ve D1 metadata ayrımıyla uygulanmıştır; ayrıntılar
 `docs/architecture/document-storage.md` içindedir. Hakem ataması, yarışmacı sahipliği, global
-yönetim, semantik değerlendirme, production OAuth/D1, uzak D1/R2/Workflow kaynağı, OpenAI
-entegrasyonu, OCR, benzerlik analizi, Vectorize ve diğer iş özellikleri ertelenmiştir.
+yönetim, production OAuth/D1, uzak D1/R2/Workflow kaynağı, OCR, gerçek Vectorize/Workers AI
+semantik benzerliği (P4-01B), rubrik yapay zekâsı, geri bildirim üretimi, hakem çalışma alanı ve
+risk kuyruğu gibi diğer iş özellikleri ertelenmiştir.

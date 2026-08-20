@@ -15,6 +15,8 @@
     "smoke:p2-03": "node ./scripts/historical-stage-smoke.mjs p2-03",
     "smoke:p3-01": "node ./scripts/historical-stage-smoke.mjs p3-01",
     "smoke:p3-02": "vitest run src/server/analysis/document-extraction.test.ts src/server/analysis/process-analysis-run.test.ts src/server/analysis/structural-checks.test.ts src/server/analysis/semantic-checks.test.ts src/server/analysis/submission-analysis-workflow.test.ts",
+    "smoke:p4-01a": "vitest run src/server/analysis/similarity.test.ts src/server/analysis/similarity-persistence.test.ts src/server/analysis/similarity-candidate-cap.test.ts src/server/analysis/submission-analysis-workflow.test.ts src/server/analysis-routes.test.ts src/client/submissions-page.test.tsx",
+    "smoke:p4-01b": "vitest run src/server/analysis/semantic-similarity-provider.test.ts src/server/analysis/semantic-similarity-integration.test.ts src/server/analysis/similarity.test.ts src/server/analysis/similarity-persistence.test.ts src/server/analysis/similarity-candidate-cap.test.ts src/server/analysis/submission-analysis-workflow.test.ts src/server/analysis-routes.test.ts src/client/submissions-page.test.tsx",
     "cf:typegen": "wrangler types"
   },
   "dependencies": {
