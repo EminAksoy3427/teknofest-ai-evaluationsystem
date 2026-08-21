@@ -10,6 +10,7 @@ export const ANALYSIS_STAGE_VALUES = [
   "STRUCTURAL_CHECKS",
   "SEMANTIC_CHECKS",
   "SIMILARITY_CHECKS",
+  "RUBRIC_EVALUATION",
 ] as const;
 
 export const ANALYSIS_CHECK_TYPE_VALUES = [
@@ -19,6 +20,7 @@ export const ANALYSIS_CHECK_TYPE_VALUES = [
   "SECTION_CONTENT",
   "CATEGORY_FIT",
   "SIMILARITY",
+  "RUBRIC_EVALUATION",
 ] as const;
 
 export const ANALYSIS_CHECK_STATUS_VALUES = ["PASS", "WARN", "FAIL"] as const;
@@ -68,6 +70,16 @@ export const MAX_SEMANTIC_EVIDENCE_ITEMS = 5;
 export const MAX_SEMANTIC_EVIDENCE_EXCERPT_CHARACTERS = 400;
 export const MAX_SEMANTIC_REASON_CHARACTERS = 1_000;
 export const MAX_SEMANTIC_SIGNAL_ITEMS = 12;
+// Rubric criteria are evaluated holistically against a bounded whole-document sample, the same
+// rationale CATEGORY_FIT uses, rather than per-section like SECTION_CONTENT.
+export const MAX_RUBRIC_CRITERIA = 100;
+export const MAX_RUBRIC_SAMPLE_PAGES = 12;
+export const MAX_RUBRIC_SAMPLE_CHARACTERS = 24_000;
+// Reviewer-facing text stays short: a rubric reason is a one- or two-sentence note, not a report.
+export const MAX_RUBRIC_REASON_CHARACTERS = 600;
+export const MAX_RUBRIC_MISSING_POINTS = 5;
+export const MAX_RUBRIC_MISSING_POINT_CHARACTERS = 240;
+export const MAX_RUBRIC_FEEDBACK_CHARACTERS = 1_200;
 
 export const CategorySnapshotSchema = z
   .object({
@@ -312,6 +324,49 @@ export const CategoryFitCheckDetailsSchema = z
   .strict();
 export type CategoryFitCheckDetails = z.infer<typeof CategoryFitCheckDetailsSchema>;
 
+// A criterion is identified only by its pinned `criterionId`/`code`; the model never supplies
+// `maxScore` here, and the server-computed `suggestedScore` is validated against `0..maxScore`
+// before this schema ever sees it — out of range is rejected, never clamped or trusted directly
+// from the provider.
+export const RubricCriterionSuggestionSchema = z
+  .object({
+    criterionId: z.string().min(1),
+    code: StableKeySchema,
+    title: z.string().min(1).max(160),
+    order: z.number().int().positive().max(1_000),
+    suggestedScore: z.number().int().nonnegative(),
+    maxScore: z.number().int().positive(),
+    reason: z.string().min(1).max(MAX_RUBRIC_REASON_CHARACTERS),
+    evidenceStrength: SemanticEvidenceStrengthSchema,
+    evidence: z.array(SemanticEvidenceSchema).max(MAX_SEMANTIC_EVIDENCE_ITEMS),
+    missingPoints: z
+      .array(z.string().min(1).max(MAX_RUBRIC_MISSING_POINT_CHARACTERS))
+      .max(MAX_RUBRIC_MISSING_POINTS),
+  })
+  .strict()
+  .refine((value) => value.suggestedScore <= value.maxScore, {
+    message: "Önerilen puan kriterin azami puanını aşamaz.",
+    path: ["suggestedScore"],
+  });
+export type RubricCriterionSuggestion = z.infer<typeof RubricCriterionSuggestionSchema>;
+
+export const RubricEvaluationCheckDetailsSchema = z
+  .object({
+    checkType: z.literal("RUBRIC_EVALUATION"),
+    criteria: z.array(RubricCriterionSuggestionSchema).max(MAX_RUBRIC_CRITERIA),
+    // Aggregate totals are always computed server-side from the validated per-criterion scores;
+    // no total returned by the model is ever trusted or persisted.
+    suggestedTotalScore: z.number().int().nonnegative(),
+    maxTotalScore: z.number().int().nonnegative(),
+    feedbackSummary: z.string().min(1).max(MAX_RUBRIC_FEEDBACK_CHARACTERS),
+  })
+  .strict()
+  .refine((value) => value.suggestedTotalScore <= value.maxTotalScore, {
+    message: "Toplam önerilen puan azami toplamı aşamaz.",
+    path: ["suggestedTotalScore"],
+  });
+export type RubricEvaluationCheckDetails = z.infer<typeof RubricEvaluationCheckDetailsSchema>;
+
 export const AnalysisCheckDetailsSchema = z.discriminatedUnion("checkType", [
   LanguageCheckDetailsSchema,
   TemplateStructureCheckDetailsSchema,
@@ -319,6 +374,7 @@ export const AnalysisCheckDetailsSchema = z.discriminatedUnion("checkType", [
   SectionContentCheckDetailsSchema,
   CategoryFitCheckDetailsSchema,
   SimilarityCheckDetailsSchema,
+  RubricEvaluationCheckDetailsSchema,
 ]);
 export type AnalysisCheckDetails = z.infer<typeof AnalysisCheckDetailsSchema>;
 
@@ -391,6 +447,18 @@ export const AnalysisCheckResponseSchema = z.discriminatedUnion("type", [
       status: AnalysisCheckStatusSchema,
       summary: z.string().min(1).max(500),
       details: SimilarityCheckDetailsSchema,
+      createdAt: z.number().int().nonnegative(),
+      updatedAt: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z
+    .object({
+      id: z.string().min(1),
+      analysisRunId: z.string().min(1),
+      type: z.literal("RUBRIC_EVALUATION"),
+      status: AnalysisCheckStatusSchema,
+      summary: z.string().min(1).max(500),
+      details: RubricEvaluationCheckDetailsSchema,
       createdAt: z.number().int().nonnegative(),
       updatedAt: z.number().int().nonnegative(),
     })

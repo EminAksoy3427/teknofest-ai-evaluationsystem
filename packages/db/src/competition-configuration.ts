@@ -560,7 +560,7 @@ export async function activateTemplateVersion(
   return mapTemplate(activated);
 }
 
-async function listCriteriaForRubric(binding: D1Database, rubricVersionId: string) {
+export async function listCriteriaForRubric(binding: D1Database, rubricVersionId: string) {
   const rows = await createDb(binding)
     .select()
     .from(criteria)

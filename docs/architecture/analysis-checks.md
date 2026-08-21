@@ -58,6 +58,9 @@ beş oluşumla sınırlıdır. Tam rapor metni yalnız özel R2 artifact'inde ka
 - `SECTION_CONTENT`: bölüm gövdesi için kanıta dayalı semantik sinyal
 - `CATEGORY_FIT`: sabitlenmiş kategori snapshot'ına karşı semantik sinyal
 - `SIMILARITY`: canonical aynı-yarışma çiftlerinde review-only lexical sinyal
+- `RUBRIC_EVALUATION`: sabitlenmiş `RubricVersion` kriterlerine karşı kanıta dayalı AI puan önerisi
+  ve bundan türetilen deterministik geliştirme geri bildirimi; ayrıntılar
+  `docs/architecture/rubric-evaluation.md` içindedir
 
-Başlık varlığı semantik içerik uygunluğu değildir. Rubrik yapay zekâsı, feedback ve diğer
-Problem 4 kontrolleri sonraki milestone'lara ertelenmiştir.
+Başlık varlığı semantik içerik uygunluğu değildir. Diğer Problem 4 kontrolleri (hakem çalışma
+alanı, risk kuyruğu) sonraki milestone'lara ertelenmiştir.

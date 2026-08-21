@@ -19,6 +19,7 @@ export {
   listAnalysisRuns,
   markAnalysisRunFailed,
   markAnalysisRunProcessing,
+  markAnalysisRunRubricEvaluation,
   markAnalysisRunSemanticChecks,
   markAnalysisRunSimilarityChecks,
   markAnalysisRunStructuralChecks,
@@ -42,6 +43,7 @@ export {
   findCompetition,
   getCompetitionConfiguration,
   listCategories,
+  listCriteriaForRubric,
   listRubricVersions,
   listTemplateVersions,
   replaceDraftCriteria,
@@ -57,6 +59,13 @@ export {
   listMembershipSummaries,
   type MembershipSummaryList,
 } from "./competition-membership";
+export {
+  listRubricSuggestionsForRun,
+  type RubricSuggestionRepository,
+  type RubricSuggestionWriteInput,
+  rubricSuggestionRepository,
+  upsertRubricSuggestions,
+} from "./rubric-suggestion";
 export * from "./schema";
 export {
   type CanonicalSimilarityPairIdentity,

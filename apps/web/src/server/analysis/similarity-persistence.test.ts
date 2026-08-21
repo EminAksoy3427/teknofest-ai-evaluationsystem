@@ -453,7 +453,14 @@ describe("generated migration chain", () => {
     expect(cleanTables).toContain("similarity_pair");
     clean.close();
 
-    const upgraded = createLocalD1(migrationChain.length - 1);
+    // The boundary is the P4-01A migration that first creates `similarity_pair`, found by name
+    // rather than assumed to be the chain's last migration, so later milestones can extend the
+    // chain without silently changing what this upgrade test proves.
+    const similarityPairMigrationIndex = migrationChain.findIndex((migration) =>
+      migration.name.startsWith("0010_"),
+    );
+    expect(similarityPairMigrationIndex).toBeGreaterThan(0);
+    const upgraded = createLocalD1(similarityPairMigrationIndex);
     expect(
       upgraded.query<{ count: number }>(
         "SELECT count(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'similarity_pair'",
@@ -472,7 +479,7 @@ describe("generated migration chain", () => {
       ],
       [{ id: "submission-a", competition: "a" }],
     );
-    for (const migration of migrationChain.slice(migrationChain.length - 1)) {
+    for (const migration of migrationChain.slice(similarityPairMigrationIndex)) {
       upgraded.exec(migration.sql);
     }
     expect(

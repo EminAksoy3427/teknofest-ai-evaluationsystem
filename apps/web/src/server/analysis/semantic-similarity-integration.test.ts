@@ -144,6 +144,7 @@ function scenario(fixtures: readonly RunFixture[], sourceRunId: string): Scenari
         sourceStorageKey: "source.pdf",
         documentArtifactKey: `${source.runId}.json`,
         templateVersionId: `template-${source.competition}`,
+        rubricVersionId: `rubric-${source.competition}`,
         templateStructuralProfile: PROFILE,
         projectTitle: "Kaynak",
         aiProvider: "OPENAI",

@@ -60,6 +60,7 @@ function repositoryStub(
       sourceStorageKey: "private/source.pdf",
       documentArtifactKey: null,
       templateVersionId: "template-v1",
+      rubricVersionId: "rubric-v1",
       templateStructuralProfile: {
         expectedLanguage: "tr",
         sections: [
@@ -87,6 +88,7 @@ function repositoryStub(
     listAnalysisRuns: async () => [run],
     markAnalysisRunFailed: async () => undefined,
     markAnalysisRunProcessing: async () => undefined,
+    markAnalysisRunRubricEvaluation: async () => undefined,
     markAnalysisRunSemanticChecks: async () => undefined,
     markAnalysisRunSimilarityChecks: async () => undefined,
     markAnalysisRunStructuralChecks: async () => undefined,

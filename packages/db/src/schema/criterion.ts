@@ -26,6 +26,8 @@ export const criteria = sqliteTable(
   },
   (table) => [
     uniqueIndex("criterion_rubric_code_unique").on(table.rubricVersionId, table.code),
+    // Parent key for RubricSuggestion's pinned-RubricVersion ownership composite foreign key.
+    uniqueIndex("criterion_rubric_version_scope_unique").on(table.rubricVersionId, table.id),
     index("criterion_rubric_version_id_index").on(table.rubricVersionId),
     check("criterion_max_score_check", sql`${table.maxScore} > 0`),
     check(

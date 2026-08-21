@@ -3,10 +3,11 @@
 ## Sınır ve yapılandırma
 
 `packages/ai`, semantik domain ile sağlayıcı SDK'sı arasındaki sınırdır. Uygulama yalnız
-`AIProvider.analyzeSectionContent` ve `analyzeCategoryFit` sözleşmelerini bilir; OpenAI istemcisi
-Workflow/server sınırında oluşturulur ve tarayıcı modüllerine aktarılmaz. `OPENAI_API_KEY` yalnız
-sunucu sırrıdır. GPT-5 ailesindeki gerçek `OPENAI_MODEL` ortamdan okunur. Sağlayıcı, model kimliği
-ve `semantic-checks/v1` prompt paketi her `AnalysisRun` oluşturulurken sabitlenir.
+`AIProvider.analyzeSectionContent`, `analyzeCategoryFit` ve `evaluateRubric` sözleşmelerini bilir;
+OpenAI istemcisi Workflow/server sınırında oluşturulur ve tarayıcı modüllerine aktarılmaz.
+`OPENAI_API_KEY` yalnız sunucu sırrıdır. GPT-5 ailesindeki gerçek `OPENAI_MODEL` ortamdan okunur.
+Sağlayıcı, model kimliği ve prompt paketi sürümü (`semantic-checks/v2`, P4-02 ile rubrik
+değerlendirme promptunu da içerir) her `AnalysisRun` oluşturulurken sabitlenir.
 
 OpenAI adaptörü resmi JavaScript SDK'sıyla Responses API kullanır. Her istek `store:false`, sınırlı
 timeout ve strict JSON Schema Structured Outputs taşır. Araç, background mode, conversation,

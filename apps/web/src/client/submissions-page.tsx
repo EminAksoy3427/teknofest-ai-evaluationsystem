@@ -66,6 +66,7 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
     SECTION_CONTENT: "Bölüm İçeriği",
     CATEGORY_FIT: "Kategori Uyumu",
     SIMILARITY: "Benzerlik",
+    RUBRIC_EVALUATION: "AI Rubrik Önerisi",
   } as const;
   const sectionPresence = run.checks.find((check) => check.type === "SECTION_PRESENCE");
   const sectionTitles = new Map(
@@ -238,6 +239,57 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
                 </p>
               </div>
             ) : null}
+            {check.type === "RUBRIC_EVALUATION" ? (
+              <div className="mt-3 text-slate-600">
+                <p className="font-semibold text-blue-900">
+                  Toplam AI önerisi: {check.details.suggestedTotalScore} /{" "}
+                  {check.details.maxTotalScore}
+                </p>
+                <p className="mt-1 font-medium text-slate-700">
+                  AI önerisi · Hakem kararı değildir. Nihai puanı yalnız hakem belirler.
+                </p>
+                <div className="mt-3 space-y-3">
+                  {check.details.criteria.map((criterion) => (
+                    <div
+                      className="rounded-md border border-slate-200 bg-white p-3"
+                      key={criterion.criterionId}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-semibold text-slate-900">{criterion.title}</span>
+                        <span className="font-semibold text-blue-800">
+                          {criterion.suggestedScore} / {criterion.maxScore} (AI önerisi)
+                        </span>
+                      </div>
+                      <EvidenceStrength strength={criterion.evidenceStrength} />
+                      <p className="mt-1 leading-5 text-slate-600">{criterion.reason}</p>
+                      {criterion.evidence.map((evidence) => (
+                        <blockquote
+                          className="mt-2 border-l-2 border-blue-300 pl-2"
+                          key={`${evidence.page}-${evidence.excerpt}`}
+                        >
+                          “{evidence.excerpt}”{" "}
+                          <span className="font-semibold">— Sayfa {evidence.page}</span>
+                        </blockquote>
+                      ))}
+                      {criterion.missingPoints.length > 0 ? (
+                        <ul className="mt-2 list-disc space-y-1 pl-5 text-amber-800">
+                          {criterion.missingPoints.map((point) => (
+                            <li key={point}>{point}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-3">
+                  <p className="font-semibold text-blue-900">Geliştirme önerisi (AI önerisi)</p>
+                  <p className="mt-1 text-slate-700">{check.details.feedbackSummary}</p>
+                </div>
+                <p className="mt-2 font-medium text-slate-700">
+                  Rubrik puanları bir AI önerisidir; hakem kararı veya nihai puan değildir.
+                </p>
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
@@ -277,13 +329,15 @@ function AnalysisStatus({
   return (
     <div className="text-xs text-emerald-800">
       <p className="font-semibold">
-        {run.stage === "SIMILARITY_CHECKS"
-          ? "Benzerlik sinyalleriyle analiz tamamlandı"
-          : run.stage === "SEMANTIC_CHECKS"
-            ? "Kanıta dayalı analiz tamamlandı"
-            : hasPrechecks
-              ? "Deterministik ön kontroller tamamlandı"
-              : "Metin çıkarımı tamamlandı"}
+        {run.stage === "RUBRIC_EVALUATION"
+          ? "Rubrik önerisiyle analiz tamamlandı"
+          : run.stage === "SIMILARITY_CHECKS"
+            ? "Benzerlik sinyalleriyle analiz tamamlandı"
+            : run.stage === "SEMANTIC_CHECKS"
+              ? "Kanıta dayalı analiz tamamlandı"
+              : hasPrechecks
+                ? "Deterministik ön kontroller tamamlandı"
+                : "Metin çıkarımı tamamlandı"}
       </p>
       <p className="mt-1 text-slate-600">
         {run.extraction.pageCount} sayfa · {run.extraction.characterCount} karakter

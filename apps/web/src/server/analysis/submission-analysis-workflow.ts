@@ -3,6 +3,7 @@ import { OpenAIProvider } from "@teknofest-ai/ai";
 import { analysisRunRepository } from "@teknofest-ai/db";
 import { DocumentProcessingError } from "./document-extraction";
 import { encodeSafeFailure, processAnalysisRun, safeAnalysisFailure } from "./process-analysis-run";
+import { evaluateRubric, persistRubricEvaluation } from "./rubric-checks";
 import { analyzeCategoryFit, analyzeSectionContent, persistSemanticCheck } from "./semantic-checks";
 import { processSimilarityChecks, similarityStageDependencies } from "./similarity";
 import {
@@ -173,6 +174,29 @@ export class SubmissionAnalysisWorkflow extends WorkflowEntrypoint<
         } catch (error) {
           throw encodeSafeFailure(error);
         }
+      });
+
+      await step.do("rubric-evaluation-stage", DATABASE_STEP, async () => {
+        await analysisRunRepository.markAnalysisRunRubricEvaluation(this.env.DB, analysisRunId);
+        return { analysisRunId, stage: "RUBRIC_EVALUATION" as const };
+      });
+
+      const rubricResult = await step.do("rubric-evaluation-api", SEMANTIC_API_STEP, async () => {
+        try {
+          return await evaluateRubric(
+            this.env.DB,
+            this.env.DOCUMENTS,
+            analysisRunId,
+            await providerForRun(this.env, analysisRunId),
+          );
+        } catch (error) {
+          throw encodeSafeFailure(error);
+        }
+      });
+
+      await step.do("rubric-evaluation-persist", DATABASE_STEP, async () => {
+        await persistRubricEvaluation(this.env.DB, analysisRunId, rubricResult);
+        return { analysisRunId, type: "RUBRIC_EVALUATION" as const };
       });
 
       await step.do("analysis-run-success", DATABASE_STEP, async () => {

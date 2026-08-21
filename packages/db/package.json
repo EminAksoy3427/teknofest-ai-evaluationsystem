@@ -12,7 +12,7 @@
     "auth:schema:generate": "auth generate --config=better-auth.config.ts --output=src/schema/auth.ts --yes",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "smoke:p2-01": "node ./scripts/p2-01-smoke.mjs",
-    "test": "node ./scripts/competition-member-schema.test.mjs && node ./scripts/competition-configuration-schema.test.mjs && node ./scripts/submission-schema.test.mjs && node ./scripts/analysis-run-schema.test.mjs && node ./scripts/similarity-pair-schema.test.mjs",
+    "test": "node ./scripts/competition-member-schema.test.mjs && node ./scripts/competition-configuration-schema.test.mjs && node ./scripts/submission-schema.test.mjs && node ./scripts/analysis-run-schema.test.mjs && node ./scripts/similarity-pair-schema.test.mjs && node ./scripts/rubric-suggestion-schema.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

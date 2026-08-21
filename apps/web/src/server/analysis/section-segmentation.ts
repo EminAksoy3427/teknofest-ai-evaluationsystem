@@ -1,9 +1,16 @@
-import type { AISectionInput, CategoryFitAnalysisInput } from "@teknofest-ai/ai";
+import type {
+  AISectionInput,
+  CategoryFitAnalysisInput,
+  RubricCriterionInput,
+  RubricEvaluationAnalysisInput,
+} from "@teknofest-ai/ai";
 import {
   type CategorySnapshot,
   type DocumentExtractionArtifact,
   MAX_CATEGORY_SAMPLE_CHARACTERS,
   MAX_CATEGORY_SAMPLE_PAGES,
+  MAX_RUBRIC_SAMPLE_CHARACTERS,
+  MAX_RUBRIC_SAMPLE_PAGES,
   MAX_SEMANTIC_SECTION_CHARACTERS,
   MAX_SEMANTIC_SECTION_PAGES,
   type SemanticSourceCoverage,
@@ -175,6 +182,27 @@ export function categoryProviderInput(
   return {
     category,
     projectTitle,
+    sourceCoverage: bounded.sampled ? "SAMPLED" : "FULL",
+    pages: bounded.pages,
+  };
+}
+
+/**
+ * Rubric criteria are evaluated holistically against a bounded whole-document sample, the same
+ * shape CATEGORY_FIT uses, rather than per-section: a criterion is not reliably mapped to one
+ * template section.
+ */
+export function rubricProviderInput(
+  artifact: DocumentExtractionArtifact,
+  criteria: readonly RubricCriterionInput[],
+): RubricEvaluationAnalysisInput {
+  const bounded = boundPages(
+    artifact.pages.map((page) => ({ page: page.pageNumber, text: page.text })),
+    MAX_RUBRIC_SAMPLE_PAGES,
+    MAX_RUBRIC_SAMPLE_CHARACTERS,
+  );
+  return {
+    criteria: [...criteria],
     sourceCoverage: bounded.sampled ? "SAMPLED" : "FULL",
     pages: bounded.pages,
   };

@@ -2,12 +2,16 @@
 
 ## Sınır
 
-Pipeline `INGEST_AND_EXTRACT → STRUCTURAL_CHECKS → SEMANTIC_CHECKS → SIMILARITY_CHECKS` aşamalarını uygular. PDF özel R2 nesnesinden
-okunur, sayfa kimliği korunarak metin çıkarılır ve sürümlü `document-extraction/v1` artifact'i
-özel R2'ye yazılır. Ardından sabitlenmiş şablon sürümüyle deterministik dil, şablon yapısı ve
-zorunlu başlık varlığı kontrolleri çalışır. Ardından araçsız OpenAI Responses çağrılarıyla
-`SECTION_CONTENT` ve `CATEGORY_FIT` karar-destek sinyalleri üretilir. Son olarak aynı-yarışma
-bounded adaylarında lexical benzerlik sinyali üretilir. Rubrik puanlama ve geri bildirim yoktur.
+Pipeline `INGEST_AND_EXTRACT → STRUCTURAL_CHECKS → SEMANTIC_CHECKS → SIMILARITY_CHECKS →
+RUBRIC_EVALUATION` aşamalarını uygular. PDF özel R2 nesnesinden okunur, sayfa kimliği korunarak
+metin çıkarılır ve sürümlü `document-extraction/v1` artifact'i özel R2'ye yazılır. Ardından
+sabitlenmiş şablon sürümüyle deterministik dil, şablon yapısı ve zorunlu başlık varlığı
+kontrolleri çalışır. Ardından araçsız OpenAI Responses çağrılarıyla `SECTION_CONTENT` ve
+`CATEGORY_FIT` karar-destek sinyalleri üretilir. Ardından aynı-yarışma bounded adaylarında lexical
+benzerlik sinyali üretilir. Son olarak sabitlenmiş `RubricVersion` kriterlerine karşı tek bounded
+AI çağrısıyla kanıta dayalı rubrik puan önerisi ve bu önerilerden türetilen deterministik geliştirme
+geri bildirimi üretilir (P4-02). Rubrik önerisi bir hakem kararı değildir; ayrıntılar
+`docs/architecture/rubric-evaluation.md` içindedir.
 
 PDF ve çıkarılan metin güvenilmeyen girdidir. İçerik hiçbir zaman yetkilendirme, Workflow
 kimliği, R2 anahtarı, sistem talimatı veya araç çağrısı belirlemez.
@@ -34,10 +38,11 @@ analiz aşamalarının tarihsel girdisini yeniden üretilebilir tutar.
 ## Yaşam döngüsü
 
 Durumlar `QUEUED → PROCESSING → SUCCEEDED | FAILED` biçimindedir. Aşama durumdan ayrıdır ve
-`INGEST_AND_EXTRACT → STRUCTURAL_CHECKS → SEMANTIC_CHECKS → SIMILARITY_CHECKS` ilerler. `SUCCEEDED` yalnız kaynak okuma, SHA-256
-doğrulama, çıkarım, Zod artifact doğrulama, R2 yazımı, altı doğrulanmış kontrolün D1'e yazımı ve
-D1 finalizasyonu tamamlandıktan sonra yazılır. Bir kontrolün `FAIL` olması koşuyu `FAILED`
-yapmaz; bu, analiz mekanizmasının başarıyla olumsuz bir iş bulgusu üretmesidir.
+`INGEST_AND_EXTRACT → STRUCTURAL_CHECKS → SEMANTIC_CHECKS → SIMILARITY_CHECKS →
+RUBRIC_EVALUATION` ilerler. `SUCCEEDED` yalnız kaynak okuma, SHA-256 doğrulama, çıkarım, Zod
+artifact doğrulama, R2 yazımı, yedi doğrulanmış kontrolün D1'e yazımı ve D1 finalizasyonu
+tamamlandıktan sonra yazılır. Bir kontrolün `FAIL` veya rubrik önerisinin düşük/olumsuz olması
+koşuyu `FAILED` yapmaz; bu, analiz mekanizmasının başarıyla bir iş bulgusu/önerisi üretmesidir.
 
 Workflow başlatılamazsa daha önce oluşturulan `QUEUED` satır `WORKFLOW_START_FAILED` ile
 `FAILED` yapılır. Böylece bağlı Workflow'u olmayan süresiz kuyruk kaydı bırakılmaz. Bu sınır
@@ -55,7 +60,9 @@ simülasyonunu kullanır. Uygulanan dayanıklı adımlar:
 4. sabitlenmiş şablon ve artifact ile yapısal kontrolleri koşu/tür anahtarında upsert et,
 5. semantik kontrolleri ayrı provider/persistence adımlarında kalıcılaştır,
 6. bounded aynı-yarışma adaylarıyla lexical `SIMILARITY` kontrolü ve canonical pair'leri upsert et,
-7. altı kontrol kalıcıysa koşuyu idempotent biçimde `SUCCEEDED` yap.
+7. sabitlenmiş `RubricVersion` kriterlerine karşı tek bounded çağrıyla `RUBRIC_EVALUATION`
+   kontrolünü ve normalize edilmiş kriter başına öneri satırlarını upsert et,
+8. yedi kontrol kalıcıysa koşuyu idempotent biçimde `SUCCEEDED` yap.
 
 Adımlar sınırlı exponential retry kullanır. Workflow payload'ı yalnız `analysisRunId` taşır.
 Artifact anahtarı `derived/{submissionId}/{analysisRunId}/document.json` biçimindedir; retry

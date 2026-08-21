@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   markStructural: vi.fn(),
   markSemantic: vi.fn(),
   markSimilarity: vi.fn(),
+  markRubric: vi.fn(),
   markSucceeded: vi.fn(),
   markFailed: vi.fn(),
   getContext: vi.fn(),
@@ -14,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   category: vi.fn(),
   persist: vi.fn(),
   similarity: vi.fn(),
+  rubricEvaluate: vi.fn(),
+  rubricPersist: vi.fn(),
 }));
 
 vi.mock("@teknofest-ai/db", () => ({
@@ -22,6 +25,7 @@ vi.mock("@teknofest-ai/db", () => ({
     markAnalysisRunStructuralChecks: mocks.markStructural,
     markAnalysisRunSemanticChecks: mocks.markSemantic,
     markAnalysisRunSimilarityChecks: mocks.markSimilarity,
+    markAnalysisRunRubricEvaluation: mocks.markRubric,
     markAnalysisRunSucceeded: mocks.markSucceeded,
     markAnalysisRunFailed: mocks.markFailed,
     getAnalysisRunExecutionContext: mocks.getContext,
@@ -46,6 +50,10 @@ vi.mock("./semantic-checks", () => ({
 vi.mock("./similarity", () => ({
   processSimilarityChecks: mocks.similarity,
   similarityStageDependencies: () => ({}),
+}));
+vi.mock("./rubric-checks", () => ({
+  evaluateRubric: mocks.rubricEvaluate,
+  persistRubricEvaluation: mocks.rubricPersist,
 }));
 
 import { SubmissionAnalysisWorkflow } from "./submission-analysis-workflow";
@@ -103,6 +111,10 @@ beforeEach(() => {
   });
   mocks.section.mockResolvedValue(sectionCheck);
   mocks.category.mockResolvedValue(categoryCheck);
+  mocks.rubricEvaluate.mockResolvedValue({
+    check: { type: "RUBRIC_EVALUATION", status: "PASS", summary: "Rubrik önerisi.", details: {} },
+    suggestions: [],
+  });
 });
 
 describe("semantic Workflow durability", () => {
@@ -125,13 +137,31 @@ describe("semantic Workflow durability", () => {
       "semantic-category-fit-persist",
       "similarity-checks-stage",
       "similarity-checks",
+      "rubric-evaluation-stage",
+      "rubric-evaluation-api",
+      "rubric-evaluation-persist",
       "analysis-run-success",
     ]);
     expect(mocks.persist).toHaveBeenNthCalledWith(1, expect.anything(), "run-a", sectionCheck);
     expect(mocks.persist).toHaveBeenNthCalledWith(2, expect.anything(), "run-a", categoryCheck);
     expect(mocks.markSucceeded).toHaveBeenCalledOnce();
     expect(mocks.similarity).toHaveBeenCalledOnce();
+    expect(mocks.markRubric).toHaveBeenCalledOnce();
+    expect(mocks.rubricEvaluate).toHaveBeenCalledOnce();
+    expect(mocks.rubricPersist).toHaveBeenCalledOnce();
     expect(mocks.markFailed).not.toHaveBeenCalled();
+  });
+
+  it("fails RUBRIC_EVALUATION when the provider operation cannot execute, without touching earlier persisted checks", async () => {
+    mocks.rubricEvaluate.mockRejectedValue(new Error("rubric unavailable"));
+    const result = await workflow().run(
+      { payload: { analysisRunId: "run-a" } } as never,
+      stepRunner([]) as never,
+    );
+    expect(result).toMatchObject({ status: "FAILED" });
+    expect(mocks.rubricPersist).not.toHaveBeenCalled();
+    expect(mocks.markSucceeded).not.toHaveBeenCalled();
+    expect(mocks.markFailed).toHaveBeenCalledOnce();
   });
 
   it("fails SEMANTIC_CHECKS when the second provider operation cannot execute", async () => {

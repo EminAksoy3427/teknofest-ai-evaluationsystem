@@ -7,9 +7,12 @@ import {
   AICategoryFitOutputSchema,
   type AIProvider,
   AIProviderError,
+  type AIRubricEvaluationOutput,
+  AIRubricEvaluationOutputSchema,
   type AISectionContentOutput,
   AISectionContentOutputSchema,
   type CategoryFitAnalysisInput,
+  type RubricEvaluationAnalysisInput,
   type SectionContentAnalysisInput,
 } from "../contracts";
 import { getSemanticPromptBundle } from "../prompts";
@@ -146,6 +149,22 @@ export class OpenAIProvider implements AIProvider {
       input,
       AICategoryFitOutputSchema,
       "category_fit_result",
+    );
+  }
+
+  async evaluateRubric(input: RubricEvaluationAnalysisInput): Promise<AIRubricEvaluationOutput> {
+    const prompts = getSemanticPromptBundle(this.promptBundleVersion);
+    if (!prompts.rubricEvaluationInstructions) {
+      throw new AIProviderError(
+        "OUTPUT_VALIDATION_FAILED",
+        "Bu koşuda sabitlenmiş prompt paketi rubrik değerlendirmesini desteklemiyor.",
+      );
+    }
+    return this.request(
+      prompts.rubricEvaluationInstructions,
+      input,
+      AIRubricEvaluationOutputSchema,
+      "rubric_evaluation_result",
     );
   }
 }

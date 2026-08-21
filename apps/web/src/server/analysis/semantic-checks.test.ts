@@ -80,6 +80,7 @@ function executionContext(): AnalysisRunExecutionContext {
     sourceStorageKey: "source.pdf",
     documentArtifactKey: "derived/document.json",
     templateVersionId: "template-v1",
+    rubricVersionId: "rubric-v1",
     templateStructuralProfile: profile,
     projectTitle: "Öğrenciler için yapay zekâ",
     aiProvider: "OPENAI",

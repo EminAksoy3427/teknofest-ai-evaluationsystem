@@ -127,6 +127,7 @@ describe("SIMILARITY_CHECKS candidate cap on the real retrieval path", () => {
           sourceStorageKey: "source.pdf",
           documentArtifactKey: "run-source.json",
           templateVersionId: "template-a",
+          rubricVersionId: "rubric-a",
           templateStructuralProfile: sourceProfile,
           projectTitle: "Kaynak",
           aiProvider: "OPENAI",

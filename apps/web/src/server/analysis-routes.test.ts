@@ -1,3 +1,4 @@
+import { SEMANTIC_PROMPT_BUNDLE_VERSION } from "@teknofest-ai/ai";
 import {
   type AnalysisRunRepository,
   AnalysisRunRepositoryError,
@@ -32,7 +33,11 @@ const run = {
   templateVersionId: "template-v1",
   rubricVersionId: "rubric-v1",
   sourceSha256: "a".repeat(64),
-  ai: { provider: "OPENAI", modelId: "gpt-5-test", promptBundleVersion: "semantic-checks/v1" },
+  ai: {
+    provider: "OPENAI",
+    modelId: "gpt-5-test",
+    promptBundleVersion: SEMANTIC_PROMPT_BUNDLE_VERSION,
+  },
   categorySnapshot: {
     id: "category-a",
     name: "Yapay Zekâ",
@@ -62,6 +67,7 @@ function repositoryStub(overrides: Partial<AnalysisRunRepository> = {}): Analysi
       competitionId === "competition-a" && submissionId === "submission-a" ? [run] : [],
     markAnalysisRunFailed: async () => undefined,
     markAnalysisRunProcessing: async () => undefined,
+    markAnalysisRunRubricEvaluation: async () => undefined,
     markAnalysisRunSemanticChecks: async () => undefined,
     markAnalysisRunSimilarityChecks: async () => undefined,
     markAnalysisRunStructuralChecks: async () => undefined,
@@ -148,7 +154,7 @@ describe("analysis run authorization", () => {
       submissionId: "submission-a",
       aiProvider: "OPENAI",
       modelId: "gpt-5-test",
-      promptBundleVersion: "semantic-checks/v1",
+      promptBundleVersion: SEMANTIC_PROMPT_BUNDLE_VERSION,
     });
     const generated = create.mock.calls[0]?.[1].id;
     expect(generated).toMatch(/^[0-9a-f-]{36}$/);

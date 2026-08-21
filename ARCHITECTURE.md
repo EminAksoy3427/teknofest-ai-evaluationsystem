@@ -52,8 +52,10 @@ Node sunucusu veya mikroservis yoktur.
   ortamdan gelir ve koşu başında prompt sürümüyle birlikte sabitlenir.
 - **Workflows:** `SUBMISSION_ANALYSIS` yerel Workflow'u sayfa koruyan PDF metin çıkarımını ve
   P3-01 deterministik dil/yapı/başlık ön kontrollerini retry/idempotency sınırıyla orkestre eder.
-  Ardından kanıt doğrulamalı bölüm içeriği ve kategori uyumu semantik kontrollerini, son olarak
-  `SIMILARITY_CHECKS` aşamasında deterministik lexical benzerlik sinyalini çalıştırır.
+  Ardından kanıt doğrulamalı bölüm içeriği ve kategori uyumu semantik kontrollerini,
+  `SIMILARITY_CHECKS` aşamasında deterministik lexical benzerlik sinyalini ve son olarak
+  `RUBRIC_EVALUATION` aşamasında sabitlenmiş rubrik kriterlerine karşı kanıta dayalı AI puan
+  önerisini ve deterministik geliştirme geri bildirimini çalıştırır (P4-02).
 - **Workers AI:** P4-01B çok dilli gömme adaptörü uygulanmıştır (`@cf/baai/bge-m3`, 1024 boyut,
   ortamdan yapılandırılabilir). P4-01B uzak doğrulaması tamamlandı: gerçek bir Workers AI çağrısı
   modelin döndürdüğü vektör boyutunun gerçekten 1024 olduğunu doğrulamıştır. Worker binding'i
@@ -152,11 +154,32 @@ kimlikleri değişmezdir. Yeni bir AnalysisRun eski satırı güncellemez, yeni 
 sinyalidir; intihal, kopya veya nihai karar değildir ve `FAIL` üretmez. Ayrıntılar
 `docs/architecture/similarity.md` içindedir.
 
-## 11. Bilinçli olarak ertelenenler
+## 11. Rubrik önerisi ve geri bildirim (P4-02)
+
+`RUBRIC_EVALUATION` aşaması, koşuda sabitlenmiş `RubricVersion`in kriterlerine karşı tek bounded
+OpenAI çağrısıyla kriter başına puan önerisi üretir. Model her kriterin pinlenmiş `maxScore`
+değerini yetkili ölçek olarak girdi bağlamında görür (5, 10 veya 20 üzerinden puanlandığını bilmesi
+gerekir), fakat bu ölçeği belirleyemez: `maxScore` çıktı şemasında yoktur ve şema `.strict()`
+olduğundan geri döndürülen/değiştirilen bir `maxScore` reddedilir. Model kriter kümesini, azami
+puanı veya toplamı asla belirleyemez. `0`, bir kriterin hiç karşılanmadığına
+ilişkin geçerli ve güvenilen bir yargıdır; `criterion.maxScore` da geçerli bir üst sınırdır. Bu
+aralığın dışındaki bir puan düşük bir yargı değil, GEÇERSİZ sağlayıcı çıktısıdır: sunucu bunu asla
+sıfıra veya başka bir değere indirmez, tüm rubrik değerlendirmesini güvenli biçimde reddeder ve
+hiçbir öneri kalıcı hâle getirilmez (koşu bu durumda `FAILED` olur). Sunucu ayrıca kanıtı
+sayfa/alıntı düzeyinde yeniden doğrular (doğrulanamayan kanıt o kriterin kanıt gücünü düşürür ama
+koşuyu `FAILED` yapmaz) ve toplam öneri puanını kendisi hesaplar. Geliştirme geri bildirimi ikinci
+bir model çağrısı olmadan, doğrulanmış kriter sonuçlarından deterministik olarak türetilir.
+
+AI puanı bir öneridir: otomatik nihai hakem puanına dönüşmez, başvuruyu reddetmez/diskalifiye
+etmez ve hakem kararını değiştirmez. Öneriler `rubric_suggestion` normalize tablosunda koşu ve
+kriter başına ayrı satır olarak, `RubricVersion`a pinlenmiş biçimde saklanır; yeni bir
+`RubricVersion` etkinleştiği zaman eski koşuların önerileri değişmez kalır. Ayrıntılar
+`docs/architecture/rubric-evaluation.md` içindedir.
+
+## 12. Bilinçli olarak ertelenenler
 
 Başvuru PDF depolaması özel R2 ve D1 metadata ayrımıyla uygulanmıştır; ayrıntılar
 `docs/architecture/document-storage.md` içindedir. Hakem ataması, yarışmacı sahipliği, global
 yönetim, production OAuth/D1, uzak D1/R2/Workflow kaynağı, OCR, production Vectorize/Workers AI
-index'i ve dağıtımı (P4-01B DEVELOPMENT kaynaklarına karşı uzak doğrulanmıştır), rubrik yapay
-zekâsı, geri bildirim üretimi, hakem çalışma alanı ve risk kuyruğu gibi diğer iş özellikleri
-ertelenmiştir.
+index'i ve dağıtımı (P4-01B DEVELOPMENT kaynaklarına karşı uzak doğrulanmıştır), hakem çalışma
+alanı ve risk kuyruğu gibi diğer iş özellikleri ertelenmiştir.

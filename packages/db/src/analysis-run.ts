@@ -53,6 +53,7 @@ export interface AnalysisRunExecutionContext {
   documentArtifactKey: string | null;
   templateVersionId: string;
   templateStructuralProfile: TemplateStructuralProfile;
+  rubricVersionId: string;
   projectTitle: string;
   aiProvider: string | null;
   modelId: string | null;
@@ -312,6 +313,7 @@ export async function getAnalysisRunExecutionContext(
       documentArtifactKey: analysisRuns.documentArtifactKey,
       templateVersionId: analysisRuns.templateVersionId,
       templateStructuralProfile: templateVersions.structuralProfile,
+      rubricVersionId: analysisRuns.rubricVersionId,
       projectTitle: submissions.projectTitle,
       aiProvider: analysisRuns.aiProvider,
       modelId: analysisRuns.modelId,
@@ -405,20 +407,20 @@ export async function markAnalysisRunSucceeded(
     .prepare(
       `UPDATE analysis_run
        SET status = 'SUCCEEDED',
-           stage = 'SIMILARITY_CHECKS',
+           stage = 'RUBRIC_EVALUATION',
            error_code = null,
            error_message = null,
            completed_at = ?
        WHERE id = ?
          AND status = 'PROCESSING'
-         AND stage = 'SIMILARITY_CHECKS'
+         AND stage = 'RUBRIC_EVALUATION'
          AND document_artifact_key is not null
          AND (
            SELECT count(*)
            FROM analysis_check
            WHERE analysis_run_id = analysis_run.id
-             AND type in ('LANGUAGE', 'TEMPLATE_STRUCTURE', 'SECTION_PRESENCE', 'SECTION_CONTENT', 'CATEGORY_FIT', 'SIMILARITY')
-         ) = 6`,
+             AND type in ('LANGUAGE', 'TEMPLATE_STRUCTURE', 'SECTION_PRESENCE', 'SECTION_CONTENT', 'CATEGORY_FIT', 'SIMILARITY', 'RUBRIC_EVALUATION')
+         ) = 7`,
     )
     .bind(Date.now(), analysisRunId)
     .run();
@@ -488,6 +490,36 @@ export async function markAnalysisRunSimilarityChecks(
   throw new AnalysisRunRepositoryError("NOT_FOUND", "RESOURCE");
 }
 
+export async function markAnalysisRunRubricEvaluation(
+  binding: D1Database,
+  analysisRunId: string,
+): Promise<void> {
+  const result = await binding
+    .prepare(
+      `UPDATE analysis_run
+       SET status = 'PROCESSING',
+           stage = 'RUBRIC_EVALUATION',
+           error_code = null,
+           error_message = null
+       WHERE id = ?
+         AND status = 'PROCESSING'
+         AND stage in ('SIMILARITY_CHECKS', 'RUBRIC_EVALUATION')
+         AND document_artifact_key is not null
+         AND (
+           SELECT count(*)
+           FROM analysis_check
+           WHERE analysis_run_id = analysis_run.id
+             AND type in ('LANGUAGE', 'TEMPLATE_STRUCTURE', 'SECTION_PRESENCE', 'SECTION_CONTENT', 'CATEGORY_FIT', 'SIMILARITY')
+         ) = 6`,
+    )
+    .bind(analysisRunId)
+    .run();
+  if (result.meta.changes === 1) return;
+  const existing = await getAnalysisRunExecutionContext(binding, analysisRunId);
+  if (existing?.status === "SUCCEEDED") return;
+  throw new AnalysisRunRepositoryError("NOT_FOUND", "RESOURCE");
+}
+
 export async function markAnalysisRunFailed(
   binding: D1Database,
   analysisRunId: string,
@@ -517,6 +549,7 @@ export const analysisRunRepository = {
   listAnalysisRuns,
   markAnalysisRunFailed,
   markAnalysisRunProcessing,
+  markAnalysisRunRubricEvaluation,
   markAnalysisRunSemanticChecks,
   markAnalysisRunSimilarityChecks,
   markAnalysisRunStructuralChecks,

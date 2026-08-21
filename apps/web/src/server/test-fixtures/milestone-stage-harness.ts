@@ -291,4 +291,5 @@ export async function runStructuralStageHarness(): Promise<StageHarnessRecord> {
 export const SEMANTIC_STAGE_MARKERS = [
   "markAnalysisRunSemanticChecks",
   "markAnalysisRunSimilarityChecks",
+  "markAnalysisRunRubricEvaluation",
 ] as const;

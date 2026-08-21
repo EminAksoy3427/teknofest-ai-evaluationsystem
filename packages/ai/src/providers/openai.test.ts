@@ -12,6 +12,16 @@ function provider(parse: (body: unknown) => Promise<unknown>) {
   });
 }
 
+/** Rubric evaluation only exists in the v2 bundle; v1 runs stay rubric-free by construction. */
+function rubricProvider(parse: (body: unknown) => Promise<unknown>) {
+  return new OpenAIProvider({
+    apiKey: "synthetic-test-key",
+    modelId: "gpt-5-test",
+    promptBundleVersion: "semantic-checks/v2",
+    responsesClient: { parse } as never,
+  });
+}
+
 const sectionOutput = {
   sections: [
     {
@@ -103,6 +113,91 @@ describe("OpenAI Responses provider", () => {
     }).analyzeSectionContent({ sections: [] });
     await expect(request).rejects.toMatchObject({ code, retryable });
     await expect(request).rejects.not.toThrow("secret provider response body");
+  });
+
+  it("sends each pinned criterion's authoritative maxScore as rubric input context", async () => {
+    // Without maxScore the model cannot know whether a criterion is scored out of 5, 10 or 20, so
+    // its suggestedScore would be meaningless. The scale must reach the provider as input.
+    const parse = vi.fn(async (_body: unknown) => ({
+      status: "completed",
+      output_parsed: { criteria: [] },
+      output: [],
+    }));
+    await rubricProvider(parse).evaluateRubric({
+      criteria: [
+        {
+          code: "quality",
+          title: "Kalite",
+          description: "Teknik kalite.",
+          evidenceExpectation: "Ölçüm sonucu.",
+          maxScore: 5,
+        },
+        {
+          code: "impact",
+          title: "Etki",
+          description: "Toplumsal etki.",
+          evidenceExpectation: "Etki verisi.",
+          maxScore: 20,
+        },
+      ],
+      sourceCoverage: "FULL",
+      pages: [{ page: 1, text: "Sentetik rapor." }],
+    });
+    const request = parse.mock.calls[0]?.[0] as Record<string, unknown>;
+    const sent = JSON.parse(String(request.input)) as {
+      criteria: Array<{ code: string; maxScore: number }>;
+    };
+    expect(sent.criteria.map((criterion) => [criterion.code, criterion.maxScore])).toEqual([
+      ["quality", 5],
+      ["impact", 20],
+    ]);
+    expect(request.store).toBe(false);
+    expect(request.tools).toBeUndefined();
+  });
+
+  it("rejects a rubric output that echoes or redefines maxScore, keeping the scale server-side", async () => {
+    // Seeing the scale is not the same as defining it: `maxScore` is absent from the strict output
+    // schema, so a model that tries to hand one back is rejected instead of trusted.
+    const request = rubricProvider(async () => ({
+      status: "completed",
+      output_parsed: {
+        criteria: [
+          {
+            criterionCode: "quality",
+            suggestedScore: 5,
+            maxScore: 999,
+            reason: "Ölçeği yeniden tanımlama denemesi.",
+            evidenceStrength: "HIGH",
+            evidence: [],
+            missingPoints: [],
+          },
+        ],
+      },
+      output: [],
+    })).evaluateRubric({
+      criteria: [
+        {
+          code: "quality",
+          title: "Kalite",
+          description: "Teknik kalite.",
+          evidenceExpectation: "",
+          maxScore: 5,
+        },
+      ],
+      sourceCoverage: "FULL",
+      pages: [{ page: 1, text: "Sentetik rapor." }],
+    });
+    await expect(request).rejects.toMatchObject({ code: "OUTPUT_VALIDATION_FAILED" });
+  });
+
+  it("refuses rubric evaluation when the run pinned a prompt bundle without rubric instructions", async () => {
+    await expect(
+      provider(async () => ({
+        status: "completed",
+        output_parsed: { criteria: [] },
+        output: [],
+      })).evaluateRubric({ criteria: [], sourceCoverage: "FULL", pages: [] }),
+    ).rejects.toMatchObject({ code: "OUTPUT_VALIDATION_FAILED" });
   });
 
   it("uses the category-fit schema independently", async () => {

@@ -13,6 +13,7 @@ export const ANALYSIS_STAGE_VALUES = [
   "STRUCTURAL_CHECKS",
   "SEMANTIC_CHECKS",
   "SIMILARITY_CHECKS",
+  "RUBRIC_EVALUATION",
 ] as const;
 
 export const analysisRuns = sqliteTable(
@@ -59,6 +60,8 @@ export const analysisRuns = sqliteTable(
     uniqueIndex("analysis_run_workflow_instance_unique").on(table.workflowInstanceId),
     // Parent key for submission-scoped composite foreign keys such as SimilarityPair run ownership.
     uniqueIndex("analysis_run_submission_scope_unique").on(table.submissionId, table.id),
+    // Parent key for RubricSuggestion's pinned-RubricVersion ownership composite foreign key.
+    uniqueIndex("analysis_run_rubric_version_scope_unique").on(table.id, table.rubricVersionId),
     uniqueIndex("analysis_run_one_in_flight_per_submission")
       .on(table.submissionId)
       .where(sql`${table.status} in ('QUEUED', 'PROCESSING')`),
@@ -68,7 +71,7 @@ export const analysisRuns = sqliteTable(
     ),
     check(
       "analysis_run_stage_check",
-      sql`${table.stage} in ('INGEST_AND_EXTRACT', 'STRUCTURAL_CHECKS', 'SEMANTIC_CHECKS', 'SIMILARITY_CHECKS')`,
+      sql`${table.stage} in ('INGEST_AND_EXTRACT', 'STRUCTURAL_CHECKS', 'SEMANTIC_CHECKS', 'SIMILARITY_CHECKS', 'RUBRIC_EVALUATION')`,
     ),
     check(
       "analysis_run_source_sha256_check",

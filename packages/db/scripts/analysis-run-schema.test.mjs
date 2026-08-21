@@ -10,12 +10,14 @@ const migrations = readdirSync(migrationDirectory)
   .filter((candidate) => candidate.endsWith(".sql"))
   .sort();
 
-assert.equal(migrations.length, 11, "P4-01A must extend the unchanged 0000-0009 chain");
+assert.equal(migrations.length, 13, "P4-02 must extend the unchanged 0000-0010 chain");
 assert.ok(migrations[6]?.startsWith("0006_"));
 assert.ok(migrations[7]?.startsWith("0007_"));
 assert.ok(migrations[8]?.startsWith("0008_"));
 assert.ok(migrations[9]?.startsWith("0009_"));
 assert.ok(migrations[10]?.startsWith("0010_"));
+assert.ok(migrations[11]?.startsWith("0011_"));
+assert.ok(migrations[12]?.startsWith("0012_"));
 
 function apply(database, filenames) {
   for (const filename of filenames) {
@@ -371,5 +373,56 @@ assert.deepEqual(
   "Historical pre-P3-02 runs must keep nullable AI metadata without fabrication",
 );
 p3UpgradeDatabase.close();
+
+const p4UpgradeDatabase = new DatabaseSync(":memory:");
+p4UpgradeDatabase.exec("PRAGMA foreign_keys = ON");
+apply(p4UpgradeDatabase, migrations.slice(0, 11));
+seedFoundation(p4UpgradeDatabase);
+assert.equal(createRun(p4UpgradeDatabase, "historical-p4-run", 100).changes, 1);
+p4UpgradeDatabase.exec(`
+  UPDATE analysis_run
+  SET status = 'SUCCEEDED', stage = 'SIMILARITY_CHECKS', completed_at = 101,
+      document_artifact_key = 'derived/submission-a/historical-p4-run/document.json',
+      page_count = 1, character_count = 10
+  WHERE id = 'historical-p4-run';
+  INSERT INTO analysis_check (
+    id, analysis_run_id, type, status, summary, details_json, created_at, updated_at
+  ) VALUES
+    ('historical-language', 'historical-p4-run', 'LANGUAGE', 'PASS', 'Dil uyumlu.', '{}', 100, 100),
+    ('historical-template', 'historical-p4-run', 'TEMPLATE_STRUCTURE', 'PASS', 'Yapı uyumlu.', '{}', 100, 100),
+    ('historical-section', 'historical-p4-run', 'SECTION_PRESENCE', 'PASS', 'Başlıklar bulundu.', '{}', 100, 100),
+    ('historical-content', 'historical-p4-run', 'SECTION_CONTENT', 'PASS', 'İçerik uyumlu.', '{}', 100, 100),
+    ('historical-category', 'historical-p4-run', 'CATEGORY_FIT', 'PASS', 'Kategori uyumlu.', '{}', 100, 100),
+    ('historical-similarity', 'historical-p4-run', 'SIMILARITY', 'PASS', 'Düşük benzerlik.', '{}', 100, 100);
+`);
+apply(p4UpgradeDatabase, migrations.slice(11));
+assert.deepEqual(
+  {
+    ...p4UpgradeDatabase
+      .prepare("SELECT status, stage FROM analysis_run WHERE id = 'historical-p4-run'")
+      .get(),
+  },
+  { status: "SUCCEEDED", stage: "SIMILARITY_CHECKS" },
+  "0010 to 0011/0012 upgrade must preserve a historical run that completed before RUBRIC_EVALUATION existed",
+);
+assert.equal(
+  p4UpgradeDatabase
+    .prepare(
+      "SELECT count(*) AS count FROM analysis_check WHERE analysis_run_id = 'historical-p4-run' AND type = 'RUBRIC_EVALUATION'",
+    )
+    .get().count,
+  0,
+  "Historical pre-P4-02 runs must not receive a fabricated RUBRIC_EVALUATION check",
+);
+assert.equal(
+  p4UpgradeDatabase
+    .prepare(
+      "SELECT count(*) AS count FROM rubric_suggestion WHERE analysis_run_id = 'historical-p4-run'",
+    )
+    .get().count,
+  0,
+  "Historical pre-P4-02 runs must not receive fabricated rubric suggestions",
+);
+p4UpgradeDatabase.close();
 
 console.log("analysis run/check clean-chain, upgrades, idempotency, and version pinning: PASS");
