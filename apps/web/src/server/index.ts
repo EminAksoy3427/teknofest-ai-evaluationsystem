@@ -10,6 +10,14 @@ import {
   findCompetitionMembership,
   listMembershipSummaries,
   type MembershipSummaryList,
+  type ReviewerAssignmentRepository,
+  ReviewerAssignmentRepositoryError,
+  type ReviewerEvaluationRepository,
+  ReviewerEvaluationRepositoryError,
+  type RubricSuggestionRepository,
+  reviewerAssignmentRepository,
+  reviewerEvaluationRepository,
+  rubricSuggestionRepository,
   type SimilarityPairRepository,
   type SubmissionRepository,
   SubmissionRepositoryError,
@@ -35,6 +43,8 @@ import {
   ApiApplicationError,
   mapAnalysisRunRepositoryError,
   mapRepositoryError,
+  mapReviewerAssignmentRepositoryError,
+  mapReviewerEvaluationRepositoryError,
   mapSubmissionRepositoryError,
 } from "./api-error";
 import { type AuthRuntimeBindings, createAuth } from "./auth/auth";
@@ -44,6 +54,7 @@ import { requireCompetitionMembership } from "./authorization/membership";
 import { getPermissionsForRole } from "./authorization/policy";
 import { requireAuthenticatedUser } from "./authorization/require-auth";
 import { registerCompetitionConfigurationRoutes } from "./competition-configuration-routes";
+import { registerReviewRoutes } from "./review-routes";
 import { type DocumentStorage, documentStorage } from "./storage/documents";
 import { registerSubmissionRoutes } from "./submission-routes";
 
@@ -59,6 +70,9 @@ interface AppDependencies {
   analysisRunRepository: AnalysisRunRepository;
   analysisWorkflowStarter: AnalysisWorkflowStarter;
   similarityPairRepository: SimilarityPairRepository;
+  reviewerAssignmentRepository: ReviewerAssignmentRepository;
+  reviewerEvaluationRepository: ReviewerEvaluationRepository;
+  rubricSuggestionRepository: RubricSuggestionRepository;
 }
 
 const defaultDependencies: AppDependencies = {
@@ -71,6 +85,9 @@ const defaultDependencies: AppDependencies = {
   analysisRunRepository,
   analysisWorkflowStarter,
   similarityPairRepository,
+  reviewerAssignmentRepository,
+  reviewerEvaluationRepository,
+  rubricSuggestionRepository,
 };
 
 export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
@@ -101,6 +118,16 @@ export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
 
     if (error instanceof AnalysisRunRepositoryError) {
       const mapped = mapAnalysisRunRepositoryError(error);
+      return context.json(mapped.response, mapped.status);
+    }
+
+    if (error instanceof ReviewerAssignmentRepositoryError) {
+      const mapped = mapReviewerAssignmentRepositoryError(error);
+      return context.json(mapped.response, mapped.status);
+    }
+
+    if (error instanceof ReviewerEvaluationRepositoryError) {
+      const mapped = mapReviewerEvaluationRepositoryError(error);
       return context.json(mapped.response, mapped.status);
     }
 
@@ -180,6 +207,7 @@ export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
   registerCompetitionConfigurationRoutes(app, dependencies);
   registerSubmissionRoutes(app, dependencies);
   registerAnalysisRoutes(app, dependencies);
+  registerReviewRoutes(app, dependencies);
 
   return app;
 }

@@ -13,6 +13,7 @@ import type { SessionResolver } from "./auth/session";
 import { requireCompetitionPermission } from "./authorization/membership";
 import { requireAuthenticatedUser } from "./authorization/require-auth";
 import type { DocumentStorage } from "./storage/documents";
+import { normalizeDisplayFilename, reportResponse } from "./storage/report-response";
 
 export interface SubmissionRouteDependencies {
   resolveSession: SessionResolver;
@@ -59,35 +60,6 @@ function validationError(message: string, issues?: { path: string; message: stri
     { code: "VALIDATION_ERROR", message, ...(issues ? { issues } : {}) },
     400,
   );
-}
-
-function normalizeDisplayFilename(value: string): string {
-  const basename = value.replaceAll("\\", "/").split("/").at(-1) ?? "";
-  const normalized = [...basename]
-    .filter((character) => {
-      const codePoint = character.codePointAt(0) ?? 0;
-      return codePoint >= 32 && !(codePoint >= 127 && codePoint <= 159);
-    })
-    .slice(0, 180)
-    .join("")
-    .trim();
-  return normalized === "" || normalized === "." || normalized === ".." ? "rapor.pdf" : normalized;
-}
-
-function contentDisposition(filename: string): string {
-  const safeFilename = normalizeDisplayFilename(filename);
-  const ascii =
-    safeFilename
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^A-Za-z0-9._ -]/g, "_")
-      .replace(/["\\]/g, "_")
-      .slice(0, 120) || "rapor.pdf";
-  const encoded = encodeURIComponent(safeFilename).replace(
-    /[!'()*]/g,
-    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
-  return `inline; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }
 
 function hasPdfSignature(bytes: Uint8Array): boolean {
@@ -340,35 +312,13 @@ export function registerSubmissionRoutes(
         );
       }
 
-      let object: R2ObjectBody | null;
-      try {
-        object = await dependencies.documentStorage.getSubmissionReport(
-          context.env.DOCUMENTS,
-          metadata.storageKey,
-        );
-      } catch {
-        object = null;
-      }
-      if (!object) {
-        console.error("submission report object missing", {
-          competitionId,
-          submissionId,
-          fileId: metadata.id,
-        });
-        throw new ApiApplicationError(
-          { code: "STORAGE_ERROR", message: "Başvuru raporu belge deposundan okunamadı." },
-          500,
-        );
-      }
-
-      const headers = new Headers({
-        "cache-control": "private, no-store",
-        "content-disposition": contentDisposition(metadata.originalFilename),
-        "content-length": String(object.size),
-        "content-type": "application/pdf",
-        etag: object.httpEtag,
-      });
-      return new Response(object.body, { headers });
+      return reportResponse(
+        context.env,
+        dependencies.documentStorage,
+        metadata,
+        competitionId,
+        submissionId,
+      );
     },
   );
 }

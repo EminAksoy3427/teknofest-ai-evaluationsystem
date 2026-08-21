@@ -92,6 +92,27 @@
       "when": 1787234080745,
       "tag": "0012_wooden_hercules",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1787337400802,
+      "tag": "0013_noisy_kitty_pryde",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1787339907150,
+      "tag": "0014_white_wilson_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1787339933778,
+      "tag": "0015_dashing_lionheart",
+      "breakpoints": true
     }
   ]
 }

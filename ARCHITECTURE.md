@@ -176,10 +176,43 @@ kriter başına ayrı satır olarak, `RubricVersion`a pinlenmiş biçimde saklan
 `RubricVersion` etkinleştiği zaman eski koşuların önerileri değişmez kalır. Ayrıntılar
 `docs/architecture/rubric-evaluation.md` içindedir.
 
-## 12. Bilinçli olarak ertelenenler
+## 12. Hakem çalışma alanı ve İnsan-AI karar izi
+
+Yarışma inceleme deneyimi P5 ile uygulanmıştır. `REVIEWER` rolü `submission:review` iznini taşır
+fakat tek başına hiçbir başvuruya erişim vermez: her hakem ucu ayrıca oturum kullanıcısının sahibi
+olduğu bir `ReviewerAssignment` çözer. Başka bir hakemin veya başka bir yarışmanın ataması `404`
+döner. `submission:review` bilinçli olarak hiçbir yönetici rolüne verilmemiştir; değerlendirme
+yöneticisi `review:assign` ve `competition:view-operations` ile operasyonu yürütür ama hakem
+kimliğine bürünüp puan veremez. Çapraz yarışma ataması `reviewer_assignment` üzerindeki composite
+foreign key'lerle veritabanı düzeyinde engellenir.
+
+Çalışma alanı üç paneldir: solda korunan uçtan okunan rapor (PDF), ortada koşuda kalıcı hâle gelmiş
+AI 4. Göz sinyalleri (deterministik · semantik · benzerlik · rubrik), sağda pinlenmiş `RubricVersion`
+üzerinden insan rubriği. Kanıt alıntılarının yanındaki sayfa bağlantıları raporu ilgili sayfaya
+götürür; yalnız sunucu tarafından doğrulanmış kanıt gezinme hedefi üretir ve hedef sayfa koşunun
+çıkarımında kaydedilen sayfa sayısına göre sınırlanır.
+
+İnsan puanı AI önerisinden ayrı bir kayıttır: öneriler `rubric_suggestion`, insan puanları
+`reviewer_criterion_score` içindedir ve yapay zekâ hakem puanını hiçbir koşulda otomatik yazmaz.
+`ReviewerEvaluation` atamanın başvurusuna, hakemin incelediği `AnalysisRun`a ve o koşunun rubrik
+sürümüne composite foreign key'lerle sabitlenir; yeni bir `RubricVersion` etkinleşse ve yeni bir koşu
+oluşsa da eski değerlendirme kendi pinlenmiş koşusu, rubriği, AI önerileri ve puan ölçeğiyle değişmez
+kalır. Karar izi bu değişmez kayıtlardan tarihsel olarak yeniden kurulabilir.
+
+Her iki toplam da sunucuda hesaplanır ve tek bir puana birleştirilmez; istemcinin gönderdiği bir
+toplam `.strict()` istek şemasıyla reddedilir. Kriter başına `AI İLE AYNI` / `AI'DAN FARKLI` /
+`AI ÖNERİSİ YOK` sınıflandırması üretilir ve farklılık hakem hatası olarak sunulmaz. Taslak her an
+kaydedilebilir; gönderim tüm kriterlerin geçerli biçimde puanlanmasını gerektirir, yalnız o hakemin
+değerlendirmesini tamamlar ve gönderilmiş kayıt değişmezdir. Hakem çalışma alanı yalnız kalıcı
+analizi tüketir: çalışma alanını açmak, kanıda tıklamak, puan değiştirmek, taslak kaydetmek ve
+göndermek model çağrısı yapmaz. Ayrıntılar `docs/architecture/reviewer-workflow.md` içindedir.
+
+## 13. Bilinçli olarak ertelenenler
 
 Başvuru PDF depolaması özel R2 ve D1 metadata ayrımıyla uygulanmıştır; ayrıntılar
-`docs/architecture/document-storage.md` içindedir. Hakem ataması, yarışmacı sahipliği, global
-yönetim, production OAuth/D1, uzak D1/R2/Workflow kaynağı, OCR, production Vectorize/Workers AI
-index'i ve dağıtımı (P4-01B DEVELOPMENT kaynaklarına karşı uzak doğrulanmıştır), hakem çalışma
-alanı ve risk kuyruğu gibi diğer iş özellikleri ertelenmiştir.
+`docs/architecture/document-storage.md` içindedir. Hakem ataması ve hakem çalışma alanı P5 ile
+uygulanmıştır. Yarışmacı sahipliği ve geri bildirim yüzeyi, global yönetim, production OAuth/D1, uzak
+D1/R2/Workflow kaynağı, OCR, production Vectorize/Workers AI index'i ve dağıtımı (P4-01B DEVELOPMENT
+kaynaklarına karşı uzak doğrulanmıştır), akıllı risk kuyruğu, gönderilmiş hakem değerlendirmesinin
+yeniden açılması/sürümlenmesi, birden çok hakemin puanından yarışma geneli uzlaşma üretilmesi ve
+uygulama içi PDF.js render katmanı gibi diğer iş özellikleri ertelenmiştir.

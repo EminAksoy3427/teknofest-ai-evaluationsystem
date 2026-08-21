@@ -1,6 +1,8 @@
 import type {
   AnalysisRunRepositoryError,
   ConfigurationRepositoryError,
+  ReviewerAssignmentRepositoryError,
+  ReviewerEvaluationRepositoryError,
   SubmissionRepositoryError,
 } from "@teknofest-ai/db";
 import type { ApiErrorResponse } from "@teknofest-ai/shared";
@@ -65,6 +67,86 @@ export function mapAnalysisRunRepositoryError(
     },
     409,
   );
+}
+
+export function mapReviewerAssignmentRepositoryError(
+  error: ReviewerAssignmentRepositoryError,
+): ApiApplicationError {
+  if (error.code === "NOT_FOUND") {
+    return new ApiApplicationError(
+      {
+        code: "NOT_FOUND",
+        message: error.reason === "SUBMISSION" ? "Başvuru bulunamadı." : "Atama bulunamadı.",
+      },
+      404,
+    );
+  }
+
+  const messages = {
+    DUPLICATE_ASSIGNMENT: "Bu hakem bu başvuruya zaten atanmış.",
+    REVIEWER_MEMBERSHIP: "Seçilen kullanıcı bu yarışmada hakem rolüne sahip değil.",
+    SUBMITTED_EVALUATION:
+      "Gönderilmiş bir hakem değerlendirmesi bulunduğu için atama kaldırılamaz.",
+    ASSIGNMENT: "İşlem mevcut atama durumuyla çakışıyor.",
+    SUBMISSION: "İşlem mevcut başvuru durumuyla çakışıyor.",
+  } as const;
+
+  return new ApiApplicationError({ code: "CONFLICT", message: messages[error.reason] }, 409);
+}
+
+export function mapReviewerEvaluationRepositoryError(
+  error: ReviewerEvaluationRepositoryError,
+): ApiApplicationError {
+  if (error.code === "NOT_FOUND") {
+    const messages = {
+      ASSIGNMENT: "Atama bulunamadı.",
+      ANALYSIS_RUN: "Analiz kaydı bulunamadı.",
+      RESOURCE: "Hakem değerlendirmesi okunamadı.",
+      RUN_NOT_READY: "Analiz kaydı bulunamadı.",
+      STALE_RUN: "Analiz kaydı bulunamadı.",
+      SUBMITTED_IMMUTABLE: "Hakem değerlendirmesi bulunamadı.",
+      ALREADY_EXISTS: "Hakem değerlendirmesi bulunamadı.",
+      CRITERION: "Kriter bulunamadı.",
+      SCORE_RANGE: "Kriter bulunamadı.",
+      INCOMPLETE: "Hakem değerlendirmesi bulunamadı.",
+    } as const;
+    return new ApiApplicationError({ code: "NOT_FOUND", message: messages[error.reason] }, 404);
+  }
+
+  if (error.code === "VALIDATION") {
+    const messages = {
+      CRITERION: "Gönderilen kriter bu değerlendirmenin rubrik sürümüne ait değil.",
+      SCORE_RANGE: "Hakem puanı 0 ile kriterin azami puanı arasında olmalıdır.",
+      INCOMPLETE: "Değerlendirmeyi göndermek için tüm rubrik kriterlerini puanlayın.",
+      ASSIGNMENT: "Gönderilen alanları kontrol edin.",
+      ANALYSIS_RUN: "Gönderilen alanları kontrol edin.",
+      RUN_NOT_READY: "Gönderilen alanları kontrol edin.",
+      STALE_RUN: "Gönderilen alanları kontrol edin.",
+      SUBMITTED_IMMUTABLE: "Gönderilen alanları kontrol edin.",
+      ALREADY_EXISTS: "Gönderilen alanları kontrol edin.",
+      RESOURCE: "Gönderilen alanları kontrol edin.",
+    } as const;
+    return new ApiApplicationError(
+      { code: "VALIDATION_ERROR", message: messages[error.reason] },
+      400,
+    );
+  }
+
+  const messages = {
+    RUN_NOT_READY: "Bu analiz çalışması tamamlanmadığı için değerlendirme kaydedilemez.",
+    STALE_RUN:
+      "Bu atama zaten başka bir analiz çalışmasına sabitlenmiş; çalışma alanını yenileyin.",
+    SUBMITTED_IMMUTABLE: "Gönderilmiş hakem değerlendirmesi değiştirilemez.",
+    ALREADY_EXISTS: "Bu atama için zaten bir hakem değerlendirmesi var.",
+    ASSIGNMENT: "İşlem mevcut atama durumuyla çakışıyor.",
+    ANALYSIS_RUN: "İşlem mevcut analiz durumuyla çakışıyor.",
+    CRITERION: "İşlem mevcut rubrik durumuyla çakışıyor.",
+    SCORE_RANGE: "İşlem mevcut rubrik durumuyla çakışıyor.",
+    INCOMPLETE: "İşlem mevcut değerlendirme durumuyla çakışıyor.",
+    RESOURCE: "İşlem mevcut değerlendirme durumuyla çakışıyor.",
+  } as const;
+
+  return new ApiApplicationError({ code: "CONFLICT", message: messages[error.reason] }, 409);
 }
 
 interface RuntimeSchema<T> {

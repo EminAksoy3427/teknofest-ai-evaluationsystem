@@ -60,10 +60,13 @@ class LocalD1PreparedStatement {
   }
 
   async raw() {
-    return this.#database
-      .prepare(this.#sql)
-      .all(...this.#values)
-      .map((row) => Object.values(row));
+    // Positional rows are required, not derived from the object form: a joined SELECT can repeat a
+    // column name across tables (`criterion.id` and `rubric_suggestion.id`), and the object form
+    // silently collapses those duplicates. Drizzle maps joined selections by position, so reading
+    // `Object.values()` of a collapsed row would shift every column after the first collision.
+    const statement = this.#database.prepare(this.#sql);
+    statement.setReturnArrays(true);
+    return statement.all(...this.#values) as unknown as unknown[][];
   }
 }
 
@@ -85,8 +88,35 @@ export function createLocalD1(upToMigrationCount = migrationChain.length): Local
   for (const migration of migrationChain.slice(0, upToMigrationCount)) {
     database.exec(migration.sql);
   }
+  // `DatabaseSync` is one synchronous connection: two overlapping `BEGIN`s on it raise "cannot
+  // start a transaction within a transaction", which real D1 never does (each batch is its own
+  // atomic unit on Cloudflare's infrastructure). Chaining batches onto this promise serializes their
+  // transactions without serializing the plain (non-batched) queries a caller runs before deciding
+  // to write — so two concurrent callers can still both observe "no row yet" and both attempt to
+  // insert, and the real UNIQUE-constraint race a retried/concurrent request would hit in production
+  // is still exercised when their batches run one after the other.
+  let pendingBatch: Promise<unknown> = Promise.resolve();
   const binding = {
     prepare: (sql: string) => new LocalD1PreparedStatement(database, sql),
+    // D1 runs a batch as a single implicit transaction. The fixture mirrors that so repository
+    // code which depends on all-or-nothing batch semantics is exercised the same way here.
+    batch: (statements: readonly LocalD1PreparedStatement[]) => {
+      const run = pendingBatch.then(async () => {
+        database.exec("BEGIN");
+        try {
+          const results = [];
+          for (const statement of statements) results.push(await statement.run());
+          database.exec("COMMIT");
+          return results;
+        } catch (error) {
+          database.exec("ROLLBACK");
+          throw error;
+        }
+      });
+      // Chain unconditionally (even on rejection) so a failed batch never wedges later callers.
+      pendingBatch = run.catch(() => undefined);
+      return run;
+    },
   } as unknown as D1Database;
   return {
     binding,

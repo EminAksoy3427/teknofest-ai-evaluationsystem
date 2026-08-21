@@ -895,6 +895,7 @@ export const competitionConfigurationRepository = {
   findCompetition,
   getCompetitionConfiguration,
   listCategories,
+  listCriteriaForRubric,
   listRubricVersions,
   listTemplateVersions,
   replaceDraftCriteria,

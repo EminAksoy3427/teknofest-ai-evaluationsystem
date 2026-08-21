@@ -14,43 +14,23 @@ import {
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 
+import {
+  CHECK_STATUS_LABELS,
+  CHECK_TYPE_LABELS,
+  checkStatusClass,
+  EVIDENCE_STRENGTH_LABELS,
+  languageName,
+} from "./analysis-labels";
 import { apiRequest, errorMessage } from "./api";
 
 function formatFileSize(bytes: number) {
   return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024);
 }
 
-const checkStatusLabels = {
-  PASS: "Olumlu",
-  WARN: "İncelenmeli",
-  FAIL: "Olumsuz sinyal",
-} as const;
-
-function checkStatusClass(status: "PASS" | "WARN" | "FAIL") {
-  if (status === "PASS") return "text-emerald-800";
-  if (status === "WARN") return "text-amber-800";
-  return "text-red-800";
-}
-
-function languageName(identifier: string | null) {
-  if (!identifier) return "Belirlenemedi";
-  try {
-    return new Intl.DisplayNames(["tr"], { type: "language" }).of(identifier) ?? identifier;
-  } catch {
-    return identifier;
-  }
-}
-
-const evidenceStrengthLabels = {
-  HIGH: "Yüksek",
-  MEDIUM: "Orta",
-  LOW: "Düşük",
-} as const satisfies Record<SemanticEvidenceStrength, string>;
-
 function EvidenceStrength({ strength }: { strength: SemanticEvidenceStrength }) {
   return (
     <p className="mt-2 text-sm font-medium text-slate-700">
-      Kanıt Gücü: {evidenceStrengthLabels[strength]}
+      Kanıt Gücü: {EVIDENCE_STRENGTH_LABELS[strength]}
     </p>
   );
 }
@@ -59,15 +39,6 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
   if (run.checks.length === 0) {
     return <p className="mt-2 text-slate-500">Bu tarihsel koşuda ön kontrol sonucu yok.</p>;
   }
-  const labels = {
-    LANGUAGE: "Dil",
-    TEMPLATE_STRUCTURE: "Şablon Yapısı",
-    SECTION_PRESENCE: "Zorunlu Başlıklar",
-    SECTION_CONTENT: "Bölüm İçeriği",
-    CATEGORY_FIT: "Kategori Uyumu",
-    SIMILARITY: "Benzerlik",
-    RUBRIC_EVALUATION: "AI Rubrik Önerisi",
-  } as const;
   const sectionPresence = run.checks.find((check) => check.type === "SECTION_PRESENCE");
   const sectionTitles = new Map(
     sectionPresence?.details.sections.map((section) => [section.sectionKey, section.expectedTitle]),
@@ -81,9 +52,9 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
         {run.checks.map((check) => (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3" key={check.type}>
             <div className="flex items-center justify-between gap-3">
-              <span className="font-semibold text-slate-900">{labels[check.type]}</span>
+              <span className="font-semibold text-slate-900">{CHECK_TYPE_LABELS[check.type]}</span>
               <span className={`font-semibold ${checkStatusClass(check.status)}`}>
-                {checkStatusLabels[check.status]}
+                {CHECK_STATUS_LABELS[check.status]}
               </span>
             </div>
             <p className="mt-1 leading-5 text-slate-600">{check.summary}</p>

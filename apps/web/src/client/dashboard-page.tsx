@@ -26,6 +26,9 @@ function slugFromName(value: string) {
 
 function MembershipCard({ membership }: { membership: MembershipSummary }) {
   const canConfigure = membership.role === "COMPETITION_MANAGER";
+  const canManageAssignments =
+    membership.role === "COMPETITION_MANAGER" || membership.role === "EVALUATION_MANAGER";
+  const isReviewer = membership.role === "REVIEWER";
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -42,20 +45,37 @@ function MembershipCard({ membership }: { membership: MembershipSummary }) {
           {membership.role}
         </span>
       </div>
-      {canConfigure ? (
+      {canConfigure || canManageAssignments || isReviewer ? (
         <div className="mt-5 flex flex-wrap gap-2">
-          <Link
-            className="primary-button"
-            to={`/app/competitions/${membership.competitionId}/submissions`}
-          >
-            Başvuruları aç
-          </Link>
-          <Link
-            className="secondary-button"
-            to={`/app/competitions/${membership.competitionId}/setup`}
-          >
-            Yapılandırma
-          </Link>
+          {canConfigure ? (
+            <Link
+              className="primary-button"
+              to={`/app/competitions/${membership.competitionId}/submissions`}
+            >
+              Başvuruları aç
+            </Link>
+          ) : null}
+          {canManageAssignments ? (
+            <Link
+              className={canConfigure ? "secondary-button" : "primary-button"}
+              to={`/app/competitions/${membership.competitionId}/reviewers`}
+            >
+              Hakem atamaları
+            </Link>
+          ) : null}
+          {isReviewer ? (
+            <Link className="primary-button" to="/app/review">
+              Hakem kuyruğum
+            </Link>
+          ) : null}
+          {canConfigure ? (
+            <Link
+              className="secondary-button"
+              to={`/app/competitions/${membership.competitionId}/setup`}
+            >
+              Yapılandırma
+            </Link>
+          ) : null}
         </div>
       ) : (
         <p className="mt-5 text-sm leading-6 text-slate-600">

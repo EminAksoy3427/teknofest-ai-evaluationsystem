@@ -193,7 +193,7 @@ describe("GET /api/v1/competitions/:competitionId/access", () => {
     expect(CompetitionAccessResponseSchema.parse(await userBCompetitionB.json())).toEqual({
       competitionId: "competition-b",
       role: "COMPETITION_MANAGER",
-      permissions: ["competition:configure"],
+      permissions: ["competition:configure", "competition:view-operations", "review:assign"],
     });
   });
 });

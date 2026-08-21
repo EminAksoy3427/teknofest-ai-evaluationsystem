@@ -9,3 +9,4 @@ Ayrıntılı karar kayıtları ihtiyaç oluştukça bu dizine eklenecektir.
 - [Yarışma yapılandırması](./competition-configuration.md)
 - [Özel belge depolama](./document-storage.md)
 - [Belge analiz pipeline'ı](./analysis-pipeline.md)
+- [Hakem iş akışı](./reviewer-workflow.md)

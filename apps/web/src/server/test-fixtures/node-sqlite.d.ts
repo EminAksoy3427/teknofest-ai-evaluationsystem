@@ -6,6 +6,8 @@ declare module "node:sqlite" {
     all(...parameters: readonly unknown[]): Array<Record<string, unknown>>;
     get(...parameters: readonly unknown[]): Record<string, unknown> | undefined;
     run(...parameters: readonly unknown[]): { changes: number };
+    /** Switches `all()` to positional rows, which is required to read joined SELECTs correctly. */
+    setReturnArrays(returnArrays: boolean): void;
   }
 
   export class DatabaseSync {

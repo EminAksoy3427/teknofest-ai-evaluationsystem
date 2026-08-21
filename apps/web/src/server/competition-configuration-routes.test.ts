@@ -114,6 +114,7 @@ function repositoryStub(
       },
     }),
     listCategories: async () => [category],
+    listCriteriaForRubric: async () => [criterion],
     listRubricVersions: async () => [rubricDraft],
     listTemplateVersions: async () => [templateDraft],
     replaceDraftCriteria: async () => rubricDraft,

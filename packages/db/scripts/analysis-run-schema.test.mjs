@@ -10,14 +10,15 @@ const migrations = readdirSync(migrationDirectory)
   .filter((candidate) => candidate.endsWith(".sql"))
   .sort();
 
-assert.equal(migrations.length, 13, "P4-02 must extend the unchanged 0000-0010 chain");
-assert.ok(migrations[6]?.startsWith("0006_"));
-assert.ok(migrations[7]?.startsWith("0007_"));
-assert.ok(migrations[8]?.startsWith("0008_"));
-assert.ok(migrations[9]?.startsWith("0009_"));
-assert.ok(migrations[10]?.startsWith("0010_"));
-assert.ok(migrations[11]?.startsWith("0011_"));
-assert.ok(migrations[12]?.startsWith("0012_"));
+// Every later milestone must APPEND to this chain; an already committed migration is never edited
+// or renumbered, so the ordinal prefix of each existing entry stays exactly where it was.
+assert.equal(migrations.length, 16, "P5 must extend the unchanged 0000-0012 chain");
+for (const [index, migration] of migrations.entries()) {
+  assert.ok(
+    migration.startsWith(`${String(index).padStart(4, "0")}_`),
+    `migration ${index} must keep its committed ordinal prefix`,
+  );
+}
 
 function apply(database, filenames) {
   for (const filename of filenames) {

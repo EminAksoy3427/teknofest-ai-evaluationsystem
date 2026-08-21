@@ -14,6 +14,7 @@ export type CompetitionRole = z.infer<typeof CompetitionRoleSchema>;
 export const PERMISSION_VALUES = [
   "competition:configure",
   "competition:view-operations",
+  "review:assign",
   "submission:review",
   "feedback:view-own",
 ] as const;

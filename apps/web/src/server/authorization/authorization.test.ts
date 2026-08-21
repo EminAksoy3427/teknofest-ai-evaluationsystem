@@ -91,11 +91,30 @@ describe("server-side authorization helpers", () => {
 
 describe("explicit role permissions", () => {
   it.each([
-    ["COMPETITION_MANAGER", ["competition:configure"]],
-    ["EVALUATION_MANAGER", ["competition:view-operations"]],
+    [
+      "COMPETITION_MANAGER",
+      ["competition:configure", "competition:view-operations", "review:assign"],
+    ],
+    ["EVALUATION_MANAGER", ["competition:view-operations", "review:assign"]],
     ["REVIEWER", ["submission:review"]],
     ["CONTESTANT", ["feedback:view-own"]],
   ] as const)("maps %s only to its intended permissions", (role, permissions) => {
     expect(getPermissionsForRole(role)).toEqual(permissions);
+  });
+
+  // `submission:review` belongs to REVIEWER alone. An evaluation manager runs the evaluation
+  // operation but must never be able to score a submission as if it were a reviewer, and reviewer
+  // routes additionally require an explicit ReviewerAssignment on top of this permission.
+  it("grants the reviewer permission to no manager role", () => {
+    expect(getPermissionsForRole("COMPETITION_MANAGER")).not.toContain("submission:review");
+    expect(getPermissionsForRole("EVALUATION_MANAGER")).not.toContain("submission:review");
+    expect(getPermissionsForRole("CONTESTANT")).not.toContain("submission:review");
+  });
+
+  it("grants assignment management to both manager roles and to nobody else", () => {
+    expect(getPermissionsForRole("COMPETITION_MANAGER")).toContain("review:assign");
+    expect(getPermissionsForRole("EVALUATION_MANAGER")).toContain("review:assign");
+    expect(getPermissionsForRole("REVIEWER")).not.toContain("review:assign");
+    expect(getPermissionsForRole("CONTESTANT")).not.toContain("review:assign");
   });
 });

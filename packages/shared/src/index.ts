@@ -174,6 +174,7 @@ export {
   type HealthResponse,
   HealthResponseSchema,
 } from "./health";
+export * from "./review";
 export * from "./similarity";
 export {
   type CompetitionStatus,

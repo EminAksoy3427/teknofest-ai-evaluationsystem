@@ -60,6 +60,35 @@ export {
   type MembershipSummaryList,
 } from "./competition-membership";
 export {
+  createReviewerAssignment,
+  deleteReviewerAssignment,
+  getOwnedReviewerAssignment,
+  getReviewerAssignment,
+  listEligibleReviewers,
+  listReviewerAssignmentOperations,
+  listReviewerQueue,
+  type ReviewerAssignmentInput,
+  type ReviewerAssignmentRecord,
+  type ReviewerAssignmentRepository,
+  ReviewerAssignmentRepositoryError,
+  type ReviewerAssignmentRepositoryErrorCode,
+  type ReviewerAssignmentRepositoryErrorReason,
+  reviewerAssignmentRepository,
+  toReviewerAssignmentResponse,
+} from "./reviewer-assignment";
+export {
+  getReviewerEvaluation,
+  listReviewerCriterionScores,
+  type ReviewerCriterionScoreRecord,
+  type ReviewerEvaluationRepository,
+  ReviewerEvaluationRepositoryError,
+  type ReviewerEvaluationRepositoryErrorCode,
+  type ReviewerEvaluationRepositoryErrorReason,
+  type ReviewerEvaluationWriteInput,
+  reviewerEvaluationRepository,
+  saveReviewerEvaluation,
+} from "./reviewer-evaluation";
+export {
   listRubricSuggestionsForRun,
   type RubricSuggestionRepository,
   type RubricSuggestionWriteInput,
