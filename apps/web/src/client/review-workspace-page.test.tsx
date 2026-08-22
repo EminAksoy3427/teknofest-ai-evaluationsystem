@@ -201,7 +201,7 @@ const markupAi = renderToStaticMarkup(
   <AiPanel onNavigateToPage={() => undefined} workspace={workspace} />,
 );
 
-describe("AI 4. Göz panel", () => {
+describe("AI 3. Göz panel", () => {
   const markup = markupAi;
 
   it("groups the persisted checks into ön kontroller, içerik, benzerlik and AI rubrik", () => {
@@ -327,7 +327,7 @@ describe("human rubric panel", () => {
   });
 });
 
-describe("AI 4. Göz panel empty and failure states", () => {
+describe("AI 3. Göz panel empty and failure states", () => {
   it("explains a failed analysis run and keeps the reviewer able to work", () => {
     const failed = renderToStaticMarkup(
       <AiPanel

@@ -1,9 +1,15 @@
+import {
+  AI_CAPABILITY_DISCLAIMER,
+  AI_CAPABILITY_NAME,
+  AI_CAPABILITY_SUPPORT,
+} from "../product-copy";
+
 export const PANEL_KEYS = ["report", "ai", "rubric"] as const;
 export type PanelKey = (typeof PANEL_KEYS)[number];
 
 export const PANEL_LABELS = {
   report: "Rapor",
-  ai: "AI 4. Göz",
+  ai: AI_CAPABILITY_NAME,
   rubric: "Hakem Kararı",
 } as const satisfies Record<PanelKey, string>;
 
@@ -13,7 +19,7 @@ export const PANEL_LABELS = {
  */
 export const PANEL_NOTES = {
   report: "Başvuru raporu · kanıt bağlantıları buraya götürür",
-  ai: "Karar desteği · hakem kararının yerine geçmez",
+  ai: `${AI_CAPABILITY_SUPPORT} · ${AI_CAPABILITY_DISCLAIMER.replace(/\.$/, "")}`,
   rubric: "Hakem kararı · puanı yalnız siz belirlersiniz",
 } as const satisfies Record<PanelKey, string>;
 

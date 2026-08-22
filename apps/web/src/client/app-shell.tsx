@@ -1,26 +1,24 @@
 import { MembershipListResponseSchema, type MembershipSummary } from "@teknofest-ai/shared";
 import {
   createContext,
+  type KeyboardEvent,
   type ReactNode,
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { Link, matchPath, useLocation, useNavigate } from "react-router";
 
 import { apiRequest, errorMessage } from "./api";
 import { authClient } from "./auth-client";
-import { BrandWordmark, IconClose, IconMenu, InitialsAvatar, useDismissable } from "./ui";
+import { ROLE_LABELS } from "./profile-memberships";
+import { BrandWordmark, IconClose, IconMenu, UserAvatar, useDismissable } from "./ui";
 
-/** Role names shown to a person, instead of the raw enum value. */
-export const ROLE_LABELS = {
-  COMPETITION_MANAGER: "Yarışma yöneticisi",
-  EVALUATION_MANAGER: "Değerlendirme yöneticisi",
-  REVIEWER: "Hakem",
-  CONTESTANT: "Yarışmacı",
-} as const satisfies Record<MembershipSummary["role"], string>;
+export { ROLE_LABELS } from "./profile-memberships";
 
 interface MembershipsState {
   memberships: MembershipSummary[] | null;
@@ -262,18 +260,96 @@ function CompetitionSwitcher({ memberships }: { memberships: MembershipSummary[]
   );
 }
 
-function UserMenu({ email, name }: { email: string; name: string }) {
+export function AccountMenuPanel({
+  email,
+  image,
+  isSigningOut,
+  name,
+  onKeyDown,
+  onNavigate,
+  onSignOut,
+}: {
+  email: string;
+  image?: string | null | undefined;
+  isSigningOut: boolean;
+  name: string;
+  onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
+  onNavigate?: () => void;
+  onSignOut: () => void;
+}) {
+  return (
+    <div className="user-menu-panel" onKeyDown={onKeyDown} role="menu">
+      <div className="flex items-center gap-3 px-2.5 py-2.5">
+        <UserAvatar image={image} name={name} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-ink">{name}</p>
+          <p className="truncate text-xs text-ink-subtle">{email}</p>
+        </div>
+      </div>
+      <Link className="user-menu-item" onClick={onNavigate} role="menuitem" to="/app/profile">
+        Profilim
+      </Link>
+      <Link className="user-menu-item" onClick={onNavigate} role="menuitem" to="/app/profile#roles">
+        Roller ve Yarışmalar
+      </Link>
+      <div className="my-1.5 border-t border-line" />
+      <button
+        className="user-menu-item text-ink-muted"
+        disabled={isSigningOut}
+        onClick={onSignOut}
+        role="menuitem"
+        type="button"
+      >
+        {isSigningOut ? "Çıkılıyor…" : "Çıkış yap"}
+      </button>
+    </div>
+  );
+}
+
+export function UserMenu({
+  email,
+  image,
+  name,
+}: {
+  email: string;
+  image?: string | null | undefined;
+  name: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const triggerId = useId();
   const { ref } = useDismissable(isOpen, () => setIsOpen(false));
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const panel = ref.current?.querySelector<HTMLElement>("[role='menuitem']");
+    panel?.focus();
+
+    function onFocusIn(event: FocusEvent) {
+      if (!ref.current?.contains(event.target as Node)) setIsOpen(false);
+    }
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  }, [isOpen, ref]);
 
   return (
     <div className="user-menu" ref={ref}>
       <button
+        aria-controls="account-menu"
         aria-expanded={isOpen}
         aria-haspopup="menu"
+        aria-label={`${name} hesap menüsü`}
         className="flex items-center gap-2 rounded-md py-1 pr-1 pl-1.5 hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        id={triggerId}
         onClick={() => setIsOpen((open) => !open)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" && !isOpen) {
+            event.preventDefault();
+            setIsOpen(true);
+          }
+        }}
+        ref={triggerRef}
         type="button"
       >
         <span
@@ -282,27 +358,49 @@ function UserMenu({ email, name }: { email: string; name: string }) {
         >
           {name}
         </span>
-        <InitialsAvatar name={name} />
+        <UserAvatar image={image} name={name} />
       </button>
       {isOpen ? (
-        <div className="user-menu-panel" role="menu">
-          <div className="px-2.5 py-2">
-            <p className="truncate text-sm font-medium text-ink">{name}</p>
-            <p className="truncate text-xs text-ink-subtle">{email}</p>
-          </div>
-          <button
-            className="ghost-button w-full justify-start px-2.5 text-left"
-            disabled={isSigningOut}
-            onClick={async () => {
-              setIsSigningOut(true);
-              await authClient.signOut();
-              window.location.assign("/");
+        <div id="account-menu">
+          <AccountMenuPanel
+            email={email}
+            image={image}
+            isSigningOut={isSigningOut}
+            name={name}
+            onKeyDown={(event) => {
+              const items = Array.from(
+                event.currentTarget.querySelectorAll<HTMLElement>("[role='menuitem']"),
+              );
+              const current = document.activeElement;
+              const index = current instanceof HTMLElement ? items.indexOf(current) : -1;
+              if (event.key === "ArrowDown") {
+                event.preventDefault();
+                items[(index + 1) % items.length]?.focus();
+              } else if (event.key === "ArrowUp") {
+                event.preventDefault();
+                items[(index - 1 + items.length) % items.length]?.focus();
+              } else if (event.key === "Home") {
+                event.preventDefault();
+                items[0]?.focus();
+              } else if (event.key === "End") {
+                event.preventDefault();
+                items.at(-1)?.focus();
+              } else if (event.key === "Tab") {
+                setIsOpen(false);
+                triggerRef.current?.focus();
+              }
             }}
-            role="menuitem"
-            type="button"
-          >
-            {isSigningOut ? "Çıkılıyor…" : "Çıkış yap"}
-          </button>
+            onNavigate={() => {
+              setIsOpen(false);
+              triggerRef.current?.focus();
+            }}
+            onSignOut={() => {
+              setIsSigningOut(true);
+              void authClient.signOut().then(() => {
+                window.location.assign("/");
+              });
+            }}
+          />
         </div>
       ) : null}
     </div>
@@ -321,18 +419,14 @@ function SidebarBrand() {
  * Authenticated application shell: left sidebar on desktop, drawer on smaller
  * screens, and a quiet top utility bar.
  */
-export function AppShell({
-  children,
-  email,
-  name,
-}: {
-  children: ReactNode;
-  email: string;
-  name: string;
-}) {
+export function AppShell({ children }: { children: ReactNode }) {
+  const { data: session } = authClient.useSession();
   const { memberships, error } = useMemberships();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const name = session?.user.name ?? "";
+  const email = session?.user.email ?? "";
+  const image = session?.user.image ?? null;
 
   useEffect(() => {
     void location.pathname;
@@ -389,7 +483,7 @@ export function AppShell({
               </div>
               <CompetitionSwitcher memberships={memberships} />
             </div>
-            <UserMenu email={email} name={name} />
+            <UserMenu email={email} image={image} name={name} />
           </div>
         </header>
 

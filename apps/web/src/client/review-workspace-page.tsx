@@ -253,7 +253,7 @@ export function ReviewWorkspacePage() {
         <section aria-labelledby="panel-ai-title" className={panelClass("ai")}>
           <div className="workspace-pane-heading">
             <h2 className="workspace-pane-title" id="panel-ai-title">
-              AI 4. Göz
+              {PANEL_LABELS.ai}
             </h2>
             <p className="pane-note">{PANEL_NOTES.ai}</p>
           </div>

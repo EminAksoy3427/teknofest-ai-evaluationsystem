@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 
+import { PRODUCT_DESCRIPTOR, PRODUCT_NAME } from "./product-copy";
+
 /**
  * Small shared presentation primitives for the product UI.
  *
@@ -11,21 +13,29 @@ import { Link } from "react-router";
 export function BrandWordmark({
   compact = false,
   to = "/app",
+  tone = "default",
 }: {
   compact?: boolean;
   to?: string;
+  tone?: "default" | "inverse";
 }) {
+  const titleClass =
+    tone === "inverse"
+      ? "block truncate text-[15px] font-semibold tracking-tight text-white"
+      : "block truncate text-[15px] font-semibold tracking-tight text-ink";
+  const subtitleClass =
+    tone === "inverse"
+      ? "block truncate text-[11px] text-white/70"
+      : "block truncate text-[11px] text-ink-subtle";
+  const focusClass =
+    tone === "inverse"
+      ? "min-w-0 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+      : "min-w-0 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
+
   return (
-    <Link
-      className="min-w-0 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-      to={to}
-    >
-      <span className="block truncate text-[15px] font-semibold tracking-tight text-ink">
-        TEKNOFEST AI
-      </span>
-      {compact ? null : (
-        <span className="block truncate text-[11px] text-ink-subtle">Değerlendirme Platformu</span>
-      )}
+    <Link className={focusClass} to={to}>
+      <span className={titleClass}>{PRODUCT_NAME}</span>
+      {compact ? null : <span className={subtitleClass}>{PRODUCT_DESCRIPTOR}</span>}
     </Link>
   );
 }
@@ -64,15 +74,52 @@ export function initialsFromName(name: string): string {
   return `${first}${last}`.toLocaleUpperCase("tr-TR");
 }
 
-export function InitialsAvatar({ name }: { name: string }) {
+const AVATAR_BOX = {
+  sm: "h-8 w-8 text-[11px]",
+  md: "h-11 w-11 text-[13px]",
+  lg: "h-12 w-12 text-sm",
+} as const;
+
+export function InitialsAvatar({
+  name,
+  size = "sm",
+}: {
+  name: string;
+  size?: keyof typeof AVATAR_BOX;
+}) {
   return (
     <span
       aria-hidden="true"
-      className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface-selected text-[11px] font-semibold text-brand-deep"
+      className={`user-avatar-fallback grid shrink-0 place-items-center rounded-full font-semibold ${AVATAR_BOX[size]}`}
     >
       {initialsFromName(name)}
     </span>
   );
+}
+
+export function UserAvatar({
+  name,
+  image,
+  size = "sm",
+}: {
+  name: string;
+  image?: string | null | undefined;
+  size?: keyof typeof AVATAR_BOX;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (image && !failed) {
+    return (
+      <img
+        alt=""
+        className={`${AVATAR_BOX[size]} shrink-0 rounded-full object-cover`}
+        onError={() => setFailed(true)}
+        src={image}
+      />
+    );
+  }
+
+  return <InitialsAvatar name={name} size={size} />;
 }
 
 export function formatFileSize(bytes: number): string {

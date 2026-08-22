@@ -80,7 +80,7 @@ function findCheck<T extends AnalysisCheckResponse["type"]>(
 }
 
 /**
- * Centre pane: "AI 4. Göz".
+ * Centre pane: AI 3. Göz.
  *
  * Everything shown here was persisted by an earlier AnalysisRun. Opening the workspace, clicking a
  * page, changing a score, saving a draft or submitting never triggers a model call — the panel is a

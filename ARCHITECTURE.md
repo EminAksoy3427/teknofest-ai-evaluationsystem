@@ -78,12 +78,15 @@ yerel `wrangler dev`/Vite oturumlarını uzak proxy moduna geçirip yerel smoke'
 ## 7. Güvenlik sınırı
 
 Google tabanlı kimlik doğrulama Better Auth ile Worker tarafında uygulanır; oturumlar D1'de
-ve imzalı HTTP-only cookie ile yönetilir. Kimlik doğrulama yetki vermez: yarışma kapsamlı
-üyelik D1'den okunur ve roller hiyerarşi olmadan açık izinlere eşlenir. Korunan uygulama
-uçları üyelik ve rolü Worker tarafında doğrular; tarayıcı kontrolleri yetki kanıtı değildir.
-Sırlar yalnız Cloudflare secret/env mekanizmalarından okunacaktır. Raporlar ve bunlardan
-gelen metinler güvenilmeyen girdi olarak doğrulanacak, sınırlandırılacak ve yapay zekâ
-talimatı olarak kabul edilmeyecektir.
+ve imzalı HTTP-only cookie ile yönetilir. Genel ürün girişi `/login` üzerinde e-posta/şifre ve
+Google OAuth ile açılır. Kayıt (`/register`) yalnız bir auth hesabı üretir; hiçbir yarışma üyeliği
+veya rolü vermez. Hesap merkezi `/app/profile` görünen adı Better Auth `updateUser` ile günceller,
+e-postayı salt okunur gösterir ve yarışma rollerini salt okunur bağlam/CTA ile listeler. Kimlik
+doğrulama yetki vermez: yarışma kapsamlı üyelik D1'den okunur ve roller hiyerarşi olmadan açık
+izinlere eşlenir. Korunan uygulama uçları üyelik ve rolü Worker tarafında doğrular; tarayıcı
+kontrolleri yetki kanıtı değildir. Sırlar yalnız Cloudflare secret/env mekanizmalarından
+okunacaktır. Raporlar ve bunlardan gelen metinler güvenilmeyen girdi olarak doğrulanacak,
+sınırlandırılacak ve yapay zekâ talimatı olarak kabul edilmeyecektir.
 
 ## 8. Yarışma yapılandırması
 
@@ -189,7 +192,7 @@ kimliğine bürünüp puan veremez. Çapraz yarışma ataması `reviewer_assignm
 foreign key'lerle veritabanı düzeyinde engellenir.
 
 Çalışma alanı üç paneldir: solda korunan uçtan okunan rapor (PDF), ortada koşuda kalıcı hâle gelmiş
-AI 4. Göz sinyalleri (ön kontroller · içerik · benzerlik · AI rubrik), sağda pinlenmiş `RubricVersion`
+AI 3. Göz sinyalleri (ön kontroller · içerik · benzerlik · AI rubrik), sağda pinlenmiş `RubricVersion`
 üzerinden insan rubriği. Kanıt alıntılarının yanındaki sayfa bağlantıları raporu ilgili sayfaya
 götürür; yalnız sunucu tarafından doğrulanmış kanıt gezinme hedefi üretir ve hedef sayfa koşunun
 çıkarımında kaydedilen sayfa sayısına göre sınırlanır.

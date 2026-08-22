@@ -93,7 +93,7 @@ Rota: `/app/review/:competitionId/:assignmentId`. Hakem kuyruğu: `/app/review`.
 | Panel | İçerik |
 | --- | --- |
 | SOL | Başvuru raporu (PDF), sayfa gezinme ve yakınlaştırma |
-| ORTA | AI 4. Göz — koşuda kayıtlı deterministik, semantik, benzerlik ve rubrik sinyalleri |
+| ORTA | AI 3. Göz — koşuda kayıtlı deterministik, semantik, benzerlik ve rubrik sinyalleri |
 | SAĞ | Hakem Kararı — kriter başına AI önerisi ve ayrı insan puanı girişi |
 
 Masaüstünde (`xl` ve üzeri) üç panel aynı anda operasyoneldir. Daha dar ekranlarda paneller tek tek
@@ -127,7 +127,7 @@ Yalnız `verified: true` kanıt gezinme hedefi üretir. `evidenceTargetPage` do�
 `null` döner; ayrıca hedef sayfa, koşunun çıkarım aşamasında kaydedilmiş `pageCount` değerine göre
 sınırlanır. Modelin iddia ettiği rastgele bir sayfa numarası hakemi hiçbir zaman yönlendiremez.
 
-### AI 4. Göz paneli
+### AI 3. Göz paneli
 
 Panel dört grupta sunar:
 
