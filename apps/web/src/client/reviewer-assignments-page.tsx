@@ -12,7 +12,8 @@ import { Link, useParams } from "react-router";
 
 import { REVIEWER_EVALUATION_STATUS_LABELS } from "./analysis-labels";
 import { apiDelete, apiRequest, errorMessage } from "./api";
-import { Breadcrumb, ManagerStepNav } from "./competition-nav";
+import { Breadcrumb } from "./competition-nav";
+import { Alert, EmptyState, InitialsAvatar, Modal, PageHeader } from "./ui";
 
 function totalCell(score: number | null, maximum: number | null): string {
   if (score === null || maximum === null) return "—";
@@ -31,34 +32,36 @@ function AssignmentRow({
   isBusy: boolean;
 }) {
   return (
-    <tr className="border-t border-slate-200 align-top">
-      <td className="px-3 py-2.5 text-sm">
-        <span className="font-semibold text-slate-950">
+    <tr>
+      <td>
+        <span className="font-mono text-xs font-bold text-brand">
           {assignment.submission.applicationCode}
         </span>
-        <span className="mt-0.5 block text-slate-600">{assignment.submission.projectTitle}</span>
+        <span className="mt-0.5 block text-sm font-semibold text-ink">
+          {assignment.submission.projectTitle}
+        </span>
       </td>
-      <td className="px-3 py-2.5 text-sm">
-        <span className="font-medium text-slate-900">{assignment.reviewer.name}</span>
-        <span className="mt-0.5 block text-slate-500">{assignment.reviewer.email}</span>
+      <td>
+        <span className="flex items-center gap-2 font-medium text-ink">
+          <InitialsAvatar name={assignment.reviewer.name} />
+          {assignment.reviewer.name}
+        </span>
       </td>
-      <td className="px-3 py-2.5 text-sm text-slate-800">
+      <td>
         {assignment.evaluationStatus === null
           ? "Başlamadı"
           : REVIEWER_EVALUATION_STATUS_LABELS[assignment.evaluationStatus]}
       </td>
-      <td className="px-3 py-2.5 text-sm font-semibold text-blue-900">
+      <td className="font-semibold text-brand-deep">
         {totalCell(assignment.aiSuggestedTotal, assignment.aiMaxTotal)}
       </td>
-      <td className="px-3 py-2.5 text-sm font-semibold text-slate-950">
+      <td className="font-semibold text-ink">
         {assignment.evaluationStatus === "SUBMITTED"
           ? totalCell(assignment.humanTotal, assignment.humanMaxTotal)
           : "—"}
       </td>
-      <td className="px-3 py-2.5 text-sm text-slate-800">
-        {assignment.disagreementCount === null ? "—" : assignment.disagreementCount}
-      </td>
-      <td className="px-3 py-2.5">
+      <td>{assignment.disagreementCount === null ? "—" : assignment.disagreementCount}</td>
+      <td>
         <div className="flex flex-wrap gap-2">
           {assignment.evaluationStatus === "SUBMITTED" ? (
             <Link
@@ -98,11 +101,13 @@ export function ReviewerAssignmentsPage() {
   const [assignments, setAssignments] = useState<ReviewerAssignmentOperation[] | null>(null);
   const [reviewers, setReviewers] = useState<EligibleReviewer[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionSummary[]>([]);
+  const [hasSubmissionList, setHasSubmissionList] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState("");
   const [selectedReviewerId, setSelectedReviewerId] = useState("");
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
 
   const basePath = `/api/v1/competitions/${competitionId}`;
 
@@ -123,10 +128,16 @@ export function ReviewerAssignmentsPage() {
       // the operations table and can assign by typing the application code they were given.
       apiRequest(`${basePath}/submissions`, SubmissionListResponseSchema)
         .then((response) => {
-          if (active) setSubmissions(response.submissions);
+          if (active) {
+            setSubmissions(response.submissions);
+            setHasSubmissionList(true);
+          }
         })
         .catch(() => {
-          if (active) setSubmissions([]);
+          if (active) {
+            setSubmissions([]);
+            setHasSubmissionList(false);
+          }
         }),
     ]).catch((caught) => {
       if (active) setError(errorMessage(caught));
@@ -150,6 +161,7 @@ export function ReviewerAssignmentsPage() {
       });
       setSelectedSubmissionId("");
       setSelectedReviewerId("");
+      setIsAssignOpen(false);
       await refresh();
     } catch (caught) {
       setActionError(errorMessage(caught));
@@ -172,181 +184,170 @@ export function ReviewerAssignmentsPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-      <Breadcrumb
-        trail={[
-          { label: "Yarışmalar", to: "/app" },
-          { label: "Başvurular", to: `/app/competitions/${competitionId}/submissions` },
-          { label: "Hakem Atamaları" },
-        ]}
-      />
-      <div className="mt-4 max-w-3xl">
-        <p className="eyebrow">Değerlendirme operasyonu</p>
-        <h1 className="page-title">Hakem atamaları</h1>
-        <p className="page-lead">
-          Hakem rolü tek başına başvuru erişimi vermez. Bir hakem yalnız burada açıkça atadığınız
-          başvuruları açabilir.
-        </p>
+    <div className="layout-wide">
+      <Breadcrumb trail={[{ label: "Genel Bakış", to: "/app" }, { label: "Hakemler" }]} />
+      <div className="mt-4">
+        <PageHeader
+          actions={
+            <button className="primary-button" onClick={() => setIsAssignOpen(true)} type="button">
+              Hakem ata
+            </button>
+          }
+          lead="Hangi başvuruya kimin baktığını ve değerlendirme durumunu buradan yönetin."
+          title="Hakemler"
+        />
       </div>
-      {competitionId ? <ManagerStepNav competitionId={competitionId} current="reviewers" /> : null}
 
       {error ? (
-        <div
-          className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-          role="alert"
-        >
-          {error}
+        <div className="mt-6">
+          <Alert tone="error">{error}</Alert>
         </div>
       ) : null}
 
-      <section aria-labelledby="assign-title" className="setup-panel mt-8">
-        <h2 className="section-title" id="assign-title">
-          Hakem ata
-        </h2>
-        <form
-          className="mt-4 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
-          onSubmit={assign}
-        >
-          <div>
-            <label className="field-label" htmlFor="assign-submission">
-              Başvuru
-            </label>
-            {submissions.length > 0 ? (
+      {actionError ? (
+        <p className="mt-4 text-sm text-critical" role="alert">
+          {actionError}
+        </p>
+      ) : null}
+
+      {assignments === null && error === null ? (
+        <p className="mt-6 text-sm text-ink-muted" role="status">
+          Atamalar yükleniyor…
+        </p>
+      ) : null}
+
+      {assignments?.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            action={
+              <button
+                className="primary-button"
+                onClick={() => setIsAssignOpen(true)}
+                type="button"
+              >
+                Hakem ata
+              </button>
+            }
+            description="Bir başvuruya hakem atadığınızda değerlendirme başlayabilir."
+            title="Henüz hakem ataması yok"
+          />
+        </div>
+      ) : null}
+
+      {assignments && assignments.length > 0 ? (
+        <div className="table-scroll mt-6">
+          <table className="data-table min-w-[52rem]">
+            <caption className="sr-only">Hakem atamaları ve değerlendirme durumları</caption>
+            <thead>
+              <tr>
+                <th scope="col">Başvuru</th>
+                <th scope="col">Hakem</th>
+                <th scope="col">Değerlendirme</th>
+                <th scope="col">AI önerisi</th>
+                <th scope="col">Hakem puanı</th>
+                <th scope="col">Farklı kriter</th>
+                <th scope="col">İşlem</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assignments.map((assignment) => (
+                <AssignmentRow
+                  assignment={assignment}
+                  competitionId={competitionId ?? ""}
+                  isBusy={isBusy}
+                  key={assignment.assignmentId}
+                  onUnassign={(id) => void unassign(id)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      <p className="mt-4 text-sm leading-6 text-ink-muted">
+        Öncelik sırası için{" "}
+        <Link className="evidence-link" to={`/app/competitions/${competitionId}/operations`}>
+          Değerlendirme
+        </Link>{" "}
+        kuyruğunu açın.
+      </p>
+
+      {isAssignOpen ? (
+        <Modal labelledBy="assign-title" onClose={() => setIsAssignOpen(false)}>
+          <h2 className="section-title" id="assign-title">
+            Hakem ata
+          </h2>
+          <form className="mt-5 grid gap-4" onSubmit={assign}>
+            <div>
+              <label className="field-label" htmlFor="assign-submission">
+                Başvuru
+              </label>
+              {hasSubmissionList ? (
+                <select
+                  className="field-input"
+                  id="assign-submission"
+                  onChange={(event) => setSelectedSubmissionId(event.target.value)}
+                  required
+                  value={selectedSubmissionId}
+                >
+                  <option value="">Seçin…</option>
+                  {submissions.map((submission) => (
+                    <option key={submission.id} value={submission.id}>
+                      {submission.applicationCode} · {submission.projectTitle}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <>
+                  <input
+                    className="field-input"
+                    id="assign-submission"
+                    onChange={(event) => setSelectedSubmissionId(event.target.value)}
+                    placeholder="Başvuru kodunu veya kimliğini girin"
+                    required
+                    value={selectedSubmissionId}
+                  />
+                  <p className="field-help">
+                    Değerlendirme yöneticisi başvuru listesini göremez. Atama için başvuru kimliğini
+                    yarışma yöneticisinden alın.
+                  </p>
+                </>
+              )}
+            </div>
+            <div>
+              <label className="field-label" htmlFor="assign-reviewer">
+                Hakem
+              </label>
               <select
                 className="field-input"
-                id="assign-submission"
-                onChange={(event) => setSelectedSubmissionId(event.target.value)}
+                id="assign-reviewer"
+                onChange={(event) => setSelectedReviewerId(event.target.value)}
                 required
-                value={selectedSubmissionId}
+                value={selectedReviewerId}
               >
                 <option value="">Seçin…</option>
-                {submissions.map((submission) => (
-                  <option key={submission.id} value={submission.id}>
-                    {submission.applicationCode} · {submission.projectTitle}
+                {reviewers.map((reviewer) => (
+                  <option key={reviewer.userId} value={reviewer.userId}>
+                    {reviewer.name} ({reviewer.assignedSubmissionCount} atama)
                   </option>
                 ))}
               </select>
-            ) : (
-              <input
-                className="field-input font-mono"
-                id="assign-submission"
-                onChange={(event) => setSelectedSubmissionId(event.target.value)}
-                placeholder="Başvuru kimliği"
-                required
-                value={selectedSubmissionId}
-              />
-            )}
-          </div>
-          <div>
-            <label className="field-label" htmlFor="assign-reviewer">
-              Hakem
-            </label>
-            <select
-              className="field-input"
-              id="assign-reviewer"
-              onChange={(event) => setSelectedReviewerId(event.target.value)}
-              required
-              value={selectedReviewerId}
-            >
-              <option value="">Seçin…</option>
-              {reviewers.map((reviewer) => (
-                <option key={reviewer.userId} value={reviewer.userId}>
-                  {reviewer.name} · {reviewer.email} ({reviewer.assignedSubmissionCount} atama)
-                </option>
-              ))}
-            </select>
-            <p className="field-help">Yalnız bu yarışmada hakem rolü olan üyeler listelenir.</p>
-          </div>
-          <button className="primary-button" disabled={isBusy} type="submit">
-            {isBusy ? "İşleniyor…" : "Ata"}
-          </button>
-        </form>
-        {actionError ? (
-          <p className="mt-3 text-sm text-red-700" role="alert">
-            {actionError}
-          </p>
-        ) : null}
-      </section>
-
-      <section aria-labelledby="operations-title" className="setup-panel mt-8">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Yarışma kapsamı</p>
-            <h2 className="section-title" id="operations-title">
-              Atama ve değerlendirme durumu
-            </h2>
-          </div>
-        </div>
-
-        {assignments === null && error === null ? (
-          <p className="mt-4 text-sm text-slate-600" role="status">
-            Atamalar yükleniyor…
-          </p>
-        ) : null}
-
-        {assignments?.length === 0 ? (
-          <p className="mt-4 empty-state">Bu yarışmada henüz hakem ataması yok.</p>
-        ) : null}
-
-        {assignments && assignments.length > 0 ? (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[52rem] text-left">
-              <thead>
-                <tr className="text-xs font-bold tracking-wide text-slate-500 uppercase">
-                  <th className="px-3 py-2" scope="col">
-                    Başvuru
-                  </th>
-                  <th className="px-3 py-2" scope="col">
-                    Hakem
-                  </th>
-                  <th className="px-3 py-2" scope="col">
-                    Değerlendirme
-                  </th>
-                  <th className="px-3 py-2" scope="col">
-                    AI önerisi
-                  </th>
-                  <th className="px-3 py-2" scope="col">
-                    Hakem puanı
-                  </th>
-                  <th className="px-3 py-2" scope="col">
-                    Farklı kriter
-                  </th>
-                  <th className="px-3 py-2" scope="col">
-                    İşlem
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {assignments.map((assignment) => (
-                  <AssignmentRow
-                    assignment={assignment}
-                    competitionId={competitionId ?? ""}
-                    isBusy={isBusy}
-                    key={assignment.assignmentId}
-                    onUnassign={(id) => void unassign(id)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-
-        <p className="mt-4 text-sm leading-6 text-slate-600">
-          Bu tablo atama durumunu gösterir. Hangi başvuruya önce bakılması gerektiğini görmek için{" "}
-          <Link
-            className="font-semibold text-blue-800 underline decoration-dotted underline-offset-2"
-            to={`/app/competitions/${competitionId}/operations`}
-          >
-            inceleme önceliği kuyruğuna
-          </Link>{" "}
-          geçin.
-        </p>
-        <p className="mt-3 text-xs leading-5 text-slate-500">
-          AI önerisi ve hakem puanı ayrı sütunlardır ve tek bir puana birleştirilmez. Gönderilmiş
-          bir değerlendirme kaydı korunur; bu nedenle atama kaldırılamaz. Bir hakemin
-          değerlendirmeyi göndermesi yarışma genelinde nihai bir karar üretmez.
-        </p>
-      </section>
-    </main>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button className="primary-button" disabled={isBusy} type="submit">
+                {isBusy ? "İşleniyor…" : "Ata"}
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => setIsAssignOpen(false)}
+                type="button"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+    </div>
   );
 }

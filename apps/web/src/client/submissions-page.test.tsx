@@ -112,6 +112,17 @@ describe("semantic analysis evidence strength UI", () => {
   }
 });
 
+describe("submission analysis progress", () => {
+  it("maps a completed run to the user-language ready state", () => {
+    const markup = renderToStaticMarkup(
+      <AnalysisResults run={runWith(semanticCheck("SECTION_CONTENT", "HIGH"))} />,
+    );
+    expect(markup).toContain("Analiz sonuçları");
+    expect(markup).not.toContain("SEMANTIC_CHECKS");
+    expect(markup).not.toContain("RUBRIC_EVALUATION");
+  });
+});
+
 describe("manager similarity signal UI", () => {
   it("renders lexical-only review language and bounded two-sided evidence without a verdict", () => {
     const check: AnalysisCheckResponse = {
@@ -159,7 +170,7 @@ describe("manager similarity signal UI", () => {
       updatedAt: 1,
     };
     const markup = renderToStaticMarkup(<AnalysisResults run={runWith(check)} />);
-    expect(markup).toContain("Lexical ön analiz · Semantik sağlayıcı bağlı değil");
+    expect(markup).toContain("Benzerlik karşılaştırması metin üzerinden yapıldı");
     expect(markup).toContain("Uzman incelemesi önerilir");
     expect(markup).toContain("Sayfa 2");
     expect(markup).toContain("Sayfa 4");

@@ -12,6 +12,7 @@ import { useParams } from "react-router";
 
 import { apiDelete, apiRequest, errorMessage } from "./api";
 import { Breadcrumb } from "./competition-nav";
+import { Alert, EmptyState, PageHeader } from "./ui";
 
 /**
  * Minimal manager surface for attaching/removing CONTESTANT participants on one submission. A
@@ -80,7 +81,7 @@ export function SubmissionParticipantsPage() {
   }
 
   if (!competitionId || !submissionId) {
-    return <main className="mx-auto max-w-4xl p-8">Başvuru kimliği bulunamadı.</main>;
+    return <div className="mx-auto max-w-4xl">Başvuru kimliği bulunamadı.</div>;
   }
 
   const attachedUserIds = new Set(participants?.map((participant) => participant.userId) ?? []);
@@ -89,31 +90,24 @@ export function SubmissionParticipantsPage() {
   );
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
+    <div className="layout-form">
       <Breadcrumb
         trail={[
-          { label: "Yarışmalar", to: "/app" },
+          { label: "Genel Bakış", to: "/app" },
           { label: "Başvurular", to: `/app/competitions/${competitionId}/submissions` },
           { label: "Katılımcılar" },
         ]}
       />
-      <div className="mt-4 max-w-3xl">
-        <p className="eyebrow">Yarışmacı sahipliği</p>
-        <h1 className="page-title">
-          {submission ? `${submission.applicationCode} · Katılımcılar` : "Katılımcılar"}
-        </h1>
-        <p className="page-lead">
-          Bu listeye eklenen yarışmacılar başvurunun sahibi olur ve yayımlandığında değerlendirme
-          sonucunu görebilir. Yarışmacı rolü tek başına başvuru sahipliği vermez.
-        </p>
+      <div className="mt-4">
+        <PageHeader
+          lead="Eklenen yarışmacılar bu başvurunun sahibidir ve yayımlanan sonucu görür."
+          title={submission ? `${submission.applicationCode} · Katılımcılar` : "Katılımcılar"}
+        />
       </div>
 
       {error ? (
-        <div
-          className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-          role="alert"
-        >
-          {error}
+        <div className="mt-6">
+          <Alert tone="error">{error}</Alert>
         </div>
       ) : null}
 
@@ -152,37 +146,39 @@ export function SubmissionParticipantsPage() {
           </button>
         </form>
         {actionError ? (
-          <p className="mt-3 text-sm text-red-700" role="alert">
+          <p className="mt-3 text-sm text-critical" role="alert">
             {actionError}
           </p>
         ) : null}
       </section>
 
-      <section aria-labelledby="participants-title" className="setup-panel mt-8">
+      <section aria-labelledby="participants-title" className="surface-panel mt-8 p-5">
         <h2 className="section-title" id="participants-title">
           Mevcut katılımcılar
         </h2>
         {participants === null && !error ? (
-          <p className="mt-4 text-sm text-slate-600" role="status">
+          <p className="mt-4 text-sm text-ink-muted" role="status">
             Yükleniyor…
           </p>
         ) : null}
         {participants?.length === 0 ? (
-          <div className="empty-state mt-4">
-            Bu başvuruya henüz bir yarışmacı eklenmedi. Eklenene kadar sonuç yayımlansa da kimse
-            göremez.
+          <div className="mt-4">
+            <EmptyState
+              description="Eklenene kadar sonuç yayımlansa da kimse göremez."
+              title="Bu başvuruya henüz yarışmacı eklenmedi"
+            />
           </div>
         ) : null}
         {participants && participants.length > 0 ? (
           <ul className="mt-4 space-y-2">
             {participants.map((participant) => (
               <li
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                 key={participant.id}
               >
                 <div>
-                  <p className="font-semibold text-slate-950">{participant.name}</p>
-                  <p className="text-sm text-slate-600">{participant.email}</p>
+                  <p className="font-semibold text-ink">{participant.name}</p>
+                  <p className="text-sm text-ink-muted">{participant.email}</p>
                 </div>
                 <button
                   className="danger-button"
@@ -197,6 +193,6 @@ export function SubmissionParticipantsPage() {
           </ul>
         ) : null}
       </section>
-    </main>
+    </div>
   );
 }

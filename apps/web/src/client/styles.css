@@ -1,35 +1,50 @@
 @import "tailwindcss";
 
 /*
- * Semantic token layer.
+ * Semantic token layer, derived from the official T3 AI palette as brand
+ * anchors — not as a coloring book:
  *
- * Surfaces, borders and text colours are named here and consumed by the component classes below.
- * The status scale (pass / warn / fail / info / neutral) is not a colour token but a set of named
- * component variants — `status-chip-*` and `priority-pill-*` — because a status needs a coordinated
- * border, background and foreground together. Either way each meaning is defined exactly once:
- * these colours used to be repeated as raw palette utilities across the analysis summary, the
- * reviewer queue, the reviewer workspace and the operations table, which is how the same server
- * signal ended up looking different on two screens.
+ *   #006BA6  brand
+ *   #DA291C  danger / critical only
+ *   #FFB81C  attention / warning only
+ *   #212322  ink reference
+ *   #CFCECD  quiet neutral
  *
- * Deliberately a small token set, not a design system.
+ * Separation comes from spacing, type, background and a few dividers.
+ * Borders, cards and shadows must earn their weight.
  */
 @theme {
-  --color-canvas: #f8fafc;
+  --color-canvas: #f4f6f8;
   --color-surface: #ffffff;
-  --color-surface-muted: #f1f5f9;
-  --color-line: #e2e8f0;
-  --color-line-strong: #cbd5e1;
-  --color-ink: #0f172a;
-  --color-ink-muted: #475569;
-  --color-ink-subtle: #64748b;
-  --color-accent: #1d4ed8;
+  --color-surface-raised: #f7f9fb;
+  --color-surface-selected: #eef5f9;
+  --color-surface-muted: #eef2f5;
+  --color-line: #e4e9ed;
+  --color-line-strong: #c9d2d9;
+  --color-ink: #1c242b;
+  --color-ink-muted: #4a5864;
+  --color-ink-subtle: #6b7884;
+  --color-brand: #006ba6;
+  --color-brand-strong: #005584;
+  --color-brand-deep: #0d3a56;
+  --color-brand-soft: #e8f2f8;
+  --color-brand-border: #b5d4e6;
+  --color-critical: #b42318;
+  --color-critical-soft: #fceceb;
+  --color-critical-border: #f2b8b3;
+  --color-warning-ink: #7a4d05;
+  --color-warning-soft: #fdf6e4;
+  --color-warning-border: #edd48a;
+  --color-success-ink: #14532d;
+  --color-success-soft: #e9f6ee;
+  --color-success-border: #a7dbbd;
 }
 
 :root {
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  color-scheme: light;
 }
 
 body {
@@ -54,25 +69,83 @@ button:disabled {
   cursor: not-allowed;
 }
 
-@layer components {
-  .eyebrow {
-    @apply text-xs font-bold tracking-[0.16em] text-blue-700 uppercase;
-  }
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
 
+.sr-only:focus,
+.sr-only:focus-visible {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 80;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: nowrap;
+  border-radius: 0.375rem;
+  background: var(--color-surface);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    transition-duration: 0.01ms;
+  }
+}
+
+@layer components {
   .page-title {
-    @apply mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl;
+    @apply mt-0 text-[1.875rem] font-semibold tracking-tight text-ink sm:text-[2.25rem];
   }
 
   .page-lead {
-    @apply mt-3 text-base leading-7 text-slate-600;
+    @apply mt-1.5 max-w-2xl text-[15px] leading-6 text-ink-muted;
   }
 
   .section-title {
-    @apply mt-1 text-xl font-bold tracking-tight text-slate-950 sm:text-2xl;
+    @apply text-xl font-semibold tracking-tight text-ink;
+  }
+
+  .pane-heading {
+    @apply text-[15px] font-semibold tracking-tight text-ink;
+  }
+
+  .layout-dashboard {
+    @apply mx-auto w-full max-w-6xl;
+  }
+
+  .layout-form {
+    @apply mx-auto w-full max-w-3xl;
+  }
+
+  .layout-setup {
+    @apply mx-auto w-full max-w-6xl;
+  }
+
+  .layout-wide {
+    @apply mx-auto w-full max-w-[88rem];
+  }
+
+  .layout-report {
+    @apply mx-auto w-full max-w-[44rem];
   }
 
   .setup-panel {
-    @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7;
+    @apply rounded-lg border border-line bg-surface p-5 sm:p-6;
   }
 
   .panel-heading {
@@ -80,97 +153,146 @@ button:disabled {
   }
 
   .field-label {
-    @apply mb-1.5 block text-sm font-semibold text-slate-800;
+    @apply mb-1.5 block text-[13px] font-medium text-ink;
   }
 
   .field-input {
-    @apply block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-950 shadow-sm outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100;
+    @apply block w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-ink outline-none placeholder:text-ink-subtle focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/25 disabled:bg-surface-muted disabled:text-ink-subtle;
+    min-height: 2.5rem;
+  }
+
+  textarea.field-input {
+    min-height: 6rem;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+
+  select.field-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236b7884' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><path d='m4 6 4 4 4-4'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    padding-right: 2.25rem;
   }
 
   .field-help {
-    @apply mt-1.5 text-xs leading-5 text-slate-500;
+    @apply mt-1.5 text-xs leading-5 text-ink-subtle;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .ghost-button,
+  .danger-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 text-sm font-medium transition-colors duration-150 disabled:opacity-50;
+    min-height: 2.5rem;
   }
 
   .primary-button {
-    @apply inline-flex items-center rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:opacity-50;
+    @apply bg-brand text-white hover:bg-brand-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand;
   }
 
   .secondary-button {
-    @apply inline-flex items-center rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:opacity-50;
+    @apply border border-line-strong bg-surface text-ink hover:bg-surface-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand;
+  }
+
+  .ghost-button {
+    @apply bg-transparent text-ink-muted hover:bg-surface-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand;
   }
 
   .danger-button {
-    @apply inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-50;
+    @apply border border-critical-border bg-surface text-critical hover:bg-critical-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-critical;
   }
 
   .icon-button {
-    @apply grid h-9 w-9 place-items-center rounded-lg border border-slate-300 bg-white font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 disabled:opacity-30;
+    @apply grid h-10 w-10 place-items-center rounded-md text-ink-muted hover:bg-surface-muted hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-30;
   }
 
   .metric-chip {
-    @apply inline-flex rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700;
+    @apply inline-flex rounded-md bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink-muted;
   }
 
   .evidence-link {
-    @apply rounded font-semibold text-blue-800 underline decoration-dotted underline-offset-2 hover:text-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700;
+    @apply rounded-sm font-medium text-brand underline decoration-dotted underline-offset-2 hover:text-brand-strong;
   }
 
   .empty-state {
-    @apply rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600;
+    @apply max-w-md py-2 text-sm leading-6 text-ink-muted;
   }
 
-  /* --- Status chips -------------------------------------------------------
-   * One chip shape, five semantic variants. The variant never carries meaning
-   * on its own: callers always render the status word inside the chip, so the
-   * information survives for a reader who cannot distinguish the colours.
-   */
+  .empty-state h3 {
+    @apply text-[15px] font-semibold text-ink;
+  }
+
+  .alert-error {
+    @apply rounded-md border border-critical-border bg-critical-soft px-3.5 py-2.5 text-sm leading-6 text-critical;
+  }
+
+  .alert-info {
+    @apply rounded-md border border-brand-border bg-brand-soft px-3.5 py-2.5 text-sm leading-6 text-brand-deep;
+  }
+
+  .alert-success {
+    @apply rounded-md border border-success-border bg-success-soft px-3.5 py-2.5 text-sm leading-6 text-success-ink;
+  }
+
   .status-chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold whitespace-nowrap;
+    @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium whitespace-nowrap;
   }
 
   .status-chip-pass {
-    @apply border-emerald-300 bg-emerald-50 text-emerald-900;
+    @apply bg-success-soft text-success-ink;
   }
 
   .status-chip-warn {
-    @apply border-amber-300 bg-amber-50 text-amber-900;
+    @apply bg-warning-soft text-warning-ink;
   }
 
   .status-chip-fail {
-    @apply border-red-300 bg-red-50 text-red-900;
+    @apply bg-critical-soft text-critical;
   }
 
   .status-chip-info {
-    @apply border-blue-300 bg-blue-50 text-blue-900;
+    @apply bg-brand-soft text-brand-deep;
   }
 
   .status-chip-neutral {
-    @apply border-slate-300 bg-slate-50 text-slate-800;
+    @apply bg-surface-muted text-ink-muted;
   }
 
-  /* --- Review priority ---------------------------------------------------
-   * Qualitative levels only. There is deliberately no percentage, gauge or
-   * meter styling available here: the priority is not a probability.
-   */
   .priority-pill {
-    @apply inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold whitespace-nowrap;
+    @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap;
   }
 
   .priority-pill-high {
-    @apply border-red-300 bg-red-50 text-red-900;
+    @apply bg-warning-soft text-warning-ink;
   }
 
   .priority-pill-medium {
-    @apply border-amber-300 bg-amber-50 text-amber-900;
+    @apply bg-surface-muted text-ink-muted;
   }
 
   .priority-pill-low {
-    @apply border-slate-300 bg-slate-50 text-slate-700;
+    @apply bg-surface-muted text-ink-subtle;
   }
 
-  /* --- Surfaces, tables and navigation ---------------------------------- */
   .surface-panel {
-    @apply rounded-2xl border border-line bg-surface shadow-sm;
+    @apply rounded-lg border border-line bg-surface;
+  }
+
+  .metrics-strip {
+    @apply grid divide-y divide-line border-y border-line bg-surface sm:grid-flow-col sm:divide-x sm:divide-y-0;
+  }
+
+  .metric-cell {
+    @apply px-4 py-3;
+  }
+
+  .metric-label {
+    @apply text-[11px] font-medium tracking-wide text-ink-subtle;
+  }
+
+  .metric-value {
+    @apply mt-1 text-[1.75rem] font-semibold tracking-tight tabular-nums;
   }
 
   .data-table {
@@ -178,40 +300,181 @@ button:disabled {
   }
 
   .data-table th {
-    @apply sticky top-0 z-10 border-b border-line bg-surface-muted px-3 py-2.5 text-xs font-bold tracking-wide text-ink-muted uppercase;
+    @apply sticky top-0 z-10 border-b border-line bg-surface-raised px-3 py-2 text-[11px] font-medium tracking-wide text-ink-subtle;
   }
 
   .data-table td {
-    @apply border-b border-line px-3 py-3 align-top;
+    @apply border-b border-line px-3 py-2.5 align-top;
   }
 
-  /* Wide content scrolls inside its own container, so the page body never scrolls sideways. */
+  .data-table tbody tr {
+    @apply transition-colors duration-150;
+  }
+
+  .data-table tbody tr:hover {
+    @apply bg-surface-raised;
+  }
+
   .table-scroll {
-    @apply max-h-[38rem] overflow-auto rounded-xl border border-line;
+    @apply max-h-[38rem] overflow-auto border-y border-line bg-surface;
   }
 
   .breadcrumb {
-    @apply flex flex-wrap items-center gap-1.5 text-xs font-semibold text-ink-subtle;
+    @apply flex flex-wrap items-center gap-1.5 text-[13px] font-medium text-ink-subtle;
   }
 
   .breadcrumb a {
-    @apply rounded text-blue-800 hover:text-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700;
+    @apply rounded-sm text-ink-muted hover:text-ink;
   }
 
-  /* --- Reviewer workspace panes ----------------------------------------- */
+  .sidebar-link {
+    @apply flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium text-ink-muted transition-colors duration-150 hover:bg-surface-muted hover:text-ink;
+  }
+
+  .sidebar-link-active {
+    @apply bg-surface-selected text-brand-deep hover:bg-surface-selected hover:text-brand-deep;
+  }
+
+  .sidebar-section-label {
+    @apply px-2.5 pt-5 pb-1 text-[11px] font-medium tracking-wide text-ink-subtle;
+  }
+
+  .setup-task {
+    @apply flex flex-wrap items-center justify-between gap-3 px-3.5 py-3;
+  }
+
+  .workspace-shell {
+    @apply grid min-h-0 flex-1 xl:grid-cols-[minmax(0,42fr)_minmax(0,28fr)_minmax(0,30fr)];
+  }
+
   .workspace-pane {
-    @apply flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm;
+    @apply flex min-h-0 min-w-0 flex-col overflow-hidden bg-surface xl:border-l xl:border-line;
+  }
+
+  .workspace-pane > :not(.workspace-pane-heading) {
+    @apply min-h-0 flex-1 overflow-y-auto;
+  }
+
+  .workspace-pane:first-of-type {
+    @apply xl:border-l-0;
   }
 
   .workspace-pane-heading {
-    @apply flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-muted px-3 py-2;
+    @apply flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface px-3.5 py-2;
   }
 
   .workspace-pane-title {
-    @apply text-sm font-bold tracking-wide text-ink;
+    @apply text-[13px] font-semibold tracking-tight text-ink;
   }
 
   .pane-note {
     @apply text-xs leading-5 text-ink-subtle;
   }
+
+  .citation {
+    @apply mt-2 border-l-2 border-brand-border bg-surface-raised px-2.5 py-2 text-sm leading-6 text-ink;
+  }
+
+  .file-dropzone {
+    @apply relative flex min-h-28 cursor-pointer flex-col items-start justify-center rounded-lg border border-dashed border-line-strong bg-surface-raised px-4 py-4 transition-colors duration-150;
+  }
+
+  .file-dropzone:hover,
+  .file-dropzone:focus-within,
+  .file-dropzone[data-active="true"] {
+    @apply border-brand bg-surface-selected;
+  }
+
+  .file-dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .user-menu {
+    @apply relative;
+  }
+
+  .user-menu-panel {
+    @apply absolute right-0 z-50 mt-1.5 w-64 rounded-lg border border-line bg-surface p-1.5 shadow-sm;
+  }
+
+  .mobile-nav-backdrop {
+    @apply fixed inset-0 z-40 bg-ink/25 lg:hidden;
+  }
+
+  .mobile-nav-drawer {
+    @apply fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto border-r border-line bg-surface lg:hidden;
+    animation: drawer-in 160ms ease;
+  }
+
+  .modal-overlay {
+    @apply fixed inset-0 cursor-default bg-ink/35;
+    animation: fade-in 160ms ease;
+  }
+
+  .modal-panel {
+    @apply rounded-lg border border-line bg-surface p-6;
+    animation: rise-in 180ms ease;
+  }
+
+  .product-preview {
+    @apply overflow-hidden rounded-xl border border-line bg-surface text-ink shadow-sm;
+  }
+
+  @media (pointer: coarse) {
+    .field-input,
+    .primary-button,
+    .secondary-button,
+    .ghost-button,
+    .danger-button {
+      min-height: 2.75rem;
+    }
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes page-focus {
+  0% {
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+  30% {
+    box-shadow: inset 0 0 0 2px var(--color-brand-border);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+}
+
+.report-page-focus {
+  animation: page-focus 420ms ease;
 }

@@ -15,22 +15,23 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import {
+  ANALYSIS_RUN_STATUS_LABELS,
+  analysisProgressLabel,
+  analysisRunStatusChipClass,
   CHECK_STATUS_LABELS,
   CHECK_TYPE_LABELS,
   checkStatusClass,
   EVIDENCE_STRENGTH_LABELS,
   languageName,
+  SIMILARITY_SEMANTIC_STATUS_LABELS,
 } from "./analysis-labels";
 import { apiRequest, errorMessage } from "./api";
-import { Breadcrumb, ManagerStepNav } from "./competition-nav";
-
-function formatFileSize(bytes: number) {
-  return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024);
-}
+import { Breadcrumb } from "./competition-nav";
+import { Alert, EmptyState, FileDropzone, MetricCard, Modal, PageHeader } from "./ui";
 
 function EvidenceStrength({ strength }: { strength: SemanticEvidenceStrength }) {
   return (
-    <p className="mt-2 text-sm font-medium text-slate-700">
+    <p className="mt-2 text-sm font-medium text-ink-muted">
       Kanıt Gücü: {EVIDENCE_STRENGTH_LABELS[strength]}
     </p>
   );
@@ -38,7 +39,7 @@ function EvidenceStrength({ strength }: { strength: SemanticEvidenceStrength }) 
 
 export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
   if (run.checks.length === 0) {
-    return <p className="mt-2 text-slate-500">Bu tarihsel koşuda ön kontrol sonucu yok.</p>;
+    return <p className="mt-2 text-ink-subtle">Bu tarihsel koşuda ön kontrol sonucu yok.</p>;
   }
   const sectionPresence = run.checks.find((check) => check.type === "SECTION_PRESENCE");
   const sectionTitles = new Map(
@@ -47,32 +48,32 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
   const displaySectionKeys = (keys: readonly string[]) =>
     keys.map((key) => sectionTitles.get(key) ?? key).join(", ");
   return (
-    <details className="mt-2 min-w-64 text-slate-700">
-      <summary className="cursor-pointer font-semibold text-blue-800">Analiz sonuçları</summary>
+    <details className="mt-2 min-w-64 text-ink-muted">
+      <summary className="cursor-pointer font-medium text-brand-deep">Analiz sonuçları</summary>
       <div className="mt-2 space-y-3">
         {run.checks.map((check) => (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3" key={check.type}>
+          <div className="rounded-md border border-line bg-surface-raised p-3" key={check.type}>
             <div className="flex items-center justify-between gap-3">
-              <span className="font-semibold text-slate-900">{CHECK_TYPE_LABELS[check.type]}</span>
+              <span className="font-semibold text-ink">{CHECK_TYPE_LABELS[check.type]}</span>
               <span className={`font-semibold ${checkStatusClass(check.status)}`}>
                 {CHECK_STATUS_LABELS[check.status]}
               </span>
             </div>
-            <p className="mt-1 leading-5 text-slate-600">{check.summary}</p>
+            <p className="mt-1 leading-5 text-ink-muted">{check.summary}</p>
             {check.type === "LANGUAGE" ? (
-              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-slate-600">
+              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-ink-muted">
                 <dt>Beklenen dil</dt>
-                <dd className="font-medium text-slate-800">
+                <dd className="font-medium text-ink">
                   {languageName(check.details.expectedLanguage)}
                 </dd>
                 <dt>Baskın dil</dt>
-                <dd className="font-medium text-slate-800">
+                <dd className="font-medium text-ink">
                   {languageName(check.details.detectedLanguage)}
                 </dd>
               </dl>
             ) : null}
             {check.type === "TEMPLATE_STRUCTURE" ? (
-              <ul className="mt-2 space-y-1 text-slate-600">
+              <ul className="mt-2 space-y-1 text-ink-muted">
                 {check.details.missingRequiredSectionKeys.length > 0 ? (
                   <li>
                     Eksik zorunlu başlık:{" "}
@@ -88,7 +89,7 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
               </ul>
             ) : null}
             {check.type === "SECTION_PRESENCE" ? (
-              <ul className="mt-2 space-y-1 text-slate-600">
+              <ul className="mt-2 space-y-1 text-ink-muted">
                 {check.details.sections.map((section) => (
                   <li key={section.sectionKey}>
                     {section.expectedTitle}:{" "}
@@ -105,17 +106,17 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
               <div className="mt-3 space-y-3">
                 {check.details.sections.map((section) => (
                   <div
-                    className="rounded-md border border-slate-200 bg-white p-2"
+                    className="rounded-md border border-line bg-surface p-2"
                     key={section.sectionKey}
                   >
-                    <p className="font-semibold text-slate-800">
+                    <p className="font-semibold text-ink">
                       {section.title} · {section.assessment.replaceAll("_", " ")}
                     </p>
-                    <p className="mt-1 text-slate-600">{section.reason}</p>
+                    <p className="mt-1 text-ink-muted">{section.reason}</p>
                     <EvidenceStrength strength={section.evidenceStrength} />
                     {section.evidence.map((evidence) => (
                       <blockquote
-                        className="mt-2 border-l-2 border-blue-300 pl-2 text-slate-600"
+                        className="mt-2 border-l-2 border-brand-border pl-2 text-ink-muted"
                         key={`${evidence.page}-${evidence.excerpt}`}
                       >
                         “{evidence.excerpt}”{" "}
@@ -127,26 +128,26 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
               </div>
             ) : null}
             {check.type === "CATEGORY_FIT" ? (
-              <div className="mt-2 text-slate-600">
+              <div className="mt-2 text-ink-muted">
                 <p>{check.details.reason}</p>
                 <EvidenceStrength strength={check.details.evidenceStrength} />
                 {check.details.evidence.map((evidence) => (
                   <blockquote
-                    className="mt-2 border-l-2 border-blue-300 pl-2"
+                    className="mt-2 border-l-2 border-brand-border pl-2"
                     key={`${evidence.page}-${evidence.excerpt}`}
                   >
                     “{evidence.excerpt}”{" "}
                     <span className="font-semibold">— Sayfa {evidence.page}</span>
                   </blockquote>
                 ))}
-                <p className="mt-2 font-medium text-slate-700">
+                <p className="mt-2 font-medium text-ink">
                   Bu sinyal kategori değişikliği veya nihai ret kararı değildir.
                 </p>
               </div>
             ) : null}
             {check.type === "SIMILARITY" ? (
-              <div className="mt-3 text-slate-600">
-                <p className="font-semibold text-slate-800">
+              <div className="mt-3 text-ink-muted">
+                <p className="font-semibold text-ink">
                   {check.details.level === "HIGH"
                     ? "Yüksek"
                     : check.details.level === "MEDIUM"
@@ -154,19 +155,15 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
                       : "Düşük"}{" "}
                   benzerlik sinyali
                 </p>
-                <p className="mt-1 font-medium text-blue-800">
-                  {check.details.semanticStatus === "AVAILABLE"
-                    ? "Hibrit benzerlik analizi · Lexical + semantik"
-                    : check.details.semanticStatus === "DEGRADED"
-                      ? "Lexical ön analiz · Semantik analiz bu koşuda tamamlanamadı"
-                      : "Lexical ön analiz · Semantik sağlayıcı bağlı değil"}
+                <p className="mt-1 font-medium text-brand-deep">
+                  {SIMILARITY_SEMANTIC_STATUS_LABELS[check.details.semanticStatus]}
                 </p>
                 {check.details.topMatches.map((match) => (
                   <div
-                    className="mt-3 rounded-md border border-slate-200 bg-white p-3"
+                    className="mt-3 rounded-md border border-line bg-white p-3"
                     key={match.otherSubmissionId}
                   >
-                    <p className="font-semibold text-slate-900">
+                    <p className="font-semibold text-ink">
                       {match.applicationCode} · {match.projectTitle}
                     </p>
                     <p className="mt-1">
@@ -178,16 +175,18 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
                           : "Düşük"}
                       {match.exactDocumentMatch ? " · Birebir belge eşleşmesi" : ""}
                     </p>
-                    <p className="mt-1 text-xs">
-                      Lexical katkı: {match.lexicalScore.toFixed(2)} · Semantik katkı:{" "}
-                      {match.semanticScore === null ? "yok" : match.semanticScore.toFixed(2)}
+                    <p className="mt-1 text-xs text-ink-subtle">
+                      Metin katkısı: {match.lexicalScore.toFixed(2)}
+                      {match.semanticScore === null
+                        ? ""
+                        : ` · Anlam katkısı: ${match.semanticScore.toFixed(2)}`}
                     </p>
                     {match.sectionMatches.map((section) => (
                       <div
                         className="mt-3 grid gap-2 lg:grid-cols-2"
                         key={`${section.sectionKey}-${section.otherSectionKey}`}
                       >
-                        <blockquote className="border-l-2 border-blue-300 pl-2">
+                        <blockquote className="border-l-2 border-brand-border pl-2">
                           <span className="font-semibold">
                             {section.sectionTitle} · Sayfa {section.sourcePage}
                           </span>
@@ -206,37 +205,37 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
                 {check.details.level === "HIGH" ? (
                   <p className="mt-3 font-semibold text-amber-800">Uzman incelemesi önerilir.</p>
                 ) : null}
-                <p className="mt-2 font-medium text-slate-700">
+                <p className="mt-2 font-medium text-ink">
                   Benzerlik bir inceleme sinyalidir; nihai yarışma kararı değildir.
                 </p>
               </div>
             ) : null}
             {check.type === "RUBRIC_EVALUATION" ? (
-              <div className="mt-3 text-slate-600">
-                <p className="font-semibold text-blue-900">
+              <div className="mt-3 text-ink-muted">
+                <p className="font-semibold text-brand-deep">
                   Toplam AI önerisi: {check.details.suggestedTotalScore} /{" "}
                   {check.details.maxTotalScore}
                 </p>
-                <p className="mt-1 font-medium text-slate-700">
+                <p className="mt-1 font-medium text-ink">
                   AI önerisi · Hakem kararı değildir. Nihai puanı yalnız hakem belirler.
                 </p>
                 <div className="mt-3 space-y-3">
                   {check.details.criteria.map((criterion) => (
                     <div
-                      className="rounded-md border border-slate-200 bg-white p-3"
+                      className="rounded-md border border-line bg-white p-3"
                       key={criterion.criterionId}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <span className="font-semibold text-slate-900">{criterion.title}</span>
-                        <span className="font-semibold text-blue-800">
+                        <span className="font-semibold text-ink">{criterion.title}</span>
+                        <span className="font-semibold text-brand-deep">
                           {criterion.suggestedScore} / {criterion.maxScore} (AI önerisi)
                         </span>
                       </div>
                       <EvidenceStrength strength={criterion.evidenceStrength} />
-                      <p className="mt-1 leading-5 text-slate-600">{criterion.reason}</p>
+                      <p className="mt-1 leading-5 text-ink-muted">{criterion.reason}</p>
                       {criterion.evidence.map((evidence) => (
                         <blockquote
-                          className="mt-2 border-l-2 border-blue-300 pl-2"
+                          className="mt-2 border-l-2 border-brand-border pl-2"
                           key={`${evidence.page}-${evidence.excerpt}`}
                         >
                           “{evidence.excerpt}”{" "}
@@ -253,11 +252,11 @@ export function AnalysisResults({ run }: { run: AnalysisRunResponse }) {
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-3">
-                  <p className="font-semibold text-blue-900">Geliştirme önerisi (AI önerisi)</p>
-                  <p className="mt-1 text-slate-700">{check.details.feedbackSummary}</p>
+                <div className="mt-3 rounded-md border border-brand-border bg-brand-soft p-3">
+                  <p className="font-semibold text-brand-deep">Geliştirme önerisi (AI önerisi)</p>
+                  <p className="mt-1 text-ink">{check.details.feedbackSummary}</p>
                 </div>
-                <p className="mt-2 font-medium text-slate-700">
+                <p className="mt-2 font-medium text-ink">
                   Rubrik puanları bir AI önerisidir; hakem kararı veya nihai puan değildir.
                 </p>
               </div>
@@ -276,51 +275,39 @@ function AnalysisStatus({
   run: AnalysisRunResponse | null | undefined;
   error: string | undefined;
 }) {
-  if (error) return <span className="text-xs font-medium text-red-700">{error}</span>;
-  if (!run) return <span className="text-xs font-medium text-slate-500">Henüz başlatılmadı</span>;
+  if (error) return <span className="text-xs font-medium text-critical">{error}</span>;
+  if (!run) {
+    return <span className="status-chip status-chip-neutral">Analiz başlatılmadı</span>;
+  }
+  const label = analysisProgressLabel(run.status, run.stage);
   if (run.status === "QUEUED" || run.status === "PROCESSING") {
     return (
-      <span
-        className="inline-flex items-center gap-2 text-xs font-semibold text-blue-800"
-        role="status"
-      >
-        <span className="h-2 w-2 animate-pulse rounded-full bg-blue-600" />
-        Belge işleniyor…
+      <span className="inline-flex items-center gap-2" role="status">
+        <span className={`status-chip ${analysisRunStatusChipClass(run.status)}`}>{label}</span>
       </span>
     );
   }
   if (run.status === "FAILED") {
     return (
-      <div className="max-w-52 text-xs text-red-800" role="alert">
-        <p className="font-semibold">Belge işleme başarısız</p>
-        <p className="mt-1 leading-5">{run.error?.message ?? "İşlem tamamlanamadı."}</p>
+      <div className="max-w-56 text-xs text-critical" role="alert">
+        <span className="status-chip status-chip-fail">{label}</span>
+        <p className="mt-1.5 leading-5">
+          {run.error?.message ?? ANALYSIS_RUN_STATUS_LABELS.FAILED}
+        </p>
       </div>
     );
   }
   const hasPrechecks = run.checks.length > 0;
   return (
-    <div className="text-xs text-emerald-800">
-      <p className="font-semibold">
-        {run.stage === "RUBRIC_EVALUATION"
-          ? "Rubrik önerisiyle analiz tamamlandı"
-          : run.stage === "SIMILARITY_CHECKS"
-            ? "Benzerlik sinyalleriyle analiz tamamlandı"
-            : run.stage === "SEMANTIC_CHECKS"
-              ? "Kanıta dayalı analiz tamamlandı"
-              : hasPrechecks
-                ? "Deterministik ön kontroller tamamlandı"
-                : "Metin çıkarımı tamamlandı"}
-      </p>
-      <p className="mt-1 text-slate-600">
-        {run.extraction.pageCount} sayfa · {run.extraction.characterCount} karakter
-      </p>
+    <div className="text-xs">
+      <span className={`status-chip ${analysisRunStatusChipClass(run.status)}`}>{label}</span>
       {run.extraction.warnings.includes("TEXT_SPARSE") ? (
-        <p className="mt-1 font-medium text-amber-800">Metin seyrek; OCR gerekebilir.</p>
+        <p className="mt-1.5 font-medium text-warning-ink">Metin seyrek; OCR gerekebilir.</p>
       ) : null}
       {hasPrechecks ? (
         <AnalysisResults run={run} />
       ) : (
-        <p className="mt-2 text-slate-500">Bu tarihsel koşuda ön kontrol sonucu yok.</p>
+        <p className="mt-1.5 text-ink-subtle">Bu analizde ayrıntılı kontrol sonucu yok.</p>
       )}
     </div>
   );
@@ -340,62 +327,41 @@ function SubmissionTable({
   onStartAnalysis(submissionId: string): void;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[72rem] border-separate border-spacing-0 text-left text-sm">
+    <div className="table-scroll">
+      <table className="data-table min-w-[64rem]">
+        <caption className="sr-only">Yarışma başvuruları ve analiz durumları</caption>
         <thead>
-          <tr className="text-xs tracking-wide text-slate-500 uppercase">
-            <th className="border-b border-slate-200 px-4 py-3 font-semibold">Başvuru</th>
-            <th className="border-b border-slate-200 px-4 py-3 font-semibold">Kategori</th>
-            <th className="border-b border-slate-200 px-4 py-3 font-semibold">Rapor</th>
-            <th className="border-b border-slate-200 px-4 py-3 font-semibold">Yükleme</th>
-            <th className="border-b border-slate-200 px-4 py-3 font-semibold">Dosya sinyali</th>
-            <th className="border-b border-slate-200 px-4 py-3 font-semibold">Analiz</th>
-            <th className="border-b border-slate-200 px-4 py-3 font-semibold">İşlem</th>
+          <tr>
+            <th scope="col">Başvuru</th>
+            <th scope="col">Kategori</th>
+            <th scope="col">Analiz</th>
+            <th scope="col">İşlem</th>
           </tr>
         </thead>
         <tbody>
           {submissions.map((submission) => (
             <tr key={submission.id}>
-              <td className="border-b border-slate-100 px-4 py-4 align-top">
-                <p className="font-mono text-xs font-semibold text-blue-800">
+              <td>
+                <p className="font-mono text-xs font-bold text-brand">
                   {submission.applicationCode}
                 </p>
-                <p className="mt-1 font-semibold text-slate-950">{submission.projectTitle}</p>
-              </td>
-              <td className="border-b border-slate-100 px-4 py-4 align-top">
-                <p className="font-medium text-slate-800">{submission.category.name}</p>
-                <p className="mt-1 font-mono text-xs text-slate-500">{submission.category.code}</p>
-              </td>
-              <td className="border-b border-slate-100 px-4 py-4 align-top">
-                <p className="max-w-52 truncate font-medium text-slate-800">
-                  {submission.file.originalFilename}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {formatFileSize(submission.file.sizeBytes)} MiB
-                </p>
-              </td>
-              <td className="border-b border-slate-100 px-4 py-4 align-top text-slate-600">
-                {new Intl.DateTimeFormat("tr-TR", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(submission.createdAt)}
-              </td>
-              <td className="border-b border-slate-100 px-4 py-4 align-top">
+                <p className="mt-1 font-semibold text-ink">{submission.projectTitle}</p>
                 {submission.exactDuplicate ? (
-                  <span className="inline-flex max-w-48 rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold leading-5 text-amber-900">
+                  <p className="mt-1 text-xs text-warning-ink">
                     Birebir aynı {submission.matchingSubmissionCount} rapor daha var
-                  </span>
-                ) : (
-                  <span className="text-xs font-medium text-slate-500">Birebir eşleşme yok</span>
-                )}
+                  </p>
+                ) : null}
               </td>
-              <td className="border-b border-slate-100 px-4 py-4 align-top">
+              <td>
+                <p className="font-medium text-ink">{submission.category.name}</p>
+              </td>
+              <td>
                 <AnalysisStatus
                   error={analysisErrors[submission.id]}
                   run={latestRuns[submission.id]}
                 />
               </td>
-              <td className="border-b border-slate-100 px-4 py-4 align-top">
+              <td>
                 <div className="flex flex-col items-start gap-2">
                   <a
                     className="secondary-button whitespace-nowrap"
@@ -421,7 +387,9 @@ function SubmissionTable({
                     >
                       {startingSubmissionIds.includes(submission.id)
                         ? "Başlatılıyor…"
-                        : "Analizi başlat"}
+                        : latestRuns[submission.id]
+                          ? "Analizi yeniden başlat"
+                          : "Analizi başlat"}
                     </button>
                   )}
                 </div>
@@ -448,6 +416,8 @@ export function SubmissionsPage() {
   const [projectTitle, setProjectTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [report, setReport] = useState<File | null>(null);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<{
     kind: "success" | "warning" | "error";
@@ -584,6 +554,7 @@ export function SubmissionsPage() {
       setApplicationCode("");
       setProjectTitle("");
       setReport(null);
+      setIsUploadOpen(false);
       const fileInput = form.elements.namedItem("report");
       if (fileInput instanceof HTMLInputElement) fileInput.value = "";
       await refresh();
@@ -595,162 +566,221 @@ export function SubmissionsPage() {
   }
 
   if (!competitionId) {
-    return <main className="mx-auto max-w-4xl p-8">Yarışma kimliği bulunamadı.</main>;
+    return <div className="mx-auto max-w-4xl">Yarışma kimliği bulunamadı.</div>;
   }
 
+  const query = search.trim().toLocaleLowerCase("tr-TR");
+  const visible = (submissions ?? []).filter((submission) => {
+    if (!query) return true;
+    return (
+      submission.applicationCode.toLocaleLowerCase("tr-TR").includes(query) ||
+      submission.projectTitle.toLocaleLowerCase("tr-TR").includes(query) ||
+      submission.category.name.toLocaleLowerCase("tr-TR").includes(query)
+    );
+  });
+  const readyCount = (submissions ?? []).filter(
+    (submission) => latestRuns[submission.id]?.status === "SUCCEEDED",
+  ).length;
+
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-8 sm:py-10">
-      <Breadcrumb trail={[{ label: "Yarışmalar", to: "/app" }, { label: "Başvurular" }]} />
-      <div className="mt-4 max-w-3xl">
-        <p className="eyebrow">Özel belge deposu</p>
-        <h1 className="page-title">Başvurular</h1>
-        <p className="page-lead">
-          PDF raporlarını yarışma kapsamında kaydedin; deterministik kontrolleri ve kanıta dayalı
-          bölüm içeriği/kategori uyumu sinyallerini başlatın. Yapay zekâ sonuçları karar desteğidir;
-          raporlar puanlanmaz ve nihai karar daima insana aittir.
-        </p>
-      </div>
-      <ManagerStepNav competitionId={competitionId} current="submissions" />
-
-      <section aria-labelledby="upload-title" className="setup-panel mt-8">
-        <h2 className="section-title" id="upload-title">
-          Yeni başvuru yükle
-        </h2>
-        <p className="mt-2 text-sm text-slate-600">Yalnız PDF · En fazla 20 MiB</p>
-        <form className="mt-6 grid gap-5 lg:grid-cols-2" onSubmit={submit}>
-          <div>
-            <label className="field-label" htmlFor="application-code">
-              Başvuru kodu
-            </label>
-            <input
-              className="field-input"
-              id="application-code"
-              maxLength={80}
-              onChange={(event) => setApplicationCode(event.target.value)}
-              required
-              value={applicationCode}
-            />
-          </div>
-          <div>
-            <label className="field-label" htmlFor="project-title">
-              Proje başlığı
-            </label>
-            <input
-              className="field-input"
-              id="project-title"
-              maxLength={240}
-              onChange={(event) => setProjectTitle(event.target.value)}
-              required
-              value={projectTitle}
-            />
-          </div>
-          <div>
-            <label className="field-label" htmlFor="submission-category">
-              Kategori
-            </label>
-            <select
-              className="field-input"
-              disabled={!categories?.length}
-              id="submission-category"
-              onChange={(event) => setCategoryId(event.target.value)}
-              required
-              value={categoryId}
-            >
-              {categories?.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name} ({category.code})
-                </option>
-              ))}
-            </select>
-            {categories?.length === 0 ? (
-              <p className="field-help text-amber-800">
-                Önce yarışma yapılandırmasında kategori oluşturun.
-              </p>
-            ) : null}
-          </div>
-          <div>
-            <label className="field-label" htmlFor="submission-report">
-              PDF raporu
-            </label>
-            <input
-              accept="application/pdf,.pdf"
-              className="field-input"
-              id="submission-report"
-              name="report"
-              onChange={(event) => setReport(event.target.files?.[0] ?? null)}
-              required
-              type="file"
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-4 lg:col-span-2">
-            <button
-              className="primary-button"
-              disabled={isUploading || !categories?.length}
-              type="submit"
-            >
-              {isUploading ? "Rapor yükleniyor…" : "Başvuruyu kaydet"}
+    <div className="layout-wide">
+      <Breadcrumb trail={[{ label: "Genel Bakış", to: "/app" }, { label: "Başvurular" }]} />
+      <div className="mt-4">
+        <PageHeader
+          actions={
+            <button className="primary-button" onClick={() => setIsUploadOpen(true)} type="button">
+              Başvuru yükle
             </button>
-            {uploadMessage ? (
-              <p
-                className={
-                  uploadMessage.kind === "error"
-                    ? "text-sm font-medium text-red-700"
-                    : uploadMessage.kind === "warning"
-                      ? "text-sm font-medium text-amber-800"
-                      : "text-sm font-medium text-emerald-700"
-                }
-                role={uploadMessage.kind === "error" ? "alert" : "status"}
-              >
-                {uploadMessage.text}
-              </p>
-            ) : null}
-          </div>
-        </form>
-      </section>
+          }
+          lead="Başvuru kodu, proje adı ve analiz durumunu buradan izleyin."
+          title="Başvurular"
+        />
+      </div>
 
-      <section aria-labelledby="list-title" className="setup-panel mt-8">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Yarışma kapsamı</p>
-            <h2 className="section-title" id="list-title">
-              Yüklenen başvurular
-            </h2>
-          </div>
-          <button className="secondary-button" onClick={() => refresh()} type="button">
-            Yenile
-          </button>
+      {submissions && submissions.length > 0 ? (
+        <div className="metrics-strip mt-6 sm:grid-cols-3">
+          <MetricCard label="Başvurular" value={String(submissions.length)} />
+          <MetricCard label="Analizi tamamlanan" value={String(readyCount)} />
+          <MetricCard
+            label="Analiz bekleyen"
+            tone={submissions.length - readyCount > 0 ? "warn" : "neutral"}
+            value={String(submissions.length - readyCount)}
+          />
         </div>
-        {loadError ? (
-          <div
-            className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-            role="alert"
-          >
+      ) : null}
+
+      <div className="mt-6 flex flex-wrap items-end gap-3">
+        <div className="min-w-64 flex-1">
+          <label className="field-label" htmlFor="submission-search">
+            Ara
+          </label>
+          <input
+            className="field-input"
+            id="submission-search"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Başvuru kodu, proje adı veya kategori"
+            type="search"
+            value={search}
+          />
+        </div>
+        <button className="secondary-button" onClick={() => refresh()} type="button">
+          Yenile
+        </button>
+      </div>
+
+      {uploadMessage ? (
+        <p
+          className={
+            uploadMessage.kind === "error"
+              ? "mt-4 text-sm font-medium text-critical"
+              : uploadMessage.kind === "warning"
+                ? "mt-4 text-sm font-medium text-warning-ink"
+                : "mt-4 text-sm font-medium text-success-ink"
+          }
+          role={uploadMessage.kind === "error" ? "alert" : "status"}
+        >
+          {uploadMessage.text}
+        </p>
+      ) : null}
+
+      {loadError ? (
+        <div className="mt-6">
+          <Alert tone="error">
             <p>{loadError}</p>
             <button className="secondary-button mt-3" onClick={() => refresh()} type="button">
               Tekrar dene
             </button>
-          </div>
-        ) : null}
-        {submissions === null && !loadError ? (
-          <p className="mt-6 text-sm text-slate-600" role="status">
-            Başvurular yükleniyor…
-          </p>
-        ) : null}
-        {submissions?.length === 0 ? (
-          <div className="empty-state mt-6">Henüz PDF raporu yüklenmiş bir başvuru yok.</div>
-        ) : null}
-        {submissions && submissions.length > 0 ? (
-          <div className="mt-6">
-            <SubmissionTable
-              analysisErrors={analysisErrors}
-              latestRuns={latestRuns}
-              onStartAnalysis={startAnalysis}
-              startingSubmissionIds={startingSubmissionIds}
-              submissions={submissions}
+          </Alert>
+        </div>
+      ) : null}
+
+      {submissions === null && !loadError ? (
+        <p className="mt-6 text-sm text-ink-muted" role="status">
+          Başvurular yükleniyor…
+        </p>
+      ) : null}
+
+      {submissions?.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            action={
+              <button
+                className="primary-button"
+                onClick={() => setIsUploadOpen(true)}
+                type="button"
+              >
+                Başvuru yükle
+              </button>
+            }
+            description="İlk başvuruyu yüklediğinizde analiz başlatılabilir ve hakem ataması yapılabilir."
+            title="Henüz başvuru yok"
+          />
+        </div>
+      ) : null}
+
+      {submissions && submissions.length > 0 && visible.length === 0 ? (
+        <div className="mt-6">
+          <EmptyState
+            description="Aramayı temizleyerek tüm başvuruları görebilirsiniz."
+            title="Aramanıza uyan başvuru yok"
+          />
+        </div>
+      ) : null}
+
+      {visible.length > 0 ? (
+        <div className="mt-6">
+          <SubmissionTable
+            analysisErrors={analysisErrors}
+            latestRuns={latestRuns}
+            onStartAnalysis={startAnalysis}
+            startingSubmissionIds={startingSubmissionIds}
+            submissions={visible}
+          />
+        </div>
+      ) : null}
+
+      {isUploadOpen ? (
+        <Modal labelledBy="upload-title" onClose={() => setIsUploadOpen(false)}>
+          <h2 className="section-title" id="upload-title">
+            Başvuru yükle
+          </h2>
+          <p className="mt-1 text-sm text-ink-muted">Yalnız PDF · En fazla 20 MiB</p>
+          <form className="mt-5 grid gap-4" onSubmit={submit}>
+            <div>
+              <label className="field-label" htmlFor="application-code">
+                Başvuru kodu
+              </label>
+              <input
+                className="field-input"
+                id="application-code"
+                maxLength={80}
+                onChange={(event) => setApplicationCode(event.target.value)}
+                required
+                value={applicationCode}
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="project-title">
+                Proje adı
+              </label>
+              <input
+                className="field-input"
+                id="project-title"
+                maxLength={240}
+                onChange={(event) => setProjectTitle(event.target.value)}
+                required
+                value={projectTitle}
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="submission-category">
+                Kategori
+              </label>
+              <select
+                className="field-input"
+                disabled={!categories?.length}
+                id="submission-category"
+                onChange={(event) => setCategoryId(event.target.value)}
+                required
+                value={categoryId}
+              >
+                {categories?.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              {categories?.length === 0 ? (
+                <p className="field-help text-warning-ink">Önce kurulumda kategori ekleyin.</p>
+              ) : null}
+            </div>
+            <FileDropzone
+              file={report}
+              id="submission-report"
+              label="PDF raporu"
+              name="report"
+              onFile={setReport}
+              required
             />
-          </div>
-        ) : null}
-      </section>
-    </main>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                className="primary-button"
+                disabled={isUploading || !categories?.length}
+                type="submit"
+              >
+                {isUploading ? "Yükleniyor…" : "Başvuruyu kaydet"}
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => setIsUploadOpen(false)}
+                type="button"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+    </div>
   );
 }

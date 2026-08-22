@@ -204,8 +204,8 @@ const markupAi = renderToStaticMarkup(
 describe("AI 4. Göz panel", () => {
   const markup = markupAi;
 
-  it("groups the persisted checks into the deterministic, semantic and similarity sections", () => {
-    for (const heading of ["Deterministik", "Semantik", "Benzerlik", "Rubrik"]) {
+  it("groups the persisted checks into ön kontroller, içerik, benzerlik and AI rubrik", () => {
+    for (const heading of ["Ön Kontroller", "İçerik", "Benzerlik", "AI Rubrik"]) {
       expect(markup).toContain(heading);
     }
     expect(markup).toContain("Dil");
@@ -225,7 +225,7 @@ describe("AI 4. Göz panel", () => {
   it("never presents similarity as a plagiarism verdict or a final decision", () => {
     expect(markup).toContain("inceleme sinyalidir");
     expect(markup).not.toContain("intihal tespiti edildi");
-    expect(markup).toContain("Yapay zekâ karar vermez");
+    expect(markup).toContain("hakem kararının yerine geçmez");
   });
 });
 

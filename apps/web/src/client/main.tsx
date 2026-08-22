@@ -1,8 +1,9 @@
-import { StrictMode, useState } from "react";
+import { type ReactNode, StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Link, Route, Routes } from "react-router";
+import { BrowserRouter, Route, Routes } from "react-router";
 
 import "./styles.css";
+import { AppShell, MembershipsProvider } from "./app-shell";
 import { authClient } from "./auth-client";
 import { DashboardPage } from "./dashboard-page";
 import { MyResultsPage } from "./my-results-page";
@@ -14,106 +15,261 @@ import { SetupPage } from "./setup-page";
 import { SubmissionFeedbackPage } from "./submission-feedback-page";
 import { SubmissionParticipantsPage } from "./submission-participants-page";
 import { SubmissionsPage } from "./submissions-page";
+import { BrandWordmark } from "./ui";
 
-function LoginPage({ sessionError }: { sessionError: boolean }) {
+const CONTROLS = [
+  { title: "Dil", description: "Rapor dili beklenen yarışma diliyle karşılaştırılır." },
+  { title: "Rapor Formatı", description: "Resmî formatın zorunlu bölümleri denetlenir." },
+  { title: "Başlık & İçerik", description: "Her bölümün içeriği beklentilerle karşılaştırılır." },
+  { title: "Kategori", description: "Projenin seçilen kategoriyle uyumu değerlendirilir." },
+  { title: "Benzerlik", description: "Yarışma içi raporlar arasında benzerlik sinyali aranır." },
+  { title: "AI Rubrik", description: "Rubrik için kanıta bağlı bir puan önerisi hazırlanır." },
+] as const;
+
+const WORKFLOW_STEPS = [
+  {
+    title: "Yarışmayı kurun",
+    description: "Kategoriler, rapor formatı ve rubrik tek akışta hazırlanır.",
+  },
+  { title: "Başvuruyu analiz edin", description: "Her rapor altı kontrolle otomatik taranır." },
+  {
+    title: "Hakem kanıtlarla değerlendirir",
+    description: "Her sinyal rapor sayfasına bağlanır; hakem kanıtı yerinde doğrular.",
+  },
+  {
+    title: "Yarışmacı geri bildirim alır",
+    description: "Sonuç, yönetici onayıyla kontrollü biçimde yayımlanır.",
+  },
+] as const;
+
+const TRUST_SIGNALS = [
+  {
+    title: "Kanıta bağlı bulgular",
+    description: "Her dikkat sinyali doğrulanmış bir rapor sayfasına gider.",
+  },
+  {
+    title: "İnsan onaylı nihai değerlendirme",
+    description: "AI önerir; puanı ve kararı yalnız uzman hakem verir.",
+  },
+  {
+    title: "Sürüm sabitlemeli değerlendirme",
+    description: "Analiz, o anda kullanımdaki format ve rubrik sürümüne kilitlenir.",
+  },
+  {
+    title: "Özel doküman erişimi",
+    description: "Raporlar yetkili oturumla açılır; kalıcı genel bağlantı üretilmez.",
+  },
+] as const;
+
+function GoogleSignInButton({ className, label }: { className: string; label: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   return (
-    <main className="grid min-h-screen bg-slate-950 lg:grid-cols-[1.08fr_0.92fr]">
-      <section className="relative flex min-h-[24rem] items-end overflow-hidden px-6 py-12 text-white sm:px-12 lg:min-h-screen lg:px-16 lg:py-16">
-        <div className="absolute inset-0 bg-[linear-gradient(145deg,#0f172a_0%,#172554_58%,#1d4ed8_100%)]" />
-        <div className="absolute -top-24 right-0 h-72 w-72 rounded-full border-[64px] border-white/5" />
-        <div className="absolute top-16 right-20 h-32 w-32 rounded-full border border-cyan-300/30" />
-        <div className="relative max-w-2xl">
-          <p className="text-sm font-bold tracking-[0.2em] text-blue-200 uppercase">
-            T3 Vakfı Yapay Zekâ Creathonu · Problem 4
-          </p>
-          <h1 className="mt-5 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-            Yarışma değerlendirmesi için güvenilir yapılandırma temeli.
-          </h1>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-slate-200">
-            Kategorileri, rapor yapısını ve değerlendirme ölçütlerini sürümlü biçimde hazırlayın.
-            Yapay zekâ yardımcıdır; nihai karar insandadır.
-          </p>
-        </div>
-      </section>
-      <section className="flex items-center bg-slate-50 px-6 py-12 sm:px-12 lg:px-16">
-        <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-7 shadow-xl shadow-slate-950/5 sm:p-10">
-          <p className="eyebrow">TEKNOFEST AI Evaluation System</p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
-            Çalışma alanına giriş
-          </h2>
-          <p className="mt-4 leading-7 text-slate-600">
-            Yarışma üyeliklerinizi ve yönetici kurulum akışını görüntülemek için Google hesabınızla
-            oturum açın.
-          </p>
-          <button
-            className="primary-button mt-8 w-full justify-center py-3"
-            disabled={isSubmitting}
-            onClick={async () => {
-              setIsSubmitting(true);
-              await authClient.signIn.social({ provider: "google", callbackURL: "/app" });
-              setIsSubmitting(false);
-            }}
-            type="button"
-          >
-            {isSubmitting ? "Google’a yönlendiriliyor…" : "Google ile giriş yap"}
-          </button>
-          {sessionError ? (
-            <p className="mt-4 text-sm text-red-700" role="alert">
-              Oturum bilgisi alınamadı. Kimlik doğrulama yapılandırmasını kontrol edin.
-            </p>
-          ) : null}
-          <p className="mt-6 text-xs leading-5 text-slate-500">
-            Oturum açmak tek başına mevcut bir yarışmaya erişim vermez. Erişim, yarışma kapsamlı
-            üyelik üzerinden sunucuda doğrulanır.
-          </p>
-        </div>
-      </section>
-    </main>
+    <button
+      className={className}
+      disabled={isSubmitting}
+      onClick={async () => {
+        setIsSubmitting(true);
+        await authClient.signIn.social({ provider: "google", callbackURL: "/app" });
+        setIsSubmitting(false);
+      }}
+      type="button"
+    >
+      {isSubmitting ? "Google’a yönlendiriliyor…" : label}
+    </button>
   );
 }
 
-function ProductHeader({ name, email }: { name: string; email: string }) {
-  const [isSigningOut, setIsSigningOut] = useState(false);
+/** Simplified, same-system preview of the reviewer workspace. */
+function ProductPreview() {
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-8">
-        <Link className="flex items-center gap-3" to="/app">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-700 text-sm font-black text-white">
-            T3
-          </span>
-          <span>
-            <span className="block text-sm font-bold text-slate-950">TEKNOFEST AI</span>
-            <span className="block text-xs text-slate-500">Değerlendirme Sistemi</span>
-          </span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <Link className="secondary-button" to="/app/review">
-            Atamalarım
-          </Link>
-          <Link className="secondary-button" to="/app/results">
-            Sonuçlarım
-          </Link>
-          <div className="hidden text-right sm:block">
-            <p className="text-sm font-semibold text-slate-900">{name}</p>
-            <p className="text-xs text-slate-500">{email}</p>
+    <div aria-hidden="true" className="product-preview">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2 text-[10px]">
+        <span className="text-ink-subtle">← Atamalarım</span>
+        <span className="font-mono font-semibold text-ink">A-042</span>
+        <span className="font-semibold text-ink">AquaSense</span>
+        <span className="metric-chip">Tarım Teknolojileri</span>
+        <span className="status-chip status-chip-info">Taslak kaydedildi</span>
+      </div>
+      <div className="grid grid-cols-[1.15fr_0.9fr_0.95fr] divide-x divide-line text-[10px] leading-4">
+        <div className="bg-surface-raised p-3">
+          <p className="text-[10px] font-semibold text-ink">Rapor</p>
+          <div className="mt-2 rounded-md border border-line bg-surface p-2">
+            <div className="space-y-1.5">
+              <div className="h-1.5 w-10/12 rounded bg-line" />
+              <div className="h-1.5 w-full rounded bg-line" />
+              <div className="h-1.5 w-8/12 rounded bg-line" />
+              <div className="mt-2 h-8 rounded bg-surface-selected px-1.5 py-1 text-[9px] text-brand-deep">
+                “…toprak nemi eşik değeri 18 saat içinde doğrulandı.”
+              </div>
+              <div className="h-1.5 w-9/12 rounded bg-line" />
+              <div className="h-1.5 w-7/12 rounded bg-line" />
+            </div>
+            <p className="mt-2 text-[9px] text-ink-subtle">Sayfa 7 / 12</p>
           </div>
-          <button
-            className="secondary-button"
-            disabled={isSigningOut}
-            onClick={async () => {
-              setIsSigningOut(true);
-              await authClient.signOut();
-              window.location.assign("/");
-            }}
-            type="button"
-          >
-            {isSigningOut ? "Çıkılıyor…" : "Çıkış yap"}
-          </button>
+        </div>
+        <div className="p-3">
+          <p className="text-[10px] font-semibold text-ink">AI 4. Göz</p>
+          <p className="mt-0.5 text-[9px] text-ink-subtle">Kanıta dayalı karar desteği</p>
+          <div className="mt-2 space-y-1.5">
+            <p className="flex justify-between text-ink-muted">
+              Dil <span className="status-chip status-chip-pass">Uygun</span>
+            </p>
+            <p className="flex justify-between text-ink-muted">
+              Format <span className="status-chip status-chip-pass">Uygun</span>
+            </p>
+            <p className="flex justify-between text-warning-ink">
+              Benzerlik <span className="status-chip status-chip-warn">İncelenmeli</span>
+            </p>
+            <p className="rounded-md bg-surface-raised px-1.5 py-1 text-[9px] text-brand-deep">
+              Kanıt · Sayfa 7
+            </p>
+          </div>
+        </div>
+        <div className="p-3">
+          <p className="text-[10px] font-semibold text-ink">Hakem Kararı</p>
+          <p className="mt-2 text-[9px] font-medium text-ink">Problem Tanımı · 10 puan</p>
+          <p className="mt-1 text-[9px] text-ink-subtle">AI önerisi 6 / 10 · Kanıt gücü: Orta</p>
+          <p className="mt-2 text-[13px] font-semibold tabular-nums text-ink">Hakem 8 / 10</p>
+          <p className="mt-2 text-[9px] text-ink-muted">AI 6 · Hakem 8 · Fark +2</p>
+          <p className="mt-1 text-[9px] font-medium text-brand-deep">AI'DAN FARKLI</p>
         </div>
       </div>
-    </header>
+    </div>
+  );
+}
+
+function LandingPage({ sessionError }: { sessionError: boolean }) {
+  return (
+    <div className="min-h-screen bg-canvas">
+      <a className="sr-only" href="#icerik">
+        İçeriğe geç
+      </a>
+      <header className="border-b border-line bg-surface">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
+          <BrandWordmark to="/" />
+          <GoogleSignInButton className="primary-button" label="Platforma giriş" />
+        </div>
+      </header>
+
+      <main id="icerik">
+        <section className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-14 sm:px-8 lg:grid-cols-[1fr_1.05fr] lg:py-20">
+          <div>
+            <h1 className="text-4xl font-semibold tracking-tight text-balance text-ink sm:text-5xl lg:text-[3.5rem] lg:leading-[1.08]">
+              Kanıta dayalı değerlendirme.
+              <span className="mt-1 block text-brand-deep">İnsan kontrolünde.</span>
+            </h1>
+            <p className="mt-5 max-w-xl text-[16px] leading-7 text-ink-muted">
+              Rapor kontrollerini, benzerlik analizini ve kriter bazlı AI önerilerini tek
+              değerlendirme çalışma alanında birleştirin. Her bulgu kanıta bağlanır; nihai karar
+              uzman hakemde kalır.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <GoogleSignInButton className="primary-button px-5" label="Platforma giriş" />
+              <a className="secondary-button px-5" href="#nasil-calisir">
+                Nasıl çalışır?
+              </a>
+            </div>
+            {sessionError ? (
+              <p className="mt-4 text-sm text-critical" role="alert">
+                Oturum bilgisi alınamadı. Kimlik doğrulama yapılandırmasını kontrol edin.
+              </p>
+            ) : null}
+            <p className="mt-5 text-xs text-ink-subtle">
+              Google hesabınızla güvenli şekilde devam edin.
+            </p>
+          </div>
+          <ProductPreview />
+        </section>
+
+        <section aria-labelledby="controls-title" className="border-t border-line bg-surface">
+          <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
+            <p className="text-[13px] font-medium text-brand">AI 4. Göz</p>
+            <h2
+              className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-3xl"
+              id="controls-title"
+            >
+              Altı kontrol, tek çalışma alanı
+            </h2>
+            <p className="page-lead">
+              Her başvuru aynı denetimlerden geçer. Dikkat gerektiren bulgular, rapor sayfasına
+              bağlı kanıtla hakeme sunulur.
+            </p>
+            <ol className="mt-8 grid border-t border-line sm:grid-cols-2 lg:grid-cols-3">
+              {CONTROLS.map((control, index) => (
+                <li
+                  className="border-b border-line py-5 pr-6 sm:odd:pr-8 sm:even:pl-8 lg:[&:nth-child(3n)]:pr-0 lg:[&:nth-child(3n+1)]:pl-0 lg:[&:nth-child(3n+2)]:px-8"
+                  key={control.title}
+                >
+                  <p className="text-[12px] font-medium tabular-nums text-ink-subtle">
+                    {String(index + 1).padStart(2, "0")}
+                  </p>
+                  <h3 className="mt-2 text-[15px] font-semibold text-ink">{control.title}</h3>
+                  <p className="mt-1.5 text-sm leading-6 text-ink-muted">{control.description}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section
+          aria-labelledby="workflow-title"
+          className="border-t border-line"
+          id="nasil-calisir"
+        >
+          <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
+            <h2
+              className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl"
+              id="workflow-title"
+            >
+              Kurulumdan geri bildirime
+            </h2>
+            <ol className="mt-8 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+              {WORKFLOW_STEPS.map((step, index) => (
+                <li key={step.title}>
+                  <p className="text-[12px] font-medium tabular-nums text-ink-subtle">
+                    {String(index + 1).padStart(2, "0")}
+                  </p>
+                  <h3 className="mt-2 text-[15px] font-semibold text-ink">{step.title}</h3>
+                  <p className="mt-1.5 text-sm leading-6 text-ink-muted">{step.description}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section aria-labelledby="human-title" className="border-t border-line bg-surface">
+          <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
+            <h2
+              className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl"
+              id="human-title"
+            >
+              AI karar vermez. Kanıt sunar.
+            </h2>
+            <p className="page-lead">
+              Hiçbir analiz bulgusu tek başına eleme, intihal kararı veya nihai puan üretmez.
+            </p>
+            <ul className="mt-8 grid gap-x-10 gap-y-6 sm:grid-cols-2">
+              {TRUST_SIGNALS.map((signal) => (
+                <li key={signal.title}>
+                  <h3 className="text-[15px] font-semibold text-ink">{signal.title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-ink-muted">{signal.description}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-line">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-4 px-5 py-8 sm:px-8">
+          <div>
+            <p className="text-sm font-semibold tracking-tight text-ink">TEKNOFEST AI</p>
+            <p className="mt-0.5 text-xs text-ink-subtle">Değerlendirme Platformu</p>
+          </div>
+          <p className="text-xs text-ink-subtle">T3 Vakfı</p>
+        </div>
+      </footer>
+    </div>
   );
 }
 
@@ -122,49 +278,57 @@ function SessionGate() {
 
   if (isPending) {
     return (
-      <main
-        className="grid min-h-screen place-items-center bg-slate-50 px-6 text-sm text-slate-600"
-        role="status"
-      >
-        Oturum durumu kontrol ediliyor…
+      <main className="grid min-h-screen place-items-center bg-canvas px-6" role="status">
+        <div className="text-center">
+          <p className="text-[15px] font-semibold tracking-tight text-ink">TEKNOFEST AI</p>
+          <p className="mt-2 text-sm text-ink-muted">Oturum durumu kontrol ediliyor…</p>
+        </div>
       </main>
     );
   }
 
   if (!session) {
-    return <LoginPage sessionError={Boolean(error)} />;
+    return <LandingPage sessionError={Boolean(error)} />;
   }
 
+  const inShell = (page: ReactNode) => (
+    <AppShell email={session.user.email} name={session.user.name}>
+      {page}
+    </AppShell>
+  );
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <ProductHeader email={session.user.email} name={session.user.name} />
+    <MembershipsProvider>
       <Routes>
-        <Route element={<DashboardPage />} path="/" />
-        <Route element={<DashboardPage />} path="/app" />
-        <Route element={<SetupPage />} path="/app/competitions/:competitionId/setup" />
-        <Route element={<SubmissionsPage />} path="/app/competitions/:competitionId/submissions" />
+        <Route element={<ReviewWorkspacePage />} path="/app/review/:competitionId/:assignmentId" />
+        <Route element={inShell(<DashboardPage />)} path="/" />
+        <Route element={inShell(<DashboardPage />)} path="/app" />
+        <Route element={inShell(<SetupPage />)} path="/app/competitions/:competitionId/setup" />
         <Route
-          element={<ReviewerAssignmentsPage />}
+          element={inShell(<SubmissionsPage />)}
+          path="/app/competitions/:competitionId/submissions"
+        />
+        <Route
+          element={inShell(<ReviewerAssignmentsPage />)}
           path="/app/competitions/:competitionId/reviewers"
         />
         <Route
-          element={<ReviewOperationsPage />}
+          element={inShell(<ReviewOperationsPage />)}
           path="/app/competitions/:competitionId/operations"
         />
         <Route
-          element={<SubmissionParticipantsPage />}
+          element={inShell(<SubmissionParticipantsPage />)}
           path="/app/competitions/:competitionId/submissions/:submissionId/participants"
         />
         <Route
-          element={<SubmissionFeedbackPage />}
+          element={inShell(<SubmissionFeedbackPage />)}
           path="/app/competitions/:competitionId/submissions/:submissionId/feedback"
         />
-        <Route element={<MyResultsPage />} path="/app/results" />
-        <Route element={<ReviewQueuePage />} path="/app/review" />
-        <Route element={<ReviewWorkspacePage />} path="/app/review/:competitionId/:assignmentId" />
-        <Route element={<DashboardPage />} path="*" />
+        <Route element={inShell(<MyResultsPage />)} path="/app/results" />
+        <Route element={inShell(<ReviewQueuePage />)} path="/app/review" />
+        <Route element={inShell(<DashboardPage />)} path="*" />
       </Routes>
-    </div>
+    </MembershipsProvider>
   );
 }
 

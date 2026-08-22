@@ -24,22 +24,25 @@ interface AiPanelProps {
 
 function EvidenceStrength({ strength }: { strength: SemanticEvidenceStrength }) {
   return (
-    <p className="mt-1 text-sm font-medium text-slate-700">
-      Kanıt gücü: {EVIDENCE_STRENGTH_LABELS[strength]}
+    <p className="mt-1 text-sm font-medium text-ink-muted">
+      Kanıt Gücü: {EVIDENCE_STRENGTH_LABELS[strength]}
     </p>
   );
 }
 
 function CheckCard({ check, children }: { check: AnalysisCheckResponse; children?: ReactNode }) {
+  const quiet = check.status === "PASS";
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-3">
+    <article className={`border-b border-line py-3 last:border-b-0 ${quiet ? "opacity-80" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 className="text-sm font-bold text-slate-950">{CHECK_TYPE_LABELS[check.type]}</h4>
+        <h4 className={`text-sm font-semibold ${quiet ? "text-ink-muted" : "text-ink"}`}>
+          {CHECK_TYPE_LABELS[check.type]}
+        </h4>
         <span className={`status-chip ${checkStatusChipClass(check.status)}`}>
           {CHECK_STATUS_LABELS[check.status]}
         </span>
       </div>
-      <p className="mt-1 text-sm leading-6 text-slate-600">{check.summary}</p>
+      <p className="mt-1 text-sm leading-6 text-ink-muted">{check.summary}</p>
       {children}
     </article>
   );
@@ -58,10 +61,10 @@ function PanelGroup({
 }) {
   return (
     <section aria-labelledby={id} className="mt-4 first:mt-0">
-      <h3 className="text-xs font-bold tracking-[0.16em] text-blue-800 uppercase" id={id}>
+      <h3 className="text-[13px] font-semibold text-ink" id={id}>
         {title}
       </h3>
-      {note ? <p className="mt-1 text-xs leading-5 text-slate-500">{note}</p> : null}
+      {note ? <p className="mt-1 text-xs leading-5 text-ink-subtle">{note}</p> : null}
       <div className="mt-2 space-y-2">{children}</div>
     </section>
   );
@@ -90,10 +93,7 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
   if (run.status === "FAILED") {
     return (
       <div className="p-4">
-        <p
-          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-          role="alert"
-        >
+        <p className="alert-error" role="alert">
           Bu başvurunun analiz çalışması tamamlanamadı
           {run.error ? `: ${run.error.message}` : "."} Değerlendirmenizi raporu doğrudan okuyarak
           yapabilirsiniz; yapay zekâ desteği bu koşuda kullanılamıyor.
@@ -129,21 +129,20 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
 
   return (
     <div className="min-h-0 min-w-0 overflow-y-auto p-3">
-      <p className="rounded-lg border border-blue-200 bg-blue-50 p-2.5 text-xs leading-5 text-blue-900">
-        Bu panel daha önce kaydedilmiş analiz sonuçlarını gösterir. Yapay zekâ karar vermez; kararı
-        hakem verir. Alıntıların yanındaki sayfa bağlantıları raporu ilgili sayfaya götürür.
+      <p className="text-xs leading-5 text-ink-subtle">
+        Kanıta dayalı karar desteği · hakem kararının yerine geçmez.
       </p>
 
-      <PanelGroup id="ai-group-deterministic" title="Deterministik">
+      <PanelGroup id="ai-group-deterministic" title="Ön Kontroller">
         {language ? (
           <CheckCard check={language}>
-            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm text-slate-600">
+            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-sm text-ink-muted">
               <dt>Beklenen dil</dt>
-              <dd className="font-medium text-slate-800">
+              <dd className="font-medium text-ink">
                 {languageName(language.details.expectedLanguage)}
               </dd>
               <dt>Baskın dil</dt>
-              <dd className="font-medium text-slate-800">
+              <dd className="font-medium text-ink">
                 {languageName(language.details.detectedLanguage)}
               </dd>
             </dl>
@@ -151,7 +150,7 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
         ) : null}
         {templateStructure ? (
           <CheckCard check={templateStructure}>
-            <ul className="mt-2 space-y-1 text-sm text-slate-600">
+            <ul className="mt-2 space-y-1 text-sm text-ink-muted">
               {templateStructure.details.missingRequiredSectionKeys.length > 0 ? (
                 <li>
                   Eksik zorunlu başlık:{" "}
@@ -171,14 +170,14 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
           </CheckCard>
         ) : null}
         {!language && !templateStructure && !sectionPresence ? (
-          <p className="empty-state">Bu koşuda deterministik kontrol sonucu kaydedilmedi.</p>
+          <p className="empty-state">Bu koşuda ön kontrol sonucu kaydedilmedi.</p>
         ) : null}
         {sectionPresence ? (
           <CheckCard check={sectionPresence}>
-            <ul className="mt-2 space-y-1 text-sm text-slate-600">
+            <ul className="mt-2 space-y-1 text-sm text-ink-muted">
               {sectionPresence.details.sections.map((section) => (
                 <li className="flex flex-wrap items-baseline gap-1" key={section.sectionKey}>
-                  <span className="font-medium text-slate-800">{section.expectedTitle}:</span>
+                  <span className="font-medium text-ink">{section.expectedTitle}:</span>
                   {section.found && section.pageNumber !== null ? (
                     <>
                       <span>Bulundu ·</span>
@@ -202,19 +201,19 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
 
       <PanelGroup
         id="ai-group-semantic"
-        note="Başlığın var olması bölümün beklenen içeriği taşıdığını kanıtlamaz; bu iki kontrol içeriği ayrıca değerlendirir."
-        title="Semantik"
+        note="Başlığın var olması bölümün beklenen içeriği taşıdığını kanıtlamaz."
+        title="İçerik"
       >
         {sectionContent ? (
           <CheckCard check={sectionContent}>
             <div className="mt-2 space-y-2">
               {sectionContent.details.sections.map((section) => (
                 <div
-                  className="rounded-lg border border-slate-200 bg-slate-50 p-2.5"
+                  className="rounded-lg border border-line bg-surface-muted p-2.5"
                   key={section.sectionKey}
                 >
-                  <p className="text-sm font-semibold text-slate-800">{section.title}</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">{section.reason}</p>
+                  <p className="text-sm font-semibold text-ink">{section.title}</p>
+                  <p className="mt-1 text-sm leading-6 text-ink-muted">{section.reason}</p>
                   <EvidenceStrength strength={section.evidenceStrength} />
                   {section.evidence.map((evidence) => (
                     <EvidenceQuote
@@ -230,13 +229,11 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
           </CheckCard>
         ) : null}
         {!sectionContent && !categoryFit ? (
-          <p className="empty-state">
-            Bu koşuda kanıt doğrulamalı semantik kontrol sonucu kaydedilmedi.
-          </p>
+          <p className="empty-state">Bu koşuda içerik kontrolü kaydedilmedi.</p>
         ) : null}
         {categoryFit ? (
           <CheckCard check={categoryFit}>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{categoryFit.details.reason}</p>
+            <p className="mt-2 text-sm leading-6 text-ink-muted">{categoryFit.details.reason}</p>
             <EvidenceStrength strength={categoryFit.details.evidenceStrength} />
             {categoryFit.details.evidence.map((evidence) => (
               <EvidenceQuote
@@ -246,7 +243,7 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
                 pageCount={pageCount}
               />
             ))}
-            <p className="mt-2 text-xs font-medium text-slate-600">
+            <p className="mt-2 text-xs font-medium text-ink-muted">
               Bu sinyal kategori değişikliği veya nihai ret kararı değildir.
             </p>
           </CheckCard>
@@ -260,10 +257,10 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
       >
         {similarity ? (
           <CheckCard check={similarity}>
-            <p className="mt-2 text-sm font-semibold text-slate-800">
+            <p className="mt-2 text-sm font-semibold text-ink">
               {SIMILARITY_LEVEL_LABELS[similarity.details.level]} benzerlik sinyali
             </p>
-            <p className="mt-1 text-xs font-medium text-blue-800">
+            <p className="mt-1 text-xs font-medium text-brand-deep">
               {SIMILARITY_SEMANTIC_STATUS_LABELS[similarity.details.semanticStatus]}
             </p>
           </CheckCard>
@@ -274,24 +271,20 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
           </p>
         ) : (
           workspace.similarity.map((pair) => (
-            <article className="rounded-xl border border-slate-200 bg-white p-3" key={pair.id}>
-              <p className="text-sm font-bold text-slate-950">
+            <article className="rounded-lg border border-line bg-surface p-3" key={pair.id}>
+              <p className="text-sm font-bold text-ink">
                 {pair.otherSubmission.applicationCode} · {pair.otherSubmission.projectTitle}
               </p>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-ink-muted">
                 Sinyal düzeyi: {SIMILARITY_LEVEL_LABELS[pair.level]}
                 {pair.exactDocumentMatch ? " · Birebir belge eşleşmesi" : ""}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Lexical katkı: {pair.lexicalScore.toFixed(2)} · Semantik katkı:{" "}
-                {pair.semanticScore === null ? "yok" : pair.semanticScore.toFixed(2)}
               </p>
               {pair.evidence.map((section) => (
                 <div
                   className="mt-2 grid gap-2 lg:grid-cols-2"
                   key={`${section.sectionKey}-${section.otherSectionKey}`}
                 >
-                  <blockquote className="border-l-2 border-blue-300 pl-2 text-sm text-slate-700">
+                  <blockquote className="border-l-2 border-brand-border pl-2 text-sm text-ink">
                     <span className="font-semibold">{section.sectionTitle}</span>{" "}
                     <button
                       className="evidence-link"
@@ -302,7 +295,7 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
                     </button>
                     <br />“{section.sourceExcerpt}”
                   </blockquote>
-                  <blockquote className="border-l-2 border-amber-300 pl-2 text-sm text-slate-700">
+                  <blockquote className="border-l-2 border-warning-border pl-2 text-sm text-ink">
                     <span className="font-semibold">
                       {section.otherSectionTitle} · Diğer başvuru sayfa {section.otherPage}
                     </span>
@@ -318,27 +311,24 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
       <PanelGroup
         id="ai-group-rubric"
         note="Rubrik puanları AI önerisidir. Hakem puanını yalnız hakem belirler; öneri otomatik olarak puana dönüşmez."
-        title="Rubrik"
+        title="AI Rubrik"
       >
         {rubric ? (
           <CheckCard check={rubric}>
-            <p className="mt-2 text-sm font-bold text-blue-900">
+            <p className="mt-2 text-sm font-bold text-brand-deep">
               AI önerisi toplamı: {rubric.details.suggestedTotalScore} /{" "}
               {rubric.details.maxTotalScore}
             </p>
-            <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
-              <p className="text-sm font-semibold text-blue-900">Geliştirme önerisi (AI önerisi)</p>
-              <p className="mt-1 text-sm leading-6 text-slate-700">
-                {rubric.details.feedbackSummary}
-              </p>
+            <div className="mt-2 rounded-lg border border-brand-border bg-brand-soft p-2.5">
+              <p className="text-sm font-semibold text-brand-deep">Dikkat gerektiren kriterler</p>
+              <p className="mt-1 text-sm leading-6 text-ink">{rubric.details.feedbackSummary}</p>
             </div>
           </CheckCard>
         ) : (
           <p className="empty-state">Bu koşuda AI rubrik önerisi kaydedilmedi.</p>
         )}
-        <p className="text-xs leading-5 text-slate-500">
-          Kriter bazındaki öneriler, kanıtları ve hakem puan girişleri sağdaki Hakem Rubriği
-          panelindedir.
+        <p className="text-xs leading-5 text-ink-subtle">
+          Kriter bazındaki öneriler ve puan girişleri sağdaki Hakem Kararı panelindedir.
         </p>
       </PanelGroup>
     </div>

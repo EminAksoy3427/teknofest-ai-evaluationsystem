@@ -7,18 +7,17 @@ import {
 import { useEffect, useState } from "react";
 
 import { apiRequest, errorMessage } from "./api";
+import { Alert, EmptyState, PageHeader } from "./ui";
 
 /**
  * The contestant's own results. Only submissions this session user participates in are ever
- * listed, and only PUBLISHED feedback is ever shown — a draft's existence is not revealed. There is
- * deliberately no numeric final score here: the product policy is qualitative feedback, not a
- * published score.
+ * listed, and only PUBLISHED feedback is ever shown. There is deliberately no numeric final score.
  */
 function FeedbackPoints({ points, title }: { points: readonly string[]; title: string }) {
   return (
     <div className="mt-4">
-      <h4 className="text-sm font-semibold text-slate-950">{title}</h4>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-700">
+      <h4 className="text-[15px] font-semibold text-ink">{title}</h4>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-ink-muted">
         {points.map((point) => (
           <li key={point}>{point}</li>
         ))}
@@ -29,17 +28,15 @@ function FeedbackPoints({ points, title }: { points: readonly string[]; title: s
 
 function PublishedResult({ feedback }: { feedback: PublishedContestantFeedbackResponse }) {
   return (
-    <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/40 p-5">
-      <p className="text-xs font-bold tracking-[0.16em] text-emerald-800 uppercase">
-        Değerlendirme Sonucu
-      </p>
-      <p className="mt-2 text-sm text-slate-600">
+    <div className="mt-5">
+      <p className="text-[13px] font-medium text-ink-subtle">Değerlendirme sonucu</p>
+      <p className="mt-1 text-xs text-ink-subtle">
         Yayım tarihi:{" "}
         {new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium" }).format(feedback.publishedAt)}
       </p>
-      <p className="mt-3 leading-6 text-slate-800">{feedback.summary}</p>
-      <FeedbackPoints points={feedback.strengths} title="Güçlü yönler" />
-      <FeedbackPoints points={feedback.improvements} title="Gelişim alanları" />
+      <p className="mt-4 text-[15px] leading-7 text-ink">{feedback.summary}</p>
+      <FeedbackPoints points={feedback.strengths} title="Güçlü Yönler" />
+      <FeedbackPoints points={feedback.improvements} title="Gelişime Açık Alanlar" />
       <FeedbackPoints points={feedback.recommendations} title="Öneriler" />
     </div>
   );
@@ -65,8 +62,6 @@ function SubmissionResultCard({ submission }: { submission: ContestantOwnedSubmi
       })
       .catch((caught) => {
         if (!active) return;
-        // A 404 here (result withdrawn between list and detail load) is reported the same way as
-        // "not published yet" — never a different message that would reveal internal state.
         setNotPublished(true);
         setError(errorMessage(caught));
       });
@@ -76,17 +71,19 @@ function SubmissionResultCard({ submission }: { submission: ContestantOwnedSubmi
   }, [submission.feedbackPublished, submission.submissionId]);
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-semibold tracking-[0.16em] text-slate-500 uppercase">
+    <article className="px-4 py-4">
+      <p className="text-xs font-semibold text-ink-subtle">
         {submission.applicationCode} · {submission.categoryName}
       </p>
-      <h3 className="mt-1 text-lg font-semibold text-slate-950">{submission.projectTitle}</h3>
+      <h3 className="mt-0.5 text-base font-bold text-ink">{submission.projectTitle}</h3>
       {feedback ? (
         <PublishedResult feedback={feedback} />
       ) : notPublished ? (
-        <p className="mt-4 empty-state">Değerlendirme sonucu henüz yayımlanmadı.</p>
+        <p className="mt-3 text-sm leading-6 text-ink-muted">
+          Değerlendirme sonucu henüz yayımlanmadı.
+        </p>
       ) : (
-        <p className="mt-4 text-sm text-slate-600" role="status">
+        <p className="mt-3 text-sm text-ink-muted" role="status">
           Yükleniyor…
         </p>
       )}
@@ -114,45 +111,42 @@ export function MyResultsPage() {
   }, []);
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
-      <div className="max-w-3xl">
-        <p className="eyebrow">Yarışmacı</p>
-        <h1 className="page-title">Sonuçlarım</h1>
-        <p className="page-lead">
-          Yalnız katıldığınız başvurular ve yöneticinin yayımladığı değerlendirme sonuçları burada
-          gösterilir. Yapay zekâ önerileri ve hakem iç notları bu sayfada paylaşılmaz.
-        </p>
-      </div>
+    <div className="layout-report">
+      <PageHeader
+        lead="Katıldığınız başvuruların yayımlanmış değerlendirme sonuçları."
+        title="Sonuçlarım"
+      />
 
       {error ? (
-        <div
-          className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-          role="alert"
-        >
-          {error}
+        <div className="mt-6">
+          <Alert tone="error">{error}</Alert>
         </div>
       ) : null}
 
       {submissions === null && !error ? (
-        <p className="mt-8 text-sm text-slate-600" role="status">
+        <p className="mt-6 text-sm text-ink-muted" role="status">
           Başvurularınız yükleniyor…
         </p>
       ) : null}
 
       {submissions?.length === 0 ? (
-        <div className="mt-8 empty-state">
-          Hiçbir başvuruya katılımcı olarak eklenmediniz. Eklendiğinizde başvurunuz burada
-          görünecektir.
+        <div className="mt-6">
+          <EmptyState
+            description="Yarışma yöneticisi sizi bir başvuruya eklediğinde burada görünecek."
+            title="Henüz katıldığınız bir başvuru yok"
+          />
         </div>
       ) : null}
 
       {submissions && submissions.length > 0 ? (
-        <div className="mt-8 grid gap-4">
+        <ul className="surface-panel mt-6 divide-y divide-line">
           {submissions.map((submission) => (
-            <SubmissionResultCard key={submission.submissionId} submission={submission} />
+            <li key={submission.submissionId}>
+              <SubmissionResultCard submission={submission} />
+            </li>
           ))}
-        </div>
+        </ul>
       ) : null}
-    </main>
+    </div>
   );
 }

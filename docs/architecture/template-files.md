@@ -165,8 +165,8 @@ hiçbir zaman dahil değildir.
 
 ## 9. Arayüz
 
-`apps/web/src/client/setup-page.tsx` içindeki `TemplateFileUploader`, mevcut Şablon Yapısı
-sekmesine eklenmiştir: DRAFT sürümde dosya seçme/yükleme/değiştirme, ACTİF/RETIRED sürümde salt
+`apps/web/src/client/setup-page.tsx` içindeki `TemplateFileUploader`, Rapor Formatı
+görevine eklenmiştir: DRAFT sürümde dosya seçme/yükleme/değiştirme, ACTİF/RETIRED sürümde salt
 okunur dosya bilgisi ve korunan "Şablonu görüntüle" bağlantısı (submission raporu görüntülemeyle
 aynı doğrudan-bağlantı deseni). "Yetkili dosya yükleme R2 aşamasına ertelenmiştir" ifadesi
 kaldırılmış, yerine gerçek durumu anlatan metin yazılmıştır.

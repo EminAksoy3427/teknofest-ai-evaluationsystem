@@ -18,10 +18,10 @@ export function EvidenceQuote({ evidence, pageCount, onNavigate }: EvidenceQuote
   const target = evidenceTargetPage(evidence, pageCount);
 
   return (
-    <blockquote className="mt-2 border-l-2 border-blue-300 pl-2 text-sm leading-6 text-slate-700">
+    <blockquote className="citation">
       “{evidence.excerpt}”{" "}
       {target === null ? (
-        <span className="font-semibold text-slate-500">— Sayfa doğrulanmadı</span>
+        <span className="font-medium text-ink-subtle">— Sayfa doğrulanmadı</span>
       ) : (
         <button
           className="evidence-link"

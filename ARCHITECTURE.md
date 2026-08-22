@@ -189,7 +189,7 @@ kimliğine bürünüp puan veremez. Çapraz yarışma ataması `reviewer_assignm
 foreign key'lerle veritabanı düzeyinde engellenir.
 
 Çalışma alanı üç paneldir: solda korunan uçtan okunan rapor (PDF), ortada koşuda kalıcı hâle gelmiş
-AI 4. Göz sinyalleri (deterministik · semantik · benzerlik · rubrik), sağda pinlenmiş `RubricVersion`
+AI 4. Göz sinyalleri (ön kontroller · içerik · benzerlik · AI rubrik), sağda pinlenmiş `RubricVersion`
 üzerinden insan rubriği. Kanıt alıntılarının yanındaki sayfa bağlantıları raporu ilgili sayfaya
 götürür; yalnız sunucu tarafından doğrulanmış kanıt gezinme hedefi üretir ve hedef sayfa koşunun
 çıkarımında kaydedilen sayfa sayısına göre sınırlanır.

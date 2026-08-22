@@ -94,7 +94,7 @@ Rota: `/app/review/:competitionId/:assignmentId`. Hakem kuyruğu: `/app/review`.
 | --- | --- |
 | SOL | Başvuru raporu (PDF), sayfa gezinme ve yakınlaştırma |
 | ORTA | AI 4. Göz — koşuda kayıtlı deterministik, semantik, benzerlik ve rubrik sinyalleri |
-| SAĞ | Hakem Rubriği — kriter başına AI önerisi ve ayrı insan puanı girişi |
+| SAĞ | Hakem Kararı — kriter başına AI önerisi ve ayrı insan puanı girişi |
 
 Masaüstünde (`xl` ve üzeri) üç panel aynı anda operasyoneldir. Daha dar ekranlarda paneller tek tek
 görüntülenir; seçim düğmeleri panelleri değiştirir ama panelleri DOM'dan kaldırmaz, bu yüzden panel
@@ -131,10 +131,10 @@ sınırlanır. Modelin iddia ettiği rastgele bir sayfa numarası hakemi hiçbir
 
 Panel dört grupta sunar:
 
-- **Deterministik:** Dil, Şablon Yapısı, Zorunlu Başlıklar
-- **Semantik:** Bölüm İçeriği, Kategori Uyumu
+- **Ön Kontroller:** Dil, Rapor Formatı, Zorunlu Bölümler
+- **İçerik:** Bölüm İçeriği, Kategori Uyumu
 - **Benzerlik:** benzerlik sinyali, eşleşen başvurular, bölüm kanıtı ve sayfaları
-- **Rubrik:** AI öneri toplamı ve deterministik geliştirme geri bildirimi (kriter bazındaki
+- **AI Rubrik:** AI öneri toplamı ve dikkat gerektiren kriterler (kriter bazındaki
   öneriler sağ panelde puan girişinin yanında durur)
 
 Durum etiketleri `Uygun` / `İncelenmeli` / `Uygun değil`; durum yalnız renkle değil metinle de

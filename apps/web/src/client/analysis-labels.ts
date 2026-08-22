@@ -2,6 +2,7 @@ import type {
   AnalysisCheckStatus,
   AnalysisCheckType,
   AnalysisRunStatus,
+  AnalysisStage,
   DecisionTraceClassification,
   ReviewerEvaluationStatus,
   ReviewerQueueState,
@@ -17,12 +18,12 @@ import type {
 
 export const CHECK_TYPE_LABELS = {
   LANGUAGE: "Dil",
-  TEMPLATE_STRUCTURE: "Şablon Yapısı",
-  SECTION_PRESENCE: "Zorunlu Başlıklar",
+  TEMPLATE_STRUCTURE: "Rapor Formatı",
+  SECTION_PRESENCE: "Zorunlu Bölümler",
   SECTION_CONTENT: "Bölüm İçeriği",
   CATEGORY_FIT: "Kategori Uyumu",
   SIMILARITY: "Benzerlik",
-  RUBRIC_EVALUATION: "AI Rubrik Önerisi",
+  RUBRIC_EVALUATION: "AI Rubrik",
 } as const satisfies Record<AnalysisCheckType, string>;
 
 /**
@@ -96,10 +97,35 @@ export const SIMILARITY_LEVEL_LABELS = {
 } as const satisfies Record<SimilarityLevel, string>;
 
 export const SIMILARITY_SEMANTIC_STATUS_LABELS = {
-  AVAILABLE: "Hibrit benzerlik analizi · Lexical + semantik",
-  DEGRADED: "Lexical ön analiz · Semantik analiz bu koşuda tamamlanamadı",
-  DISABLED: "Lexical ön analiz · Semantik sağlayıcı bağlı değil",
+  AVAILABLE: "Yarışma içi benzerlik karşılaştırması yapıldı",
+  DEGRADED: "Benzerlik karşılaştırması kısmen yapılabildi",
+  DISABLED: "Benzerlik karşılaştırması metin üzerinden yapıldı",
 } as const satisfies Record<SimilaritySemanticStatus, string>;
+
+/**
+ * User-language analysis progress. Internal stage constants never appear in the UI.
+ */
+export function analysisProgressLabel(
+  status: AnalysisRunStatus | null | undefined,
+  stage: AnalysisStage | null | undefined,
+): string {
+  if (status === "FAILED") return "Analiz tamamlanamadı";
+  if (status === "SUCCEEDED") return "Hazır";
+  if (status === "QUEUED" || !status) return "PDF alındı";
+  if (stage === "INGEST_AND_EXTRACT") return "Metin çıkarılıyor";
+  if (stage === "STRUCTURAL_CHECKS") return "Ön kontroller";
+  if (stage === "SEMANTIC_CHECKS") return "AI içerik analizi";
+  if (stage === "SIMILARITY_CHECKS") return "Benzerlik";
+  if (stage === "RUBRIC_EVALUATION") return "AI rubrik önerisi";
+  return "Analiz sürüyor";
+}
+
+export function reviewerQueueCta(state: ReviewerQueueState): string | null {
+  if (state === "ASSIGNED") return "İncelemeye başla";
+  if (state === "DRAFT") return "Devam et";
+  if (state === "SUBMITTED") return "Değerlendirmeyi görüntüle";
+  return null;
+}
 
 export const DECISION_TRACE_LABELS = {
   SAME_AS_AI: "AI İLE AYNI",

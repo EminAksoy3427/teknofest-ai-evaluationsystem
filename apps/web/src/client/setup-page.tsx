@@ -12,10 +12,19 @@ import {
   TemplateVersionResponseSchema,
 } from "@teknofest-ai/shared";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
+import { languageName } from "./analysis-labels";
 import { apiDelete, apiRequest, errorMessage } from "./api";
-import { Breadcrumb, ManagerStepNav } from "./competition-nav";
+import { Breadcrumb } from "./competition-nav";
+import {
+  Alert,
+  FileDropzone,
+  formatFileSize,
+  languageSelectOptions,
+  PageHeader,
+  slugFromName,
+} from "./ui";
 
 type Feedback = { kind: "saved" | "error"; message: string } | null;
 
@@ -23,7 +32,7 @@ function FeedbackMessage({ feedback }: { feedback: Feedback }) {
   if (!feedback) return null;
   return (
     <p
-      className={feedback.kind === "saved" ? "text-sm text-emerald-700" : "text-sm text-red-700"}
+      className={feedback.kind === "saved" ? "text-sm text-success-ink" : "text-sm text-critical"}
       role={feedback.kind === "error" ? "alert" : "status"}
     >
       {feedback.message}
@@ -31,17 +40,20 @@ function FeedbackMessage({ feedback }: { feedback: Feedback }) {
   );
 }
 
+/** Version lifecycle in user language: a person configures, not a database. */
+const VERSION_STATUS_LABELS = {
+  DRAFT: "Taslak",
+  ACTIVE: "Kullanımda",
+  RETIRED: "Arşivlendi",
+} as const;
+
 function StatusBadge({ status }: { status: TemplateVersionResponse["status"] }) {
   const styles = {
-    DRAFT: "bg-amber-50 text-amber-800 ring-amber-200",
-    ACTIVE: "bg-emerald-50 text-emerald-800 ring-emerald-200",
-    RETIRED: "bg-slate-100 text-slate-700 ring-slate-200",
+    DRAFT: "status-chip-warn",
+    ACTIVE: "status-chip-pass",
+    RETIRED: "status-chip-neutral",
   };
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${styles[status]}`}>
-      {status}
-    </span>
-  );
+  return <span className={`status-chip ${styles[status]}`}>{VERSION_STATUS_LABELS[status]}</span>;
 }
 
 function GeneralSection({
@@ -84,46 +96,25 @@ function GeneralSection({
 
   return (
     <section aria-labelledby="general-title" className="setup-panel">
-      <div className="panel-heading">
-        <div>
-          <p className="eyebrow">Temel bilgiler</p>
-          <h2 className="section-title" id="general-title">
-            Genel
-          </h2>
-        </div>
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
-          COMPETITION_MANAGER
-        </span>
-      </div>
+      <h2 className="section-title" id="general-title">
+        Yarışma bilgileri
+      </h2>
+      <p className="mt-1 text-sm leading-6 text-ink-muted">
+        Yarışmanın adı ve açıklaması tüm ekiplerin gördüğü ortak kimliktir.
+      </p>
       <form className="mt-6 grid gap-5" onSubmit={submit}>
-        <div className="grid gap-5 md:grid-cols-2">
-          <div>
-            <label className="field-label" htmlFor="setup-name">
-              Yarışma adı
-            </label>
-            <input
-              className="field-input"
-              id="setup-name"
-              maxLength={160}
-              onChange={(event) => setName(event.target.value)}
-              required
-              value={name}
-            />
-          </div>
-          <div>
-            <label className="field-label" htmlFor="setup-slug">
-              Slug
-            </label>
-            <input
-              className="field-input font-mono"
-              id="setup-slug"
-              maxLength={80}
-              onChange={(event) => setSlug(event.target.value)}
-              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-              required
-              value={slug}
-            />
-          </div>
+        <div>
+          <label className="field-label" htmlFor="setup-name">
+            Yarışma adı
+          </label>
+          <input
+            className="field-input"
+            id="setup-name"
+            maxLength={160}
+            onChange={(event) => setName(event.target.value)}
+            required
+            value={name}
+          />
         </div>
         <div>
           <label className="field-label" htmlFor="setup-description">
@@ -137,6 +128,28 @@ function GeneralSection({
             value={description}
           />
         </div>
+        <details className="rounded-lg border border-line bg-surface-muted px-4 py-3">
+          <summary className="cursor-pointer text-sm font-semibold text-ink-muted">
+            Gelişmiş: adres kimliği
+          </summary>
+          <div className="mt-3">
+            <label className="field-label" htmlFor="setup-slug">
+              Adres kimliği
+            </label>
+            <input
+              className="field-input font-mono"
+              id="setup-slug"
+              maxLength={80}
+              onChange={(event) => setSlug(event.target.value)}
+              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+              required
+              value={slug}
+            />
+            <p className="field-help">
+              Yarışmanın teknik adres kimliği. Genellikle değiştirmeniz gerekmez.
+            </p>
+          </div>
+        </details>
         <div className="flex flex-wrap items-center gap-4">
           <button className="primary-button" disabled={saving} type="submit">
             {saving ? "Kaydediliyor…" : "Değişiklikleri kaydet"}
@@ -205,7 +218,7 @@ function CategoryEditor({
   }
 
   return (
-    <form className="rounded-xl border border-slate-200 p-5" onSubmit={save}>
+    <form className="rounded-xl border border-line p-5" onSubmit={save}>
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="field-label" htmlFor={`category-name-${category.id}`}>
@@ -219,22 +232,27 @@ function CategoryEditor({
             value={values.name}
           />
         </div>
-        <div>
-          <label className="field-label" htmlFor={`category-code-${category.id}`}>
-            Kod
-          </label>
-          <input
-            className="field-input font-mono"
-            id={`category-code-${category.id}`}
-            onChange={(event) => setValues({ ...values, code: event.target.value })}
-            required
-            value={values.code}
-          />
-        </div>
+        <details className="md:col-span-2">
+          <summary className="cursor-pointer text-[13px] font-medium text-ink-subtle">
+            Kısa kod
+          </summary>
+          <div className="mt-2">
+            <label className="field-label" htmlFor={`category-code-${category.id}`}>
+              İç kimlik
+            </label>
+            <input
+              className="field-input font-mono"
+              id={`category-code-${category.id}`}
+              onChange={(event) => setValues({ ...values, code: event.target.value })}
+              required
+              value={values.code}
+            />
+          </div>
+        </details>
       </div>
       <div className="mt-4">
         <label className="field-label" htmlFor={`category-description-${category.id}`}>
-          Yetkili açıklama
+          Kategori açıklaması
         </label>
         <textarea
           className="field-input min-h-24"
@@ -246,7 +264,7 @@ function CategoryEditor({
       </div>
       <div className="mt-4">
         <label className="field-label" htmlFor={`category-guidance-${category.id}`}>
-          Kapsam notları
+          Neler bu kategoriye girer?
         </label>
         <textarea
           className="field-input min-h-20"
@@ -254,6 +272,10 @@ function CategoryEditor({
           onChange={(event) => setValues({ ...values, guidance: event.target.value })}
           value={values.guidance}
         />
+        <p className="field-help">
+          Kapsama giren ve girmeyen proje türlerini kısaca belirtin; kategori uyumu analizi bu
+          tanımı kullanır.
+        </p>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button className="secondary-button" disabled={saving} type="submit">
@@ -318,13 +340,12 @@ function CategoriesSection({
     <section aria-labelledby="categories-title" className="setup-panel">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Semantik yarışma bağlamı</p>
           <h2 className="section-title" id="categories-title">
             Kategoriler
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Açıklama kategorinin ne olduğunu, kapsam notları ise neyin içeride veya dışarıda
-            sayıldığını belirtir.
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">
+            Her başvuru bir kategoriye yüklenir. Açıklama kategorinin ne olduğunu, kapsam tanımı ise
+            neyin içeride veya dışarıda sayıldığını belirtir.
           </p>
         </div>
         <span className="metric-chip">{configuration.categories.length} kategori</span>
@@ -333,7 +354,7 @@ function CategoriesSection({
       <div className="mt-6 grid gap-4">
         {configuration.categories.length === 0 ? (
           <div className="empty-state">
-            Henüz kategori yok. Yapılandırma hazırlığı için en az bir kategori ekleyin.
+            Henüz kategori yok. Başvuru alabilmek için en az bir kategori ekleyin.
           </div>
         ) : (
           configuration.categories.map((category) => (
@@ -347,8 +368,8 @@ function CategoriesSection({
         )}
       </div>
 
-      <form className="mt-8 rounded-xl bg-slate-50 p-5" onSubmit={create}>
-        <h3 className="font-semibold text-slate-950">Yeni kategori</h3>
+      <form className="mt-8 rounded-xl bg-surface-muted p-5" onSubmit={create}>
+        <h3 className="font-semibold text-ink">Yeni kategori</h3>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div>
             <label className="field-label" htmlFor="new-category-name">
@@ -357,17 +378,23 @@ function CategoriesSection({
             <input
               className="field-input"
               id="new-category-name"
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                const next = event.target.value;
+                setName(next);
+                setCode((current) =>
+                  current === "" || current === slugFromName(name) ? slugFromName(next) : current,
+                );
+              }}
               required
               value={name}
             />
           </div>
           <div>
             <label className="field-label" htmlFor="new-category-code">
-              Kod
+              Kısa kod
             </label>
             <input
-              className="field-input font-mono"
+              className="field-input font-mono text-ink-muted"
               id="new-category-code"
               onChange={(event) => setCode(event.target.value)}
               pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
@@ -379,7 +406,7 @@ function CategoriesSection({
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div>
             <label className="field-label" htmlFor="new-category-description">
-              Yetkili açıklama
+              Kategori açıklaması
             </label>
             <textarea
               className="field-input min-h-24"
@@ -391,7 +418,7 @@ function CategoriesSection({
           </div>
           <div>
             <label className="field-label" htmlFor="new-category-guidance">
-              Kapsam notları
+              Neler bu kategoriye girer?
             </label>
             <textarea
               className="field-input min-h-24"
@@ -425,7 +452,7 @@ function reorder<T>(items: T[], index: number, direction: -1 | 1): T[] {
 }
 
 function formatFileSizeMiB(bytes: number): string {
-  return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024);
+  return formatFileSize(bytes);
 }
 
 /**
@@ -469,7 +496,7 @@ function TemplateFileUploader({
       );
       setFile(null);
       await refresh();
-      setFeedback({ kind: "saved", message: "Resmî rapor şablonu kaydedildi." });
+      setFeedback({ kind: "saved", message: "Resmî rapor PDF'si kaydedildi." });
     } catch (error) {
       setFeedback({ kind: "error", message: errorMessage(error) });
     } finally {
@@ -478,37 +505,41 @@ function TemplateFileUploader({
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <h4 className="font-semibold text-slate-950">Resmî rapor şablonu (PDF)</h4>
+    <div className="rounded-lg border border-line bg-surface p-4">
+      <h4 className="font-semibold text-ink">Resmî rapor PDF'si</h4>
+      <p className="mt-1 text-sm text-ink-muted">
+        Yarışmacılara dağıtılan resmî rapor dosyası. Format bu dosya olmadan kullanıma alınamaz.
+      </p>
       {version.file ? (
-        <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">
-          <span className="metric-chip">{version.file.originalFilename}</span>
-          <span className="metric-chip">{formatFileSizeMiB(version.file.sizeBytes)} MiB</span>
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-ink-muted">
+          <span className="text-sm font-medium text-ink">{version.file.originalFilename}</span>
+          <span className="text-xs text-ink-subtle">
+            {formatFileSizeMiB(version.file.sizeBytes)}
+          </span>
           <a className="secondary-button" href={filePath} rel="noreferrer" target="_blank">
-            Şablonu görüntüle
+            PDF'yi görüntüle
           </a>
         </div>
       ) : (
-        <p className="mt-2 text-sm text-amber-800">
-          Bu sürüm için henüz resmî şablon dosyası yüklenmedi. Etkinleştirmek için PDF yükleyin.
+        <p className="mt-3 text-sm font-semibold text-warning-ink">
+          Rapor PDF'si henüz yüklenmedi.
         </p>
       )}
       {editable ? (
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <input
-            accept="application/pdf,.pdf"
-            aria-label="Resmî rapor şablonu PDF dosyası"
-            className="field-input max-w-xs"
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            type="file"
+        <div className="mt-3 grid gap-3">
+          <FileDropzone
+            file={file}
+            id={`template-file-${version.id}`}
+            label="Resmî rapor şablonunu yükleyin"
+            onFile={setFile}
           />
           <button
-            className="secondary-button"
+            className="secondary-button justify-self-start"
             disabled={!file || uploading}
             onClick={upload}
             type="button"
           >
-            {uploading ? "Yükleniyor…" : version.file ? "Dosyayı değiştir" : "Dosyayı yükle"}
+            {uploading ? "Yükleniyor…" : version.file ? "Değiştir" : "Dosyayı yükle"}
           </button>
         </div>
       ) : null}
@@ -576,7 +607,7 @@ function TemplateDraftEditor({
         },
       );
       await refresh();
-      setFeedback({ kind: "saved", message: "Taslak şablon yapısı kaydedildi." });
+      setFeedback({ kind: "saved", message: "Taslak rapor formatı kaydedildi." });
     } catch (error) {
       setFeedback({ kind: "error", message: errorMessage(error) });
     } finally {
@@ -594,7 +625,7 @@ function TemplateDraftEditor({
         { method: "POST" },
       );
       await refresh();
-      setFeedback({ kind: "saved", message: "Şablon sürümü etkinleştirildi." });
+      setFeedback({ kind: "saved", message: "Rapor formatı kullanıma alındı." });
     } catch (error) {
       setFeedback({ kind: "error", message: errorMessage(error) });
     } finally {
@@ -603,11 +634,11 @@ function TemplateDraftEditor({
   }
 
   return (
-    <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50/40 p-5">
+    <div className="mt-5 rounded-lg border border-line bg-surface p-5">
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="field-label" htmlFor={`template-label-${version.id}`}>
-            Sürüm etiketi
+            Format adı
           </label>
           <input
             className="field-input"
@@ -619,16 +650,21 @@ function TemplateDraftEditor({
         </div>
         <div>
           <label className="field-label" htmlFor={`template-language-${version.id}`}>
-            Beklenen dil
+            Beklenen rapor dili
           </label>
-          <input
-            className="field-input font-mono"
+          <select
+            className="field-input"
             id={`template-language-${version.id}`}
             onChange={(event) => setLanguage(event.target.value)}
-            placeholder="tr"
             required
             value={language}
-          />
+          >
+            {languageSelectOptions(language).map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -642,7 +678,7 @@ function TemplateDraftEditor({
       </div>
 
       <div className="mt-6 flex items-center justify-between gap-3">
-        <h4 className="font-semibold text-slate-950">Beklenen bölümler</h4>
+        <h4 className="font-semibold text-ink">Beklenen bölümler</h4>
         <button
           className="secondary-button"
           onClick={() =>
@@ -664,21 +700,23 @@ function TemplateDraftEditor({
       </div>
 
       {sections.length === 0 ? (
-        <div className="empty-state mt-4">Etkinleştirmek için en az bir zorunlu bölüm ekleyin.</div>
+        <div className="empty-state mt-4">
+          Kullanıma almak için en az bir zorunlu bölüm ekleyin.
+        </div>
       ) : (
         <div className="mt-4 grid gap-4">
           {sections.map((section, index) => (
             <fieldset
-              className="rounded-lg border border-slate-200 bg-white p-4"
+              className="rounded-lg border border-line bg-surface p-4"
               key={`${version.id}-${section.key}`}
             >
-              <legend className="px-1 text-sm font-semibold text-slate-700">
+              <legend className="px-1 text-sm font-semibold text-ink-muted">
                 Bölüm {index + 1}
               </legend>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="field-label" htmlFor={`section-key-${version.id}-${index}`}>
-                    Sabit kod
+                    Kısa kod
                   </label>
                   <input
                     className="field-input font-mono"
@@ -716,7 +754,7 @@ function TemplateDraftEditor({
                 />
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <label className="mr-auto flex items-center gap-2 text-sm font-medium text-slate-700">
+                <label className="mr-auto flex items-center gap-2 text-sm font-medium text-ink-muted">
                   <input
                     checked={section.required}
                     onChange={(event) => updateSection(index, { required: event.target.checked })}
@@ -764,14 +802,12 @@ function TemplateDraftEditor({
           {saving ? "Kaydediliyor…" : "Taslağı kaydet"}
         </button>
         <button className="primary-button" disabled={saving} onClick={activate} type="button">
-          Etkinleştir
+          Kullanıma al
         </button>
         <FeedbackMessage feedback={feedback} />
       </div>
       {!version.file ? (
-        <p className="field-help mt-2">
-          Etkinleştirmek için önce resmî rapor şablonu PDF'ini yükleyin.
-        </p>
+        <p className="field-help mt-2">Kullanıma almak için önce resmî rapor PDF'sini yükleyin.</p>
       ) : null}
     </div>
   );
@@ -817,7 +853,7 @@ function TemplatesSection({
       setSelectedId(created.id);
       setNewLabel("");
       await refresh();
-      setFeedback({ kind: "saved", message: "Yeni taslak şablon oluşturuldu." });
+      setFeedback({ kind: "saved", message: "Yeni taslak format oluşturuldu." });
     } catch (error) {
       setFeedback({ kind: "error", message: errorMessage(error) });
     } finally {
@@ -829,54 +865,59 @@ function TemplatesSection({
     <section aria-labelledby="templates-title" className="setup-panel">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Resmî rapor şablonu</p>
           <h2 className="section-title" id="templates-title">
-            Şablon Yapısı
+            Rapor formatı
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Bir şablon sürümü hem yarışmacılara verilecek resmî PDF şablonunu hem de analizin
-            kullandığı beklenen dil ve bölüm yapısını birlikte taşır. Bir sürüm, resmî dosyası
-            olmadan etkinleştirilemez.
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">
+            Rapor formatı, yarışmacılara verilen resmî PDF ile raporlarda beklenen dil ve bölüm
+            yapısını birlikte tanımlar. Kullanımda olan format değiştirilemez; değişiklik yeni bir
+            taslak sürümle yapılır.
           </p>
         </div>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <aside aria-label="Şablon sürüm geçmişi" className="space-y-2">
+        <aside aria-label="Format sürümleri" className="space-y-2">
           {configuration.templates.length === 0 ? (
-            <div className="empty-state">Henüz şablon sürümü yok.</div>
+            <div className="empty-state">Henüz rapor formatı tanımlanmadı.</div>
           ) : (
             configuration.templates.map((version) => (
               <button
                 className={`w-full rounded-xl border p-4 text-left ${
                   selectedId === version.id
-                    ? "border-blue-400 bg-blue-50"
-                    : "border-slate-200 bg-white hover:border-slate-300"
+                    ? "border-brand bg-brand-soft"
+                    : "border-line bg-surface hover:border-line-strong"
                 }`}
                 key={version.id}
                 onClick={() => setSelectedId(version.id)}
                 type="button"
               >
                 <span className="flex items-center justify-between gap-2">
-                  <span className="font-semibold text-slate-950">v{version.versionNumber}</span>
+                  <span className="font-semibold text-ink">Sürüm {version.versionNumber}</span>
                   <StatusBadge status={version.status} />
                 </span>
-                <span className="mt-2 block text-sm text-slate-600">{version.label}</span>
+                <span className="mt-2 block text-sm text-ink-muted">{version.label}</span>
               </button>
             ))
           )}
-          <form className="rounded-xl border border-dashed border-slate-300 p-4" onSubmit={create}>
+          <form
+            className="rounded-xl border border-dashed border-line-strong p-4"
+            onSubmit={create}
+          >
             <label className="field-label" htmlFor="new-template-label">
-              Yeni sürüm etiketi
+              Yeni taslak format
             </label>
             <input
               className="field-input"
               id="new-template-label"
               onChange={(event) => setNewLabel(event.target.value)}
-              placeholder="2026 ana şablonu"
+              placeholder="2026 ana formatı"
               required
               value={newLabel}
             />
+            <p className="field-help">
+              Yeni sürüm taslak olarak açılır; hazır olunca kullanıma alınır.
+            </p>
             <button className="secondary-button mt-3 w-full" disabled={saving} type="submit">
               {saving ? "Oluşturuluyor…" : "Taslak oluştur"}
             </button>
@@ -888,11 +929,11 @@ function TemplatesSection({
 
         <div>
           {!selected ? (
-            <div className="empty-state">Düzenlemek için bir şablon sürümü oluşturun.</div>
+            <div className="empty-state">Düzenlemek için bir format sürümü oluşturun.</div>
           ) : selected.status === "DRAFT" ? (
             <div>
               <div className="flex items-center gap-3">
-                <h3 className="text-lg font-semibold text-slate-950">v{selected.versionNumber}</h3>
+                <h3 className="text-lg font-semibold text-ink">Sürüm {selected.versionNumber}</h3>
                 <StatusBadge status={selected.status} />
               </div>
               <TemplateDraftEditor
@@ -902,14 +943,14 @@ function TemplatesSection({
               />
             </div>
           ) : (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <div className="rounded-xl border border-line bg-surface-muted p-5">
               <div className="flex flex-wrap items-center gap-3">
-                <h3 className="text-lg font-semibold text-slate-950">{selected.label}</h3>
+                <h3 className="text-lg font-semibold text-ink">{selected.label}</h3>
                 <StatusBadge status={selected.status} />
               </div>
-              <p className="mt-3 text-sm text-slate-600">
-                Aktif ve emekli sürümler tarihsel kayıt olarak değiştirilemez. Değişiklik için yeni
-                taslak oluşturun.
+              <p className="mt-3 text-sm text-ink-muted">
+                Kullanımda ve arşivdeki sürümler tarihsel kayıt olarak değiştirilemez. Değişiklik
+                için yeni taslak oluşturun.
               </p>
               <div className="mt-5">
                 <TemplateFileUploader
@@ -921,14 +962,14 @@ function TemplatesSection({
               </div>
               <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
                 <div>
-                  <dt className="text-slate-500">Beklenen dil</dt>
-                  <dd className="mt-1 font-mono font-semibold text-slate-900">
-                    {selected.structuralProfile.expectedLanguage}
+                  <dt className="text-ink-subtle">Beklenen rapor dili</dt>
+                  <dd className="mt-1 font-semibold text-ink">
+                    {languageName(selected.structuralProfile.expectedLanguage)}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Bölüm sayısı</dt>
-                  <dd className="mt-1 font-semibold text-slate-900">
+                  <dt className="text-ink-subtle">Bölüm sayısı</dt>
+                  <dd className="mt-1 font-semibold text-ink">
                     {selected.structuralProfile.sections.length}
                   </dd>
                 </div>
@@ -936,13 +977,13 @@ function TemplatesSection({
               <ol className="mt-5 space-y-2">
                 {selected.structuralProfile.sections.map((section) => (
                   <li
-                    className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="rounded-lg border border-line bg-surface px-4 py-3 text-sm"
                     key={section.key}
                   >
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-semibold text-ink">
                       {section.order}. {section.title}
                     </span>
-                    <span className="ml-2 text-slate-500">
+                    <span className="ml-2 text-ink-subtle">
                       {section.required ? "Zorunlu" : "İsteğe bağlı"}
                     </span>
                   </li>
@@ -1036,7 +1077,7 @@ function RubricDraftEditor({
         { method: "POST" },
       );
       await refresh();
-      setFeedback({ kind: "saved", message: "Rubrik sürümü etkinleştirildi." });
+      setFeedback({ kind: "saved", message: "Rubrik kullanıma alındı." });
     } catch (error) {
       setFeedback({ kind: "error", message: errorMessage(error) });
     } finally {
@@ -1045,11 +1086,11 @@ function RubricDraftEditor({
   }
 
   return (
-    <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50/40 p-5">
+    <div className="mt-5 rounded-lg border border-line bg-surface p-5">
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
         <div>
           <label className="field-label" htmlFor={`rubric-label-${version.id}`}>
-            Sürüm etiketi
+            Rubrik adı
           </label>
           <input
             className="field-input"
@@ -1064,7 +1105,7 @@ function RubricDraftEditor({
       </div>
 
       <div className="mt-6 flex items-center justify-between gap-3">
-        <h4 className="font-semibold text-slate-950">Kriterler</h4>
+        <h4 className="font-semibold text-ink">Kriterler</h4>
         <button
           className="secondary-button"
           onClick={() => setCriteria((current) => [...current, emptyCriterion(current.length + 1)])}
@@ -1075,21 +1116,21 @@ function RubricDraftEditor({
       </div>
 
       {criteria.length === 0 ? (
-        <div className="empty-state mt-4">Etkinleştirmek için en az bir kriter ekleyin.</div>
+        <div className="empty-state mt-4">Kullanıma almak için en az bir kriter ekleyin.</div>
       ) : (
         <div className="mt-4 grid gap-4">
           {criteria.map((criterion, index) => (
             <fieldset
-              className="rounded-lg border border-slate-200 bg-white p-4"
+              className="rounded-lg border border-line bg-surface p-4"
               key={`${version.id}-${criterion.code}`}
             >
-              <legend className="px-1 text-sm font-semibold text-slate-700">
+              <legend className="px-1 text-sm font-semibold text-ink-muted">
                 Kriter {index + 1}
               </legend>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="field-label" htmlFor={`criterion-code-${version.id}-${index}`}>
-                    Sabit kod
+                    Kısa kod
                   </label>
                   <input
                     className="field-input font-mono"
@@ -1182,6 +1223,9 @@ function RubricDraftEditor({
                   required
                   value={criterion.evidenceExpectation}
                 />
+                <p className="field-help">
+                  Hakemin bu kriterde ne tür kanıt araması gerektiğini belirtin.
+                </p>
               </div>
               <div className="mt-4 flex justify-end gap-2">
                 <button
@@ -1222,7 +1266,7 @@ function RubricDraftEditor({
           {saving ? "Kaydediliyor…" : "Rubriği kaydet"}
         </button>
         <button className="primary-button" disabled={saving} onClick={activate} type="button">
-          Etkinleştir
+          Kullanıma al
         </button>
         <FeedbackMessage feedback={feedback} />
       </div>
@@ -1274,46 +1318,49 @@ function RubricsSection({
     <section aria-labelledby="rubrics-title" className="setup-panel">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">İnsan değerlendirmesinin yetkili ölçütleri</p>
           <h2 className="section-title" id="rubrics-title">
-            Rubrik
+            Değerlendirme rubriği
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Ağırlık toplamı bilgi olarak gösterilir; 100 olma koşulu etkinleştirme kapısı değildir.
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-ink-muted">
+            Hakemlerin puanlamada kullandığı ölçütler. Ağırlık toplamı bilgi olarak gösterilir; 100
+            olma koşulu kullanıma alma engeli değildir.
           </p>
         </div>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <aside aria-label="Rubrik sürüm geçmişi" className="space-y-2">
+        <aside aria-label="Rubrik sürümleri" className="space-y-2">
           {configuration.rubrics.length === 0 ? (
-            <div className="empty-state">Henüz rubrik sürümü yok.</div>
+            <div className="empty-state">Henüz rubrik tanımlanmadı.</div>
           ) : (
             configuration.rubrics.map((version) => (
               <button
                 className={`w-full rounded-xl border p-4 text-left ${
                   selectedId === version.id
-                    ? "border-blue-400 bg-blue-50"
-                    : "border-slate-200 bg-white hover:border-slate-300"
+                    ? "border-brand bg-brand-soft"
+                    : "border-line bg-surface hover:border-line-strong"
                 }`}
                 key={version.id}
                 onClick={() => setSelectedId(version.id)}
                 type="button"
               >
                 <span className="flex items-center justify-between gap-2">
-                  <span className="font-semibold text-slate-950">v{version.versionNumber}</span>
+                  <span className="font-semibold text-ink">Sürüm {version.versionNumber}</span>
                   <StatusBadge status={version.status} />
                 </span>
-                <span className="mt-2 block text-sm text-slate-600">{version.label}</span>
-                <span className="mt-1 block text-xs text-slate-500">
+                <span className="mt-2 block text-sm text-ink-muted">{version.label}</span>
+                <span className="mt-1 block text-xs text-ink-subtle">
                   {version.criteria.length} kriter
                 </span>
               </button>
             ))
           )}
-          <form className="rounded-xl border border-dashed border-slate-300 p-4" onSubmit={create}>
+          <form
+            className="rounded-xl border border-dashed border-line-strong p-4"
+            onSubmit={create}
+          >
             <label className="field-label" htmlFor="new-rubric-label">
-              Yeni sürüm etiketi
+              Yeni taslak rubrik
             </label>
             <input
               className="field-input"
@@ -1323,6 +1370,9 @@ function RubricsSection({
               required
               value={newLabel}
             />
+            <p className="field-help">
+              Yeni sürüm taslak olarak açılır; hazır olunca kullanıma alınır.
+            </p>
             <button className="secondary-button mt-3 w-full" disabled={saving} type="submit">
               {saving ? "Oluşturuluyor…" : "Taslak oluştur"}
             </button>
@@ -1338,7 +1388,7 @@ function RubricsSection({
           ) : selected.status === "DRAFT" ? (
             <div>
               <div className="flex items-center gap-3">
-                <h3 className="text-lg font-semibold text-slate-950">v{selected.versionNumber}</h3>
+                <h3 className="text-lg font-semibold text-ink">Sürüm {selected.versionNumber}</h3>
                 <StatusBadge status={selected.status} />
               </div>
               <RubricDraftEditor
@@ -1348,33 +1398,28 @@ function RubricsSection({
               />
             </div>
           ) : (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <div className="rounded-xl border border-line bg-surface-muted p-5">
               <div className="flex flex-wrap items-center gap-3">
-                <h3 className="text-lg font-semibold text-slate-950">{selected.label}</h3>
+                <h3 className="text-lg font-semibold text-ink">{selected.label}</h3>
                 <StatusBadge status={selected.status} />
               </div>
-              <p className="mt-3 text-sm text-slate-600">
-                Aktif ve emekli rubrikler değiştirilemez. Yeni ölçütler için yeni taslak sürüm
-                oluşturun.
+              <p className="mt-3 text-sm text-ink-muted">
+                Kullanımda ve arşivdeki rubrikler değiştirilemez. Yeni ölçütler için yeni taslak
+                sürüm oluşturun.
               </p>
               <div className="mt-5 space-y-3">
                 {selected.criteria.map((item) => (
-                  <article
-                    className="rounded-lg border border-slate-200 bg-white p-4"
-                    key={item.id}
-                  >
+                  <article className="rounded-lg border border-line bg-surface p-4" key={item.id}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="font-mono text-xs text-slate-500">{item.code}</p>
-                        <h4 className="mt-1 font-semibold text-slate-950">{item.name}</h4>
-                      </div>
+                      <h4 className="font-semibold text-ink">{item.name}</h4>
                       <span className="metric-chip">
                         {item.maxScore} puan · %{item.weight}
                       </span>
                     </div>
-                    <p className="mt-3 text-sm text-slate-600">{item.description}</p>
-                    <p className="mt-2 text-sm text-slate-700">
-                      <strong>Kanıt:</strong> {item.evidenceExpectation}
+                    <p className="mt-3 text-sm text-ink-muted">{item.description}</p>
+                    <p className="mt-2 text-sm text-ink-muted">
+                      <strong className="text-ink">Kanıt beklentisi:</strong>{" "}
+                      {item.evidenceExpectation}
                     </p>
                   </article>
                 ))}
@@ -1387,22 +1432,24 @@ function RubricsSection({
   );
 }
 
-function ReadinessSection({ configuration }: { configuration: CompetitionConfigurationResponse }) {
+function FinalCheckSection({ configuration }: { configuration: CompetitionConfigurationResponse }) {
   const items = [
     ["competition", "Yarışma bilgileri"],
     ["categories", "En az bir kategori"],
-    ["activeTemplate", "Aktif şablon yapısı"],
-    ["activeTemplateFile", "Aktif şablonun resmî dosyası"],
-    ["activeRubric", "Aktif rubrik"],
+    ["activeTemplate", "Kullanımda bir rapor formatı"],
+    ["activeTemplateFile", "Resmî rapor PDF'si"],
+    ["activeRubric", "Kullanımda bir rubrik"],
     ["rubricHasCriteria", "Rubrik kriterleri"],
   ] as const;
 
   return (
     <section aria-labelledby="readiness-title" className="setup-panel">
-      <p className="eyebrow">Türetilmiş durum</p>
       <h2 className="section-title" id="readiness-title">
-        Hazırlık
+        Son kontrol
       </h2>
+      <p className="mt-1 text-sm leading-6 text-ink-muted">
+        Başvuru almaya başlamadan önce tamamlanması gereken adımlar.
+      </p>
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {items.map(([key, label]) => {
           const complete = configuration.readiness[key];
@@ -1410,8 +1457,8 @@ function ReadinessSection({ configuration }: { configuration: CompetitionConfigu
             <div
               className={`flex items-center gap-3 rounded-xl border p-4 ${
                 complete
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                  : "border-slate-200 bg-slate-50 text-slate-700"
+                  ? "border-success-border bg-success-soft text-success-ink"
+                  : "border-line bg-surface-muted text-ink-muted"
               }`}
               key={key}
             >
@@ -1425,41 +1472,151 @@ function ReadinessSection({ configuration }: { configuration: CompetitionConfigu
         })}
       </div>
       <div
-        className={`mt-6 rounded-xl border p-5 ${
-          configuration.readiness.ready
-            ? "border-emerald-300 bg-emerald-50"
-            : "border-amber-200 bg-amber-50"
-        }`}
+        className={configuration.readiness.ready ? "alert-success mt-6" : "mt-6 alert-info"}
         role="status"
       >
-        <h3 className="font-semibold text-slate-950">
+        <h3 className="font-semibold">
           {configuration.readiness.ready
-            ? "Yarışma yapılandırması hazır"
-            : "Yarışma yapılandırması tamamlanmadı"}
+            ? "Yarışma kurulumu hazır: başvurular yüklenip analiz edilebilir."
+            : "Kurulum henüz tamamlanmadı."}
         </h3>
-        <p className="mt-2 text-sm leading-6 text-slate-700">
-          Bu durum yalnız gelecekteki başvuru hattının yapılandırma temelini gösterir; başvuru,
-          dosya veya yapay zekâ özelliklerinin hazır olduğu anlamına gelmez.
-        </p>
+        {!configuration.readiness.ready ? (
+          <p className="mt-1">Eksik adımları yukarıdaki listeden tamamlayın.</p>
+        ) : null}
       </div>
     </section>
   );
 }
 
-const tabs = [
-  ["general", "Genel"],
-  ["categories", "Kategoriler"],
-  ["templates", "Şablon Yapısı"],
-  ["rubrics", "Rubrik"],
-  ["readiness", "Hazırlık"],
-] as const;
+type TaskKey = "general" | "categories" | "templates" | "rubrics" | "readiness";
 
-type Tab = (typeof tabs)[number][0];
+interface SetupTask {
+  key: TaskKey;
+  title: string;
+  description: string;
+  done: boolean;
+  status: string;
+}
+
+export function buildTasks(configuration: CompetitionConfigurationResponse): SetupTask[] {
+  const { categories, readiness, rubrics, templates } = configuration;
+  const activeTemplate = templates.find((version) => version.status === "ACTIVE") ?? null;
+  const activeRubric = rubrics.find((version) => version.status === "ACTIVE") ?? null;
+  const hasDraftTemplate = templates.some((version) => version.status === "DRAFT");
+  const hasDraftRubric = rubrics.some((version) => version.status === "DRAFT");
+
+  const templateStatus = readiness.activeTemplateFile
+    ? `Hazır · ${activeTemplate?.label ?? "kullanımda"}`
+    : readiness.activeTemplate
+      ? "Rapor PDF'si eksik"
+      : hasDraftTemplate
+        ? "Taslak kullanıma alınmadı"
+        : "Rapor formatı tanımlanmadı";
+
+  const rubricStatus =
+    readiness.activeRubric && readiness.rubricHasCriteria
+      ? `Hazır · ${activeRubric?.criteria.length ?? 0} kriter`
+      : readiness.activeRubric
+        ? "Kriter eklenmedi"
+        : hasDraftRubric
+          ? "Taslak kullanıma alınmadı"
+          : "Rubrik oluşturulmadı";
+
+  return [
+    {
+      key: "general",
+      title: "Yarışma bilgileri",
+      description: "Ad ve açıklama.",
+      done: readiness.competition,
+      status: readiness.competition ? "Tamamlandı" : "Eksik",
+    },
+    {
+      key: "categories",
+      title: "Kategoriler",
+      description: "Başvuruların yükleneceği kategoriler.",
+      done: readiness.categories,
+      status: readiness.categories ? `${categories.length} kategori` : "Kategori eklenmedi",
+    },
+    {
+      key: "templates",
+      title: "Rapor formatı",
+      description: "Resmî rapor PDF'si ve beklenen bölümler.",
+      done: readiness.activeTemplate && readiness.activeTemplateFile,
+      status: templateStatus,
+    },
+    {
+      key: "rubrics",
+      title: "Değerlendirme rubriği",
+      description: "Hakemlerin kullanacağı puanlama ölçütleri.",
+      done: readiness.activeRubric && readiness.rubricHasCriteria,
+      status: rubricStatus,
+    },
+    {
+      key: "readiness",
+      title: "Son kontrol",
+      description: "Başvuru almadan önce genel durum.",
+      done: readiness.ready,
+      status: readiness.ready ? "Hazır" : "Bekliyor",
+    },
+  ];
+}
+
+function SetupTaskList({
+  activeTask,
+  onSelect,
+  tasks,
+}: {
+  activeTask: TaskKey;
+  onSelect: (key: TaskKey) => void;
+  tasks: SetupTask[];
+}) {
+  return (
+    <ol aria-label="Kurulum adımları" className="surface-panel divide-y divide-line">
+      {tasks.map((task, index) => {
+        const isActive = task.key === activeTask;
+        return (
+          <li key={task.key}>
+            <button
+              aria-current={isActive ? "step" : undefined}
+              className={`setup-task w-full text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand ${
+                isActive ? "bg-brand-soft/60" : "hover:bg-surface-muted"
+              }`}
+              onClick={() => onSelect(task.key)}
+              type="button"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${
+                    task.done
+                      ? "bg-success-soft text-success-ink"
+                      : "bg-surface-muted text-ink-subtle"
+                  }`}
+                >
+                  {task.done ? "✓" : index + 1}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-ink">{task.title}</span>
+                  <span className="block truncate text-xs text-ink-subtle">{task.description}</span>
+                </span>
+              </span>
+              <span
+                className={`status-chip ${task.done ? "status-chip-pass" : "status-chip-neutral"}`}
+              >
+                {task.status}
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
 export function SetupPage() {
   const { competitionId } = useParams();
   const [configuration, setConfiguration] = useState<CompetitionConfigurationResponse | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("general");
+  const [activeTask, setActiveTask] = useState<TaskKey | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -1477,99 +1634,70 @@ export function SetupPage() {
   }, [refresh]);
 
   if (!competitionId) {
-    return <main className="mx-auto max-w-4xl p-8">Yarışma kimliği bulunamadı.</main>;
+    return <div className="mx-auto max-w-4xl">Yarışma kimliği bulunamadı.</div>;
   }
 
+  const tasks = configuration ? buildTasks(configuration) : null;
+  const completedCount = tasks ? tasks.filter((task) => task.done).length : 0;
+  // Default focus: the first incomplete task, or the final check when all done.
+  const currentTask: TaskKey = activeTask ?? tasks?.find((task) => !task.done)?.key ?? "readiness";
+
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-8 sm:py-10">
-      <Breadcrumb trail={[{ label: "Yarışmalar", to: "/app" }, { label: "Yapılandırma" }]} />
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow">Yarışma kurulumu</p>
-          <h1 className="page-title">{configuration?.competition.name ?? "Yapılandırma"}</h1>
-          <p className="mt-2 font-mono text-sm text-slate-500">
-            {configuration?.competition.slug ?? competitionId}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {configuration ? (
-            <span
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                configuration.readiness.ready
-                  ? "bg-emerald-100 text-emerald-900"
-                  : "bg-amber-100 text-amber-900"
-              }`}
-            >
-              {configuration.readiness.ready ? "Yapılandırma hazır" : "Yapılandırma eksik"}
-            </span>
-          ) : null}
-          <Link className="primary-button" to={`/app/competitions/${competitionId}/submissions`}>
-            Başvurular
-          </Link>
-        </div>
+    <div className="layout-setup">
+      <Breadcrumb trail={[{ label: "Genel Bakış", to: "/app" }, { label: "Kurulum" }]} />
+      <div className="mt-4">
+        <PageHeader
+          lead={
+            configuration ? `${completedCount} / ${tasks?.length ?? 5} adım tamamlandı` : undefined
+          }
+          title="Kurulum"
+        />
       </div>
 
-      <ManagerStepNav competitionId={competitionId} current="setup" />
-
-      <nav
-        aria-label="Yarışma yapılandırma bölümleri"
-        className="mt-6 overflow-x-auto border-b border-slate-200"
-      >
-        <div className="flex min-w-max gap-1">
-          {tabs.map(([id, label]) => (
-            <button
-              aria-current={activeTab === id ? "page" : undefined}
-              className={`border-b-2 px-4 py-3 text-sm font-semibold ${
-                activeTab === id
-                  ? "border-blue-700 text-blue-800"
-                  : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
-              }`}
-              key={id}
-              onClick={() => setActiveTab(id)}
-              type="button"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </nav>
-
       {error ? (
-        <div
-          className="mt-8 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800"
-          role="alert"
-        >
-          <p className="font-semibold">Yapılandırma yüklenemedi</p>
-          <p className="mt-1">{error}</p>
-          <button className="secondary-button mt-4" onClick={() => refresh()} type="button">
-            Tekrar dene
-          </button>
+        <div className="mt-6">
+          <Alert tone="error">
+            <p className="font-semibold">Kurulum bilgileri yüklenemedi</p>
+            <p className="mt-1">{error}</p>
+            <button className="secondary-button mt-3" onClick={() => refresh()} type="button">
+              Tekrar dene
+            </button>
+          </Alert>
         </div>
       ) : null}
 
       {!configuration && !error ? (
-        <div className="mt-8 setup-panel" role="status">
-          Yapılandırma yükleniyor…
+        <div className="setup-panel mt-6" role="status">
+          Kurulum yükleniyor…
         </div>
       ) : null}
 
-      {configuration ? (
-        <div className="mt-8">
-          {activeTab === "general" ? (
-            <GeneralSection configuration={configuration} refresh={refresh} />
-          ) : null}
-          {activeTab === "categories" ? (
-            <CategoriesSection configuration={configuration} refresh={refresh} />
-          ) : null}
-          {activeTab === "templates" ? (
-            <TemplatesSection configuration={configuration} refresh={refresh} />
-          ) : null}
-          {activeTab === "rubrics" ? (
-            <RubricsSection configuration={configuration} refresh={refresh} />
-          ) : null}
-          {activeTab === "readiness" ? <ReadinessSection configuration={configuration} /> : null}
+      {configuration && tasks ? (
+        <div className="mt-6 grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
+          <SetupTaskList
+            activeTask={currentTask}
+            onSelect={(key) => setActiveTask(key)}
+            tasks={tasks}
+          />
+          <div className="min-w-0">
+            {currentTask === "general" ? (
+              <GeneralSection configuration={configuration} refresh={refresh} />
+            ) : null}
+            {currentTask === "categories" ? (
+              <CategoriesSection configuration={configuration} refresh={refresh} />
+            ) : null}
+            {currentTask === "templates" ? (
+              <TemplatesSection configuration={configuration} refresh={refresh} />
+            ) : null}
+            {currentTask === "rubrics" ? (
+              <RubricsSection configuration={configuration} refresh={refresh} />
+            ) : null}
+            {currentTask === "readiness" ? (
+              <FinalCheckSection configuration={configuration} />
+            ) : null}
+          </div>
         </div>
       ) : null}
-    </main>
+    </div>
   );
 }

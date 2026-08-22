@@ -5,14 +5,8 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 
-import {
-  ANALYSIS_RUN_STATUS_LABELS,
-  analysisRunStatusChipClass,
-  evaluationStatusChipClass,
-  REVIEWER_EVALUATION_STATUS_LABELS,
-} from "./analysis-labels";
+import { evaluationStatusChipClass, REVIEWER_EVALUATION_STATUS_LABELS } from "./analysis-labels";
 import { apiRequest, errorMessage } from "./api";
-import { Breadcrumb } from "./competition-nav";
 import { AiPanel } from "./review/ai-panel";
 import { clampPage } from "./review/evidence-navigation";
 import { ReportPanel } from "./review/report-panel";
@@ -146,40 +140,41 @@ export function ReviewWorkspacePage() {
 
   const header = useMemo(
     () => (
-      <div className="sticky top-0 z-20 border-b border-slate-200 bg-white px-4 py-3">
-        <Breadcrumb
-          trail={[
-            { label: "Atamalarım", to: "/app/review" },
-            { label: workspace ? workspace.submission.applicationCode : "Değerlendirme" },
-          ]}
-        />
-        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="truncate text-xl font-bold tracking-tight text-slate-950">
-              {workspace ? workspace.submission.projectTitle : "Değerlendirme"}
-            </h1>
-            {workspace ? (
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <span className="metric-chip">{workspace.submission.applicationCode}</span>
-                <span className="metric-chip">{workspace.submission.category.name}</span>
-                <span
-                  className={`status-chip ${analysisRunStatusChipClass(workspace.analysisRun.status)}`}
-                >
-                  Analiz: {ANALYSIS_RUN_STATUS_LABELS[workspace.analysisRun.status]}
-                </span>
-                <span
-                  className={`status-chip ${evaluationStatusChipClass(workspace.evaluation?.status ?? null)}`}
-                >
-                  {workspace.evaluation === null
-                    ? "Değerlendirme başlamadı"
-                    : `Değerlendirme: ${REVIEWER_EVALUATION_STATUS_LABELS[workspace.evaluation.status]}`}
-                </span>
-              </div>
-            ) : null}
-          </div>
-          <Link className="secondary-button" to="/app/review">
-            Atamalarıma dön
+      <div className="sticky top-0 z-20 border-b border-line bg-surface px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            className="text-sm font-semibold text-brand hover:text-brand-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            to="/app/review"
+          >
+            ← Atamalarım
           </Link>
+          {workspace ? (
+            <>
+              <span className="text-ink-subtle" aria-hidden="true">
+                ·
+              </span>
+              <span className="font-mono text-xs font-bold text-ink">
+                {workspace.submission.applicationCode}
+              </span>
+              <h1 className="min-w-0 truncate text-base font-bold text-ink">
+                {workspace.submission.projectTitle}
+              </h1>
+              <span className="text-[13px] text-ink-subtle">
+                {workspace.submission.category.name}
+              </span>
+              <span
+                className={`status-chip ${evaluationStatusChipClass(workspace.evaluation?.status ?? null)}`}
+              >
+                {workspace.evaluation === null
+                  ? "Taslak yok"
+                  : workspace.evaluation.status === "DRAFT"
+                    ? "Taslak kaydedildi"
+                    : REVIEWER_EVALUATION_STATUS_LABELS[workspace.evaluation.status]}
+              </span>
+            </>
+          ) : (
+            <h1 className="text-base font-bold text-ink">Değerlendirme</h1>
+          )}
         </div>
       </div>
     ),
@@ -189,20 +184,15 @@ export function ReviewWorkspacePage() {
   if (loadError !== null) {
     return (
       <main className="mx-auto w-full max-w-3xl px-5 py-10">
-        <p className="eyebrow">Hakem çalışma alanı</p>
         <h1 className="page-title">Çalışma alanı açılamadı</h1>
-        <p
-          className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900"
-          role="alert"
-        >
+        <p className="alert-error mt-6" role="alert">
           {loadError}
         </p>
-        <p className="mt-4 text-sm leading-6 text-slate-600">
-          Atama kaldırılmış veya bu başvuru için tamamlanmış bir analiz çalışması olmayabilir.
-          Atamalarınıza dönüp listeyi yenileyebilirsiniz.
+        <p className="mt-4 text-sm leading-6 text-ink-muted">
+          Atama kaldırılmış veya bu başvuru için tamamlanmış bir analiz olmayabilir.
         </p>
         <Link className="secondary-button mt-6" to="/app/review">
-          Atamalarıma dön
+          ← Atamalarım
         </Link>
       </main>
     );
@@ -211,7 +201,7 @@ export function ReviewWorkspacePage() {
   if (workspace === null) {
     return (
       <main className="mx-auto w-full max-w-3xl px-5 py-10">
-        <p className="text-sm text-slate-600" role="status">
+        <p className="text-sm text-ink-muted" role="status">
           Çalışma alanı yükleniyor…
         </p>
       </main>
@@ -221,11 +211,11 @@ export function ReviewWorkspacePage() {
   const panelClass = (key: PanelKey) => panelClassName(activePanel, key);
 
   return (
-    <main className="flex min-h-[calc(100vh-4.5rem)] flex-col">
+    <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-canvas">
       {header}
 
       {/* Narrow screens show one pane at a time; every pane stays mounted behind `hidden`. */}
-      <fieldset className="flex flex-wrap gap-2 px-4 pt-3 xl:hidden">
+      <fieldset className="flex flex-wrap gap-2 border-b border-line bg-surface px-4 py-2 xl:hidden">
         <legend className="sr-only">Görüntülenecek panel</legend>
         <p className="sr-only">
           Geniş ekranda üç panel birlikte açıktır. Bu ekranda bir panel seçilir; seçilmeyen paneller
@@ -244,7 +234,7 @@ export function ReviewWorkspacePage() {
         ))}
       </fieldset>
 
-      <div className="grid min-h-0 flex-1 gap-3 p-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)_minmax(0,1.05fr)]">
+      <div className="workspace-shell">
         <section aria-labelledby="panel-report-title" className={panelClass("report")}>
           <div className="workspace-pane-heading">
             <h2 className="workspace-pane-title" id="panel-report-title">
@@ -273,7 +263,7 @@ export function ReviewWorkspacePage() {
         <section aria-labelledby="panel-rubric-title" className={panelClass("rubric")}>
           <div className="workspace-pane-heading">
             <h2 className="workspace-pane-title" id="panel-rubric-title">
-              Hakem Rubriği
+              Hakem Kararı
             </h2>
             <p className="pane-note">{PANEL_NOTES.rubric}</p>
           </div>

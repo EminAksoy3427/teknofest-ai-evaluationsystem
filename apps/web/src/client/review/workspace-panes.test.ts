@@ -16,7 +16,8 @@ describe("reviewer workspace panes", () => {
   });
 
   it("keeps the middle pane honest about being advisory only", () => {
-    expect(PANEL_NOTES.ai).toContain("öneri");
+    expect(PANEL_NOTES.ai).toContain("Karar desteği");
+    expect(PANEL_NOTES.ai).toContain("yerine geçmez");
     expect(PANEL_NOTES.rubric).toContain("Hakem kararı");
   });
 

@@ -4,7 +4,7 @@ import {
   type ReviewOperationsSummary,
 } from "@teknofest-ai/shared";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import {
   ANALYSIS_RUN_STATUS_LABELS,
@@ -19,7 +19,7 @@ import {
   SIMILARITY_LEVEL_LABELS,
 } from "./analysis-labels";
 import { apiRequest, errorMessage } from "./api";
-import { Breadcrumb, ManagerStepNav } from "./competition-nav";
+import { Breadcrumb } from "./competition-nav";
 import {
   ANALYSIS_FILTER_VALUES,
   ANALYSIS_STATE_LABELS,
@@ -42,6 +42,7 @@ import {
   reviewerStateOf,
   sortOperations,
 } from "./review-operations-view";
+import { Alert, EmptyState, MetricCard, PageHeader } from "./ui";
 
 function totalCell(score: number | null, maximum: number | null): string {
   if (score === null || maximum === null) return "—";
@@ -62,11 +63,11 @@ export function PriorityCell({ item }: { item: ReviewOperationsItem }) {
         İnceleme Önceliği: {REVIEW_PRIORITY_LEVEL_LABELS[item.priority.level]}
       </span>
       {item.priority.reasons.length === 0 ? (
-        <p className="mt-1.5 text-xs leading-5 text-slate-500">
+        <p className="mt-1.5 text-xs leading-5 text-ink-subtle">
           Dikkat gerektiren bir sinyal kaydedilmedi.
         </p>
       ) : (
-        <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-xs leading-5 text-slate-600">
+        <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-xs leading-5 text-ink-muted">
           {item.priority.reasons.map((reason) => (
             <li key={reason.code}>{reason.label}</li>
           ))}
@@ -86,9 +87,9 @@ function AnalysisCell({ item }: { item: ReviewOperationsItem }) {
       <span className={`status-chip ${analysisRunStatusChipClass(status)}`}>
         {status === null ? "Analiz başlatılmadı" : ANALYSIS_RUN_STATUS_LABELS[status]}
       </span>
-      <p className="mt-1.5 text-xs leading-5 text-slate-500">{ANALYSIS_STATE_LABELS[state]}</p>
+      <p className="mt-1.5 text-xs leading-5 text-ink-subtle">{ANALYSIS_STATE_LABELS[state]}</p>
       {state === "FAILED" ? (
-        <p className="mt-1 text-xs leading-5 text-red-800">
+        <p className="mt-1 text-xs leading-5 text-critical">
           Sinyaller son başarılı koşudan okunur; yeni koşu tamamlanamadı.
         </p>
       ) : null}
@@ -104,13 +105,13 @@ function AnalysisCell({ item }: { item: ReviewOperationsItem }) {
         </ul>
       ) : null}
       {item.analysis.similarityLevel !== null && item.analysis.similarityLevel !== "LOW" ? (
-        <p className="mt-1.5 text-xs leading-5 text-amber-900">
+        <p className="mt-1.5 text-xs leading-5 text-warning-ink">
           {SIMILARITY_LEVEL_LABELS[item.analysis.similarityLevel]} benzerlik sinyali ·{" "}
           {item.analysis.similarityObservationCount} gözlem · uzman incelemesi önerilir
         </p>
       ) : null}
       {item.analysis.exactDocumentMatch ? (
-        <p className="mt-1 text-xs leading-5 text-amber-900">
+        <p className="mt-1 text-xs leading-5 text-warning-ink">
           Birebir belge eşleşmesi · inceleme sinyalidir
         </p>
       ) : null}
@@ -123,7 +124,7 @@ function ReviewerCell({ item }: { item: ReviewOperationsItem }) {
     return (
       <div className="min-w-48">
         <span className="status-chip status-chip-warn">Hakem atanmamış</span>
-        <p className="mt-1.5 text-xs leading-5 text-slate-500">
+        <p className="mt-1.5 text-xs leading-5 text-ink-subtle">
           Hakem ataması yapılana kadar bu başvuru değerlendirilemez.
         </p>
       </div>
@@ -135,8 +136,7 @@ function ReviewerCell({ item }: { item: ReviewOperationsItem }) {
       <ul className="mt-1.5 space-y-2">
         {item.reviewers.map((reviewer) => (
           <li key={reviewer.assignmentId}>
-            <p className="text-sm font-medium text-slate-900">{reviewer.name}</p>
-            <p className="text-xs text-slate-500">{reviewer.email}</p>
+            <p className="text-sm font-medium text-ink">{reviewer.name}</p>
             <span
               className={`status-chip mt-1 ${evaluationStatusChipClass(reviewer.evaluationStatus)}`}
             >
@@ -145,7 +145,7 @@ function ReviewerCell({ item }: { item: ReviewOperationsItem }) {
                 : REVIEWER_EVALUATION_STATUS_LABELS[reviewer.evaluationStatus]}
             </span>
             {reviewer.evaluationStatus === "SUBMITTED" ? (
-              <p className="mt-1 text-xs text-slate-600">
+              <p className="mt-1 text-xs text-ink-muted">
                 Hakem puanı: {totalCell(reviewer.humanTotal, reviewer.humanMaxTotal)}
               </p>
             ) : null}
@@ -160,31 +160,29 @@ export function OperationsRow({ item }: { item: ReviewOperationsItem }) {
   return (
     <tr>
       <td>
-        <p className="font-mono text-xs font-semibold text-blue-800">{item.applicationCode}</p>
-        <p className="mt-1 min-w-40 font-semibold text-slate-950">{item.projectTitle}</p>
+        <p className="font-mono text-xs font-semibold text-brand">{item.applicationCode}</p>
+        <p className="mt-1 min-w-40 font-semibold text-ink">{item.projectTitle}</p>
       </td>
       <td>
-        <p className="font-medium text-slate-800">{item.category.name}</p>
-        <p className="mt-1 font-mono text-xs text-slate-500">{item.category.code}</p>
-      </td>
-      <td>
-        <AnalysisCell item={item} />
+        <p className="font-medium text-ink">{item.category.name}</p>
       </td>
       <td>
         <PriorityCell item={item} />
       </td>
       <td>
+        <AnalysisCell item={item} />
+      </td>
+      <td>
         <ReviewerCell item={item} />
       </td>
-      <td className="font-semibold whitespace-nowrap text-blue-900">
+      <td className="font-semibold whitespace-nowrap text-brand-deep">
         {totalCell(item.aiSuggestedTotal, item.aiMaxTotal)}
-        <span className="mt-1 block text-xs font-normal text-slate-500">AI önerisi</span>
+        <span className="mt-1 block text-xs font-normal text-ink-subtle">AI önerisi</span>
       </td>
-      <td className="font-semibold whitespace-nowrap text-slate-950">
+      <td className="font-semibold whitespace-nowrap text-ink">
         {totalCell(primaryHumanTotal(item), item.reviewers[0]?.humanMaxTotal ?? null)}
-        <span className="mt-1 block text-xs font-normal text-slate-500">Hakem kararı</span>
+        <span className="mt-1 block text-xs font-normal text-ink-subtle">Hakem kararı</span>
       </td>
-      <td className="whitespace-nowrap text-slate-800">{item.disagreementCount}</td>
     </tr>
   );
 }
@@ -198,14 +196,13 @@ export function OperationsTable({ items }: { items: readonly ReviewOperationsIte
         </caption>
         <thead>
           <tr>
-            <th scope="col">Başvuru</th>
+            <th scope="col">Proje</th>
             <th scope="col">Kategori</th>
-            <th scope="col">Analiz</th>
             <th scope="col">İnceleme Önceliği</th>
-            <th scope="col">Hakem(ler)</th>
+            <th scope="col">Analiz</th>
+            <th scope="col">Hakem</th>
             <th scope="col">AI önerisi</th>
-            <th scope="col">Hakem puanı</th>
-            <th scope="col">Farklı kriter</th>
+            <th scope="col">Hakem kararı</th>
           </tr>
         </thead>
         <tbody>
@@ -218,22 +215,36 @@ export function OperationsTable({ items }: { items: readonly ReviewOperationsIte
   );
 }
 
-function SummaryChips({ summary }: { summary: ReviewOperationsSummary }) {
+function OperationsMetrics({
+  items,
+  summary,
+}: {
+  items: readonly ReviewOperationsItem[];
+  summary: ReviewOperationsSummary;
+}) {
+  const unassigned = items.filter((item) => item.reviewers.length === 0).length;
+  const submitted = items.filter((item) =>
+    item.reviewers.some((reviewer) => reviewer.evaluationStatus === "SUBMITTED"),
+  ).length;
   return (
-    <dl className="mt-5 flex flex-wrap gap-2">
-      {(
-        [
-          ["HIGH", summary.high],
-          ["MEDIUM", summary.medium],
-          ["LOW", summary.low],
-        ] as const
-      ).map(([level, count]) => (
-        <div className={`priority-pill ${priorityPillClass(level)}`} key={level}>
-          <dt>{REVIEW_PRIORITY_LEVEL_LABELS[level]} öncelik</dt>
-          <dd className="font-black">{count}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className="metrics-strip mt-6 sm:grid-cols-4">
+      <MetricCard label="Başvurular" value={String(items.length)} />
+      <MetricCard
+        label="Yüksek öncelik"
+        tone={summary.high > 0 ? "warn" : "neutral"}
+        value={String(summary.high)}
+      />
+      <MetricCard
+        label="Hakem atanmamış"
+        tone={unassigned > 0 ? "warn" : "neutral"}
+        value={String(unassigned)}
+      />
+      <MetricCard
+        hint={`${items.length} başvurunun ${submitted} tanesi`}
+        label="Değerlendirmesi gönderilen"
+        value={String(submitted)}
+      />
+    </div>
   );
 }
 
@@ -282,69 +293,56 @@ export function ReviewOperationsPage() {
   const isFiltered = JSON.stringify(filters) !== JSON.stringify(EMPTY_OPERATIONS_FILTERS);
 
   if (!competitionId) {
-    return <main className="mx-auto max-w-4xl p-8">Yarışma kimliği bulunamadı.</main>;
+    return <div className="mx-auto max-w-4xl">Yarışma kimliği bulunamadı.</div>;
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-8 sm:py-10">
-      <Breadcrumb
-        trail={[
-          { label: "Yarışmalar", to: "/app" },
-          { label: "Başvurular", to: `/app/competitions/${competitionId}/submissions` },
-          { label: "Değerlendirme Operasyonu" },
-        ]}
-      />
-      <div className="mt-4 max-w-3xl">
-        <p className="eyebrow">Değerlendirme operasyonu</p>
-        <h1 className="page-title">İnceleme önceliği kuyruğu</h1>
-        <p className="page-lead">
-          Sıralama, daha önce kaydedilmiş analiz ve hakem kayıtlarından türetilir; bu sayfa yeni bir
-          yapay zekâ çağrısı yapmaz. İnceleme önceliği bir olasılık, puan veya nihai karar değildir:
-          yalnız bir insanın hangi başvuruya önce bakması gerektiğini söyler ve her düzey görünür
-          gerekçelerle açıklanır.
-        </p>
+    <div className="layout-wide">
+      <Breadcrumb trail={[{ label: "Genel Bakış", to: "/app" }, { label: "Değerlendirme" }]} />
+      <div className="mt-4">
+        <PageHeader
+          lead="Hangi başvuruya önce bakılacağını görünür gerekçelerle sıralar. Öncelik bir karar veya olasılık değildir."
+          title="Değerlendirme"
+        />
       </div>
-      <ManagerStepNav competitionId={competitionId} current="operations" />
 
       {error ? (
-        <div
-          className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-          role="alert"
-        >
-          {error}
+        <div className="mt-6">
+          <Alert tone="error">{error}</Alert>
         </div>
       ) : null}
 
       {items === null && error === null ? (
-        <p className="mt-6 text-sm text-slate-600" role="status">
-          Değerlendirme operasyonu yükleniyor…
+        <p className="mt-6 text-sm text-ink-muted" role="status">
+          Değerlendirme kuyruğu yükleniyor…
         </p>
       ) : null}
 
-      {summary && items && items.length > 0 ? <SummaryChips summary={summary} /> : null}
+      {summary && items && items.length > 0 ? (
+        <OperationsMetrics items={items} summary={summary} />
+      ) : null}
 
       {items !== null && items.length === 0 ? (
-        <div className="empty-state mt-6">
-          Bu yarışmada henüz başvuru yok. Başvuru yükleyip analiz başlattığınızda inceleme önceliği
-          kuyruğu burada oluşur.
+        <div className="mt-6">
+          <EmptyState
+            description="Başvuru yüklendiğinde inceleme önceliği burada oluşur."
+            title="Henüz başvuru yok"
+          />
         </div>
       ) : null}
 
       {items !== null && items.length > 0 ? (
-        <section aria-labelledby="operations-queue-title" className="surface-panel mt-6 p-5 sm:p-7">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Yarışma kapsamı</p>
-              <h2 className="section-title" id="operations-queue-title">
-                Başvuru kuyruğu
-              </h2>
-            </div>
-            <p className="text-sm text-slate-600" role="status">
-              {visible.length} / {items.length} başvuru gösteriliyor
+        <section aria-labelledby="operations-queue-title" className="mt-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <h2 className="section-title" id="operations-queue-title">
+              Başvuru kuyruğu
+            </h2>
+            <p className="text-sm text-ink-muted" role="status">
+              {visible.length} / {items.length} başvuru
             </p>
           </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <div>
               <label className="field-label" htmlFor="operations-filter-priority">
                 İnceleme önceliği
@@ -485,24 +483,8 @@ export function ReviewOperationsPage() {
               <OperationsTable items={visible} />
             </div>
           )}
-
-          <p className="mt-4 text-xs leading-5 text-slate-500">
-            AI önerisi ile hakem kararı ayrı sütunlardır ve tek bir puana birleştirilmez. Kriter
-            farkı hakem hatası değildir; hakemin kendi okumasına dayanan meşru bir yargıdır.
-            Benzerlik ve birebir eşleşme birer inceleme sinyalidir; intihal tespiti, diskalifiye
-            veya nihai yarışma kararı değildir. Nihai karar daima insana aittir.
-          </p>
         </section>
       ) : null}
-
-      <div className="mt-8 flex flex-wrap gap-2">
-        <Link className="secondary-button" to={`/app/competitions/${competitionId}/reviewers`}>
-          Hakem atamalarına git
-        </Link>
-        <Link className="secondary-button" to={`/app/competitions/${competitionId}/submissions`}>
-          Başvurulara git
-        </Link>
-      </div>
-    </main>
+    </div>
   );
 }

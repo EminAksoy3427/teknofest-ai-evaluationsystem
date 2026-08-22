@@ -32,10 +32,10 @@ interface RubricPanelProps {
 
 function traceClass(trace: DecisionTrace): string {
   if (trace.classification === "SAME_AS_AI")
-    return "border-emerald-300 bg-emerald-50 text-emerald-900";
+    return "border-success-border bg-success-soft text-success-ink";
   if (trace.classification === "NO_AI_SUGGESTION")
-    return "border-slate-300 bg-slate-50 text-slate-700";
-  return "border-blue-300 bg-blue-50 text-blue-900";
+    return "border-line-strong bg-surface-muted text-ink-muted";
+  return "border-brand-border bg-brand-soft text-brand-deep";
 }
 
 function formatDifference(difference: number): string {
@@ -49,13 +49,12 @@ function formatDifference(difference: number): string {
  */
 function DecisionTraceRow({ trace }: { trace: DecisionTrace }) {
   return (
-    <div
-      className={`mt-2 rounded-lg border px-2.5 py-2 text-xs font-semibold ${traceClass(trace)}`}
-    >
+    <div className={`mt-2 rounded-md px-2.5 py-2 text-xs font-medium ${traceClass(trace)}`}>
       <span className="block">{DECISION_TRACE_LABELS[trace.classification]}</span>
       <span className="mt-1 block font-medium">
-        AI önerisi: {trace.aiScore === null ? "yok" : trace.aiScore} · Hakem puanı:{" "}
-        {trace.humanScore === null ? "girilmedi" : trace.humanScore}
+        AI: {trace.aiScore === null ? "yok" : trace.aiScore}
+        {" · "}
+        Siz: {trace.humanScore === null ? "girilmedi" : trace.humanScore}
         {trace.difference === null ? "" : ` · Fark: ${formatDifference(trace.difference)}`}
       </span>
     </div>
@@ -87,30 +86,30 @@ function CriterionCard({
   const outOfRange = liveScore !== null && liveScore > criterion.maxScore;
 
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-3">
+    <article className="border-b border-line py-3 last:border-b-0">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h4 className="text-sm font-bold text-slate-950">{criterion.title}</h4>
+        <h4 className="text-sm font-bold text-ink">{criterion.title}</h4>
         <span className="metric-chip">Azami {criterion.maxScore} puan</span>
       </div>
-      <p className="mt-1 text-sm leading-6 text-slate-600">{criterion.description}</p>
+      <p className="mt-1 text-sm leading-6 text-ink-muted">{criterion.description}</p>
       {criterion.evidenceExpectation ? (
-        <p className="mt-1 text-xs leading-5 text-slate-500">
+        <p className="mt-1 text-xs leading-5 text-ink-subtle">
           Kanıt beklentisi: {criterion.evidenceExpectation}
         </p>
       ) : null}
 
       {criterion.aiSuggestion ? (
-        <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
-          <p className="text-xs font-bold tracking-[0.14em] text-blue-800 uppercase">
+        <div className="mt-2 rounded-md bg-surface-raised p-2.5">
+          <p className="text-[11px] font-medium text-ink-subtle">
             AI önerisi · hakem kararı değildir
           </p>
-          <p className="mt-1 text-sm font-bold text-blue-900">
+          <p className="mt-1 text-sm font-medium tabular-nums text-ink-muted">
             AI önerisi: {criterion.aiSuggestion.suggestedScore} / {criterion.maxScore}
           </p>
-          <p className="mt-1 text-xs font-medium text-blue-900">
-            Kanıt gücü: {EVIDENCE_STRENGTH_LABELS[criterion.aiSuggestion.evidenceStrength]}
+          <p className="mt-1 text-xs font-medium text-brand-deep">
+            Kanıt Gücü: {EVIDENCE_STRENGTH_LABELS[criterion.aiSuggestion.evidenceStrength]}
           </p>
-          <p className="mt-1 text-sm leading-6 text-slate-700">{criterion.aiSuggestion.reason}</p>
+          <p className="mt-1 text-sm leading-6 text-ink">{criterion.aiSuggestion.reason}</p>
           {criterion.aiSuggestion.evidence.map((evidence) => (
             <EvidenceQuote
               evidence={evidence}
@@ -128,14 +127,12 @@ function CriterionCard({
           ) : null}
         </div>
       ) : (
-        <p className="mt-2 text-xs font-medium text-slate-500">
+        <p className="mt-2 text-xs font-medium text-ink-subtle">
           Bu kriter için AI önerisi yok. Puanı doğrudan siz belirleyeceksiniz.
         </p>
       )}
 
-      <p className="mt-3 text-xs font-bold tracking-[0.14em] text-slate-600 uppercase">
-        Hakem kararı
-      </p>
+      <p className="mt-3 text-[13px] font-semibold text-ink">Hakem kararı</p>
       <div className="mt-1 grid gap-2 sm:grid-cols-[auto_1fr] sm:items-end">
         <div>
           <label className="field-label" htmlFor={scoreInputId}>
@@ -144,7 +141,7 @@ function CriterionCard({
           <input
             aria-describedby={outOfRange ? `${scoreInputId}-error` : undefined}
             aria-invalid={outOfRange}
-            className="field-input w-28"
+            className="field-input w-28 text-lg font-semibold tabular-nums"
             disabled={!editable}
             id={scoreInputId}
             inputMode="numeric"
@@ -167,7 +164,7 @@ function CriterionCard({
         ) : null}
       </div>
       {outOfRange ? (
-        <p className="mt-1 text-sm text-red-700" id={`${scoreInputId}-error`} role="alert">
+        <p className="mt-1 text-sm text-critical" id={`${scoreInputId}-error`} role="alert">
           Puan en fazla {criterion.maxScore} olabilir.
         </p>
       ) : null}
@@ -237,21 +234,21 @@ export function RubricPanel({
     <div className="flex min-h-0 min-w-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {editable ? (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+          <div className="rounded-lg border border-line bg-surface-muted p-2.5">
             <span
               className={`status-chip ${workspace.evaluation === null ? "status-chip-neutral" : "status-chip-info"}`}
             >
               {workspace.evaluation === null ? "Henüz kayıt yok" : "Taslak"}
             </span>
-            <p className="mt-1.5 text-xs leading-5 text-slate-600">
+            <p className="mt-1.5 text-xs leading-5 text-ink-muted">
               Taslağı istediğiniz zaman kaydedebilirsiniz. Göndermek için tüm kriterleri puanlamanız
               gerekir; gönderdikten sonra kayıt değiştirilemez.
             </p>
           </div>
         ) : (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5">
+          <div className="rounded-lg border border-success-border bg-success-soft p-2.5">
             <span className="status-chip status-chip-pass">Gönderildi</span>
-            <p className="mt-1.5 text-sm leading-6 text-emerald-900">
+            <p className="mt-1.5 text-sm leading-6 text-success-ink">
               Bu değerlendirmeyi gönderdiniz ve kaydı değiştirilemez. Gönderim yalnız sizin
               değerlendirmenizi tamamlar; projeyi elemez, kazanan seçmez ve yarışma genelinde nihai
               bir karar üretmez.
@@ -297,46 +294,46 @@ export function RubricPanel({
 
       {/* Totals and the save/submit actions stay pinned to the bottom of the pane, so the reviewer
           never has to scroll a long rubric to find them. */}
-      <div className="sticky bottom-0 border-t border-slate-200 bg-white p-3">
+      <div className="sticky bottom-0 border-t border-line bg-surface p-3">
         <div className="grid gap-2 sm:grid-cols-2">
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5">
-            <p className="text-xs font-bold tracking-wide text-blue-900 uppercase">AI önerisi</p>
-            <p className="mt-0.5 text-lg font-bold text-blue-900">
+          <div className="rounded-lg border border-brand-border bg-brand-soft p-2.5">
+            <p className="text-xs font-bold tracking-wide text-brand-deep uppercase">AI önerisi</p>
+            <p className="mt-0.5 text-lg font-bold text-brand-deep">
               {totals.aiSuggestedTotal === null ? "Yok" : totals.aiSuggestedTotal} /{" "}
               {totals.aiMaxTotal}
             </p>
           </div>
-          <div className="rounded-lg border border-slate-300 bg-slate-50 p-2.5">
-            <p className="text-xs font-bold tracking-wide text-slate-700 uppercase">Hakem puanı</p>
-            <p className="mt-0.5 text-lg font-bold text-slate-950">
+          <div className="rounded-lg border border-line-strong bg-surface-muted p-2.5">
+            <p className="text-xs font-bold tracking-wide text-ink uppercase">Hakem puanı</p>
+            <p className="mt-0.5 text-lg font-bold text-ink">
               {totals.humanTotal === null ? "Girilmedi" : totals.humanTotal} /{" "}
               {totals.humanMaxTotal}
             </p>
           </div>
         </div>
-        <p className="mt-2 text-xs leading-5 text-slate-500">
+        <p className="mt-2 text-xs leading-5 text-ink-subtle">
           Toplamları sunucu hesaplar. AI önerisi ile hakem puanı ayrı kayıtlardır ve tek bir puana
           birleştirilmez. Puanlanan kriter: {totals.scoredCriterionCount} / {totals.criterionCount}{" "}
           · AI önerisinden farklı: {totals.disagreementCount}
         </p>
 
         {isDirty && editable ? (
-          <p className="mt-2 text-sm text-amber-800" role="status">
+          <p className="mt-2 text-sm text-warning-ink" role="status">
             Kaydedilmemiş değişiklikler var. Toplam, kaydettiğinizde sunucuda yeniden hesaplanır.
           </p>
         ) : null}
         {saveError ? (
-          <p className="mt-2 text-sm text-red-700" role="alert">
+          <p className="mt-2 text-sm text-critical" role="alert">
             {saveError}
           </p>
         ) : null}
         {saveMessage ? (
-          <p className="mt-2 text-sm text-emerald-800" role="status">
+          <p className="mt-2 text-sm text-success-ink" role="status">
             {saveMessage}
           </p>
         ) : null}
         {editable && unscored.length > 0 ? (
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-ink-muted">
             Göndermek için puanlanması gereken kriter sayısı: {unscored.length}
           </p>
         ) : null}
