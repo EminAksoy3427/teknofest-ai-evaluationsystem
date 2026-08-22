@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import {
   CHECK_STATUS_LABELS,
   CHECK_TYPE_LABELS,
-  checkStatusBadgeClass,
+  checkStatusChipClass,
   EVIDENCE_STRENGTH_LABELS,
   languageName,
   SIMILARITY_LEVEL_LABELS,
@@ -35,9 +35,7 @@ function CheckCard({ check, children }: { check: AnalysisCheckResponse; children
     <article className="rounded-xl border border-slate-200 bg-white p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-sm font-bold text-slate-950">{CHECK_TYPE_LABELS[check.type]}</h4>
-        <span
-          className={`rounded-full border px-2.5 py-1 text-xs font-bold ${checkStatusBadgeClass(check.status)}`}
-        >
+        <span className={`status-chip ${checkStatusChipClass(check.status)}`}>
           {CHECK_STATUS_LABELS[check.status]}
         </span>
       </div>
@@ -172,6 +170,9 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
             </ul>
           </CheckCard>
         ) : null}
+        {!language && !templateStructure && !sectionPresence ? (
+          <p className="empty-state">Bu koşuda deterministik kontrol sonucu kaydedilmedi.</p>
+        ) : null}
         {sectionPresence ? (
           <CheckCard check={sectionPresence}>
             <ul className="mt-2 space-y-1 text-sm text-slate-600">
@@ -227,6 +228,11 @@ export function AiPanel({ workspace, onNavigateToPage }: AiPanelProps) {
               ))}
             </div>
           </CheckCard>
+        ) : null}
+        {!sectionContent && !categoryFit ? (
+          <p className="empty-state">
+            Bu koşuda kanıt doğrulamalı semantik kontrol sonucu kaydedilmedi.
+          </p>
         ) : null}
         {categoryFit ? (
           <CheckCard check={categoryFit}>

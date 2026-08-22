@@ -14,6 +14,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { apiDelete, apiRequest, errorMessage } from "./api";
+import { Breadcrumb, ManagerStepNav } from "./competition-nav";
 
 type Feedback = { kind: "saved" | "error"; message: string } | null;
 
@@ -1361,10 +1362,8 @@ export function SetupPage() {
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-8 sm:py-10">
-      <Link className="text-sm font-semibold text-blue-700 hover:text-blue-900" to="/app">
-        ← Yarışmalara dön
-      </Link>
-      <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
+      <Breadcrumb trail={[{ label: "Yarışmalar", to: "/app" }, { label: "Yapılandırma" }]} />
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow">Yarışma kurulumu</p>
           <h1 className="page-title">{configuration?.competition.name ?? "Yapılandırma"}</h1>
@@ -1390,9 +1389,11 @@ export function SetupPage() {
         </div>
       </div>
 
+      <ManagerStepNav competitionId={competitionId} current="setup" />
+
       <nav
         aria-label="Yarışma yapılandırma bölümleri"
-        className="mt-8 overflow-x-auto border-b border-slate-200"
+        className="mt-6 overflow-x-auto border-b border-slate-200"
       >
         <div className="flex min-w-max gap-1">
           {tabs.map(([id, label]) => (

@@ -4,6 +4,7 @@ import type {
   CompetitionMembershipLookup,
   ReviewerAssignmentRepository,
   ReviewerEvaluationRepository,
+  ReviewOperationsRepository,
   RubricSuggestionRepository,
   SimilarityPairRepository,
   SubmissionRepository,
@@ -23,6 +24,8 @@ import {
   ReviewerEvaluationSaveRequestSchema,
   ReviewerQueueResponseSchema,
   ReviewerWorkspaceResponseSchema,
+  ReviewOperationsResponseSchema,
+  summarizeReviewPriorities,
 } from "@teknofest-ai/shared";
 import type { Hono } from "hono";
 
@@ -39,6 +42,7 @@ export interface ReviewRouteDependencies {
   findMembership: CompetitionMembershipLookup;
   reviewerAssignmentRepository: ReviewerAssignmentRepository;
   reviewerEvaluationRepository: ReviewerEvaluationRepository;
+  reviewOperationsRepository: ReviewOperationsRepository;
   analysisRunRepository: AnalysisRunRepository;
   rubricSuggestionRepository: RubricSuggestionRepository;
   similarityPairRepository: SimilarityPairRepository;
@@ -115,6 +119,31 @@ async function requireReviewerQueueAccess(
     user.id,
     competitionId,
     "submission:review",
+    dependencies.findMembership,
+  );
+  return { competitionId, user };
+}
+
+/**
+ * Evaluation-operations gate. `competition:view-operations` is held by COMPETITION_MANAGER and
+ * EVALUATION_MANAGER only; a REVIEWER holds `submission:review` instead and therefore cannot reach
+ * the competition-wide queue, and a CONTESTANT holds neither.
+ */
+async function requireOperationsVisibility(
+  context: RouteContext,
+  dependencies: ReviewRouteDependencies,
+) {
+  const user = await requireAuthenticatedUser(
+    context.req.raw,
+    context.env,
+    dependencies.resolveSession,
+  );
+  const competitionId = requiredParameter(context.req.param("competitionId"), "competitionId");
+  await requireCompetitionPermission(
+    context.env,
+    user.id,
+    competitionId,
+    "competition:view-operations",
     dependencies.findMembership,
   );
   return { competitionId, user };
@@ -430,6 +459,23 @@ export function registerReviewRoutes(
       );
     return context.json(
       ReviewerAssignmentOperationListResponseSchema.parse({ competitionId, assignments }),
+    );
+  });
+
+  // Smart Risk Queue. The response is derived on demand from already persisted analysis and
+  // reviewer records: no AI call, no risk table and no cached score is involved.
+  app.get("/api/v1/competitions/:competitionId/review-operations", async (context) => {
+    const { competitionId } = await requireOperationsVisibility(context, dependencies);
+    const items = await dependencies.reviewOperationsRepository.listReviewOperations(
+      context.env.DB,
+      competitionId,
+    );
+    return context.json(
+      ReviewOperationsResponseSchema.parse({
+        competitionId,
+        items,
+        summary: summarizeReviewPriorities(items),
+      }),
     );
   });
 

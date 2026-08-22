@@ -175,6 +175,8 @@ export {
   HealthResponseSchema,
 } from "./health";
 export * from "./review";
+export * from "./review-operations";
+export * from "./review-priority";
 export * from "./similarity";
 export {
   type CompetitionStatus,

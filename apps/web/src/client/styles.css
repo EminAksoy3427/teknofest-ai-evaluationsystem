@@ -1,5 +1,30 @@
 @import "tailwindcss";
 
+/*
+ * Semantic token layer.
+ *
+ * Surfaces, borders and text colours are named here and consumed by the component classes below.
+ * The status scale (pass / warn / fail / info / neutral) is not a colour token but a set of named
+ * component variants — `status-chip-*` and `priority-pill-*` — because a status needs a coordinated
+ * border, background and foreground together. Either way each meaning is defined exactly once:
+ * these colours used to be repeated as raw palette utilities across the analysis summary, the
+ * reviewer queue, the reviewer workspace and the operations table, which is how the same server
+ * signal ended up looking different on two screens.
+ *
+ * Deliberately a small token set, not a design system.
+ */
+@theme {
+  --color-canvas: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1f5f9;
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+  --color-ink: #0f172a;
+  --color-ink-muted: #475569;
+  --color-ink-subtle: #64748b;
+  --color-accent: #1d4ed8;
+}
+
 :root {
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -10,8 +35,8 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--color-canvas);
+  color: var(--color-ink);
 }
 
 button,
@@ -92,5 +117,101 @@ button:disabled {
 
   .empty-state {
     @apply rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-600;
+  }
+
+  /* --- Status chips -------------------------------------------------------
+   * One chip shape, five semantic variants. The variant never carries meaning
+   * on its own: callers always render the status word inside the chip, so the
+   * information survives for a reader who cannot distinguish the colours.
+   */
+  .status-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold whitespace-nowrap;
+  }
+
+  .status-chip-pass {
+    @apply border-emerald-300 bg-emerald-50 text-emerald-900;
+  }
+
+  .status-chip-warn {
+    @apply border-amber-300 bg-amber-50 text-amber-900;
+  }
+
+  .status-chip-fail {
+    @apply border-red-300 bg-red-50 text-red-900;
+  }
+
+  .status-chip-info {
+    @apply border-blue-300 bg-blue-50 text-blue-900;
+  }
+
+  .status-chip-neutral {
+    @apply border-slate-300 bg-slate-50 text-slate-800;
+  }
+
+  /* --- Review priority ---------------------------------------------------
+   * Qualitative levels only. There is deliberately no percentage, gauge or
+   * meter styling available here: the priority is not a probability.
+   */
+  .priority-pill {
+    @apply inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold whitespace-nowrap;
+  }
+
+  .priority-pill-high {
+    @apply border-red-300 bg-red-50 text-red-900;
+  }
+
+  .priority-pill-medium {
+    @apply border-amber-300 bg-amber-50 text-amber-900;
+  }
+
+  .priority-pill-low {
+    @apply border-slate-300 bg-slate-50 text-slate-700;
+  }
+
+  /* --- Surfaces, tables and navigation ---------------------------------- */
+  .surface-panel {
+    @apply rounded-2xl border border-line bg-surface shadow-sm;
+  }
+
+  .data-table {
+    @apply w-full border-separate border-spacing-0 text-left text-sm;
+  }
+
+  .data-table th {
+    @apply sticky top-0 z-10 border-b border-line bg-surface-muted px-3 py-2.5 text-xs font-bold tracking-wide text-ink-muted uppercase;
+  }
+
+  .data-table td {
+    @apply border-b border-line px-3 py-3 align-top;
+  }
+
+  /* Wide content scrolls inside its own container, so the page body never scrolls sideways. */
+  .table-scroll {
+    @apply max-h-[38rem] overflow-auto rounded-xl border border-line;
+  }
+
+  .breadcrumb {
+    @apply flex flex-wrap items-center gap-1.5 text-xs font-semibold text-ink-subtle;
+  }
+
+  .breadcrumb a {
+    @apply rounded text-blue-800 hover:text-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700;
+  }
+
+  /* --- Reviewer workspace panes ----------------------------------------- */
+  .workspace-pane {
+    @apply flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm;
+  }
+
+  .workspace-pane-heading {
+    @apply flex flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-muted px-3 py-2;
+  }
+
+  .workspace-pane-title {
+    @apply text-sm font-bold tracking-wide text-ink;
+  }
+
+  .pane-note {
+    @apply text-xs leading-5 text-ink-subtle;
   }
 }

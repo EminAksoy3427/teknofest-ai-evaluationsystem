@@ -5,19 +5,25 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 
+import {
+  ANALYSIS_RUN_STATUS_LABELS,
+  analysisRunStatusChipClass,
+  evaluationStatusChipClass,
+  REVIEWER_EVALUATION_STATUS_LABELS,
+} from "./analysis-labels";
 import { apiRequest, errorMessage } from "./api";
+import { Breadcrumb } from "./competition-nav";
 import { AiPanel } from "./review/ai-panel";
 import { clampPage } from "./review/evidence-navigation";
 import { ReportPanel } from "./review/report-panel";
 import { type CriterionDraft, RubricPanel } from "./review/rubric-panel";
-
-type PanelKey = "report" | "ai" | "rubric";
-
-const PANEL_LABELS: Record<PanelKey, string> = {
-  report: "Rapor",
-  ai: "AI 4. Göz",
-  rubric: "Hakem Rubriği",
-};
+import {
+  PANEL_KEYS,
+  PANEL_LABELS,
+  PANEL_NOTES,
+  type PanelKey,
+  panelClassName,
+} from "./review/workspace-panes";
 
 function draftsFromWorkspace(workspace: ReviewerWorkspaceResponse): Record<string, CriterionDraft> {
   return Object.fromEntries(
@@ -140,21 +146,41 @@ export function ReviewWorkspacePage() {
 
   const header = useMemo(
     () => (
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
-        <div className="min-w-0">
-          <p className="eyebrow">Hakem çalışma alanı</p>
-          <h1 className="mt-1 truncate text-xl font-bold tracking-tight text-slate-950">
-            {workspace ? workspace.submission.projectTitle : "Değerlendirme"}
-          </h1>
-          {workspace ? (
-            <p className="mt-0.5 text-sm text-slate-600">
-              {workspace.submission.applicationCode} · {workspace.submission.category.name}
-            </p>
-          ) : null}
+      <div className="sticky top-0 z-20 border-b border-slate-200 bg-white px-4 py-3">
+        <Breadcrumb
+          trail={[
+            { label: "Atamalarım", to: "/app/review" },
+            { label: workspace ? workspace.submission.applicationCode : "Değerlendirme" },
+          ]}
+        />
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-bold tracking-tight text-slate-950">
+              {workspace ? workspace.submission.projectTitle : "Değerlendirme"}
+            </h1>
+            {workspace ? (
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <span className="metric-chip">{workspace.submission.applicationCode}</span>
+                <span className="metric-chip">{workspace.submission.category.name}</span>
+                <span
+                  className={`status-chip ${analysisRunStatusChipClass(workspace.analysisRun.status)}`}
+                >
+                  Analiz: {ANALYSIS_RUN_STATUS_LABELS[workspace.analysisRun.status]}
+                </span>
+                <span
+                  className={`status-chip ${evaluationStatusChipClass(workspace.evaluation?.status ?? null)}`}
+                >
+                  {workspace.evaluation === null
+                    ? "Değerlendirme başlamadı"
+                    : `Değerlendirme: ${REVIEWER_EVALUATION_STATUS_LABELS[workspace.evaluation.status]}`}
+                </span>
+              </div>
+            ) : null}
+          </div>
+          <Link className="secondary-button" to="/app/review">
+            Atamalarıma dön
+          </Link>
         </div>
-        <Link className="secondary-button" to="/app/review">
-          Kuyruğa dön
-        </Link>
       </div>
     ),
     [workspace],
@@ -171,8 +197,12 @@ export function ReviewWorkspacePage() {
         >
           {loadError}
         </p>
+        <p className="mt-4 text-sm leading-6 text-slate-600">
+          Atama kaldırılmış veya bu başvuru için tamamlanmış bir analiz çalışması olmayabilir.
+          Atamalarınıza dönüp listeyi yenileyebilirsiniz.
+        </p>
         <Link className="secondary-button mt-6" to="/app/review">
-          Kuyruğa dön
+          Atamalarıma dön
         </Link>
       </main>
     );
@@ -188,8 +218,7 @@ export function ReviewWorkspacePage() {
     );
   }
 
-  const panelClass = (key: PanelKey) =>
-    `${activePanel === key ? "flex" : "hidden"} min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm xl:flex`;
+  const panelClass = (key: PanelKey) => panelClassName(activePanel, key);
 
   return (
     <main className="flex min-h-[calc(100vh-4.5rem)] flex-col">
@@ -198,7 +227,11 @@ export function ReviewWorkspacePage() {
       {/* Narrow screens show one pane at a time; every pane stays mounted behind `hidden`. */}
       <fieldset className="flex flex-wrap gap-2 px-4 pt-3 xl:hidden">
         <legend className="sr-only">Görüntülenecek panel</legend>
-        {(Object.keys(PANEL_LABELS) as PanelKey[]).map((key) => (
+        <p className="sr-only">
+          Geniş ekranda üç panel birlikte açıktır. Bu ekranda bir panel seçilir; seçilmeyen paneller
+          açık kalır, girdiğiniz puanlar kaybolmaz.
+        </p>
+        {PANEL_KEYS.map((key) => (
           <button
             aria-pressed={activePanel === key}
             className={activePanel === key ? "primary-button" : "secondary-button"}
@@ -213,12 +246,12 @@ export function ReviewWorkspacePage() {
 
       <div className="grid min-h-0 flex-1 gap-3 p-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)_minmax(0,1.05fr)]">
         <section aria-labelledby="panel-report-title" className={panelClass("report")}>
-          <h2
-            className="border-b border-slate-200 px-3 py-2 text-sm font-bold text-slate-950"
-            id="panel-report-title"
-          >
-            Rapor
-          </h2>
+          <div className="workspace-pane-heading">
+            <h2 className="workspace-pane-title" id="panel-report-title">
+              Rapor
+            </h2>
+            <p className="pane-note">{PANEL_NOTES.report}</p>
+          </div>
           <ReportPanel
             onPageChange={(next) => setPage(next)}
             page={page}
@@ -228,22 +261,22 @@ export function ReviewWorkspacePage() {
         </section>
 
         <section aria-labelledby="panel-ai-title" className={panelClass("ai")}>
-          <h2
-            className="border-b border-slate-200 px-3 py-2 text-sm font-bold text-slate-950"
-            id="panel-ai-title"
-          >
-            AI 4. Göz
-          </h2>
+          <div className="workspace-pane-heading">
+            <h2 className="workspace-pane-title" id="panel-ai-title">
+              AI 4. Göz
+            </h2>
+            <p className="pane-note">{PANEL_NOTES.ai}</p>
+          </div>
           <AiPanel onNavigateToPage={navigateToPage} workspace={workspace} />
         </section>
 
         <section aria-labelledby="panel-rubric-title" className={panelClass("rubric")}>
-          <h2
-            className="border-b border-slate-200 px-3 py-2 text-sm font-bold text-slate-950"
-            id="panel-rubric-title"
-          >
-            Hakem Rubriği
-          </h2>
+          <div className="workspace-pane-heading">
+            <h2 className="workspace-pane-title" id="panel-rubric-title">
+              Hakem Rubriği
+            </h2>
+            <p className="pane-note">{PANEL_NOTES.rubric}</p>
+          </div>
           <RubricPanel
             drafts={drafts}
             isDirty={isDirty}

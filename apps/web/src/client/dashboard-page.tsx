@@ -24,6 +24,14 @@ function slugFromName(value: string) {
     .slice(0, 80);
 }
 
+/** Role names shown to a person, instead of the raw enum value. */
+const ROLE_LABELS = {
+  COMPETITION_MANAGER: "Yarışma yöneticisi",
+  EVALUATION_MANAGER: "Değerlendirme yöneticisi",
+  REVIEWER: "Hakem",
+  CONTESTANT: "Yarışmacı",
+} as const satisfies Record<MembershipSummary["role"], string>;
+
 function MembershipCard({ membership }: { membership: MembershipSummary }) {
   const canConfigure = membership.role === "COMPETITION_MANAGER";
   const canManageAssignments =
@@ -41,9 +49,7 @@ function MembershipCard({ membership }: { membership: MembershipSummary }) {
             {membership.competitionName}
           </h2>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-          {membership.role}
-        </span>
+        <span className="status-chip status-chip-neutral">{ROLE_LABELS[membership.role]}</span>
       </div>
       {canConfigure || canManageAssignments || isReviewer ? (
         <div className="mt-5 flex flex-wrap gap-2">
@@ -58,6 +64,14 @@ function MembershipCard({ membership }: { membership: MembershipSummary }) {
           {canManageAssignments ? (
             <Link
               className={canConfigure ? "secondary-button" : "primary-button"}
+              to={`/app/competitions/${membership.competitionId}/operations`}
+            >
+              Değerlendirme operasyonu
+            </Link>
+          ) : null}
+          {canManageAssignments ? (
+            <Link
+              className="secondary-button"
               to={`/app/competitions/${membership.competitionId}/reviewers`}
             >
               Hakem atamaları
@@ -65,7 +79,7 @@ function MembershipCard({ membership }: { membership: MembershipSummary }) {
           ) : null}
           {isReviewer ? (
             <Link className="primary-button" to="/app/review">
-              Hakem kuyruğum
+              Atamalarım
             </Link>
           ) : null}
           {canConfigure ? (

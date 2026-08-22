@@ -146,7 +146,9 @@ P4-01B'de DEVELOPMENT kaynaklarına karşı uzak doğrulanan (P4-01B remote task
   hiçbir sorguda geri dönmemiştir
 
 Production Vectorize index'i henüz adlandırılıp oluşturulmamış, Worker binding'i etkin değil ve
-dağıtım yapılmamıştır. Hâlâ ertelenenler: eşik kalibrasyonu, toplam risk skoru ve risk kuyruğu.
+dağıtım yapılmamıştır. Benzerlik düzeyi P6 inceleme önceliği kuyruğunda bir dikkat sinyali olarak
+tüketilir (bölüm 13); eşik kalibrasyonu hâlâ ertelenmiştir ve kalibre edilmiş bir toplam risk skoru
+bilinçli olarak üretilmemektedir.
 
 `SimilarityPair` tarihsel bir gözlemdir: yarışma kimliği, başvuru kimlikleri ve AnalysisRun
 kimlikleri değişmezdir. Yeni bir AnalysisRun eski satırı güncellemez, yeni bir tarihsel satır
@@ -207,7 +209,32 @@ değerlendirmesini tamamlar ve gönderilmiş kayıt değişmezdir. Hakem çalı�
 analizi tüketir: çalışma alanını açmak, kanıda tıklamak, puan değiştirmek, taslak kaydetmek ve
 göndermek model çağrısı yapmaz. Ayrıntılar `docs/architecture/reviewer-workflow.md` içindedir.
 
-## 13. Bilinçli olarak ertelenenler
+## 13. Değerlendirme operasyonu ve inceleme önceliği
+
+P6, yöneticinin yarışma geneli değerlendirme operasyonunu ve deterministik **İnceleme Önceliği**
+kuyruğunu ekler. Öncelik hiçbir yerde saklanmaz: her istekte mevcut `submission`, `analysis_run`,
+`analysis_check`, `rubric_suggestion`, `reviewer_assignment`, `reviewer_evaluation` ve
+`reviewer_criterion_score` satırlarından türetilir. Kalıcı bir risk tablosu bilinçli olarak
+eklenmemiştir; kalıcı bir öncelik özetlediği değişmez kayıtlardan sapabilirdi ve tüm girdiler tek
+yarışma içinde ucuza yeniden okunabilir. Bu aşama **hiçbir yeni yapay zekâ çıkarımı yapmaz**:
+öncelik türetmesi `packages/shared` içinde saf bir fonksiyondur ve sağlayıcı, gömme adaptörü veya
+vektör sağlayıcısına hiçbir bağımlılığı yoktur; repository katmanı yalnız `SELECT` çalıştırır.
+
+Model saf toplamadır: `score = Σ weight(reason)` ve seviye iki eşikten (`MEDIUM ≥ 3`, `HIGH ≥ 6`)
+türer. Gizli çarpan, kırpma veya geçersiz kılma yoktur ve seviye, döndürülen görünür gerekçelerin
+toplamına tam olarak eşittir — bu, şema düzeyinde zorunludur. Ağırlıklar tek bir dışa aktarılan
+tabloda durur ve geçici ürün politikası olarak işaretlidir; kalibrasyon golden set gerektirir.
+Sinyaller yalnız en yeni **başarılı** koşunun kalıcı kontrollerinden okunur, "Analiz" sütunu ise en
+yeni koşuyu bildirir; böylece devam eden veya başarısız yeni bir koşu hakemin elindeki kanıtı
+sessizce geçersiz kılmaz.
+
+İnceleme önceliği bir dikkat sinyali sıralamasıdır: olasılık, risk yüzdesi, intihal skoru veya nihai
+yarışma kararı değildir. Dahili sayısal skor yalnız sıralama anahtarıdır ve arayüzde asla yüzde,
+gösterge veya güven değeri olarak sunulmaz. Kuyruk `competition:view-operations` ile korunur
+(`COMPETITION_MANAGER`, `EVALUATION_MANAGER`); `REVIEWER` ve `CONTESTANT` erişemez ve çapraz yarışma
+sızıntısı her ifadede engellenir. Ayrıntılar `docs/architecture/review-operations.md` içindedir.
+
+## 14. Bilinçli olarak ertelenenler
 
 Başvuru PDF depolaması özel R2 ve D1 metadata ayrımıyla uygulanmıştır; ayrıntılar
 `docs/architecture/document-storage.md` içindedir. Hakem ataması ve hakem çalışma alanı P5 ile
@@ -215,4 +242,6 @@ uygulanmıştır. Yarışmacı sahipliği ve geri bildirim yüzeyi, global yöne
 D1/R2/Workflow kaynağı, OCR, production Vectorize/Workers AI index'i ve dağıtımı (P4-01B DEVELOPMENT
 kaynaklarına karşı uzak doğrulanmıştır), akıllı risk kuyruğu, gönderilmiş hakem değerlendirmesinin
 yeniden açılması/sürümlenmesi, birden çok hakemin puanından yarışma geneli uzlaşma üretilmesi ve
-uygulama içi PDF.js render katmanı gibi diğer iş özellikleri ertelenmiştir.
+uygulama içi PDF.js render katmanı gibi diğer iş özellikleri ertelenmiştir. Akıllı risk kuyruğu P6
+ile türetilmiş bir projeksiyon olarak uygulanmıştır; eşik ve ağırlık kalibrasyonu hâlâ golden set
+beklemektedir.

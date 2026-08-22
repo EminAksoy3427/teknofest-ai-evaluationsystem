@@ -10,3 +10,4 @@ Ayrıntılı karar kayıtları ihtiyaç oluştukça bu dizine eklenecektir.
 - [Özel belge depolama](./document-storage.md)
 - [Belge analiz pipeline'ı](./analysis-pipeline.md)
 - [Hakem iş akışı](./reviewer-workflow.md)
+- [Değerlendirme operasyonu ve inceleme önceliği](./review-operations.md)

@@ -60,6 +60,11 @@ export {
   type MembershipSummaryList,
 } from "./competition-membership";
 export {
+  listReviewOperations,
+  type ReviewOperationsRepository,
+  reviewOperationsRepository,
+} from "./review-operations";
+export {
   createReviewerAssignment,
   deleteReviewerAssignment,
   getOwnedReviewerAssignment,

@@ -28,6 +28,7 @@
     "smoke:p4-01a": "pnpm --filter @teknofest-ai/web smoke:p4-01a",
     "smoke:p4-01b": "pnpm --filter @teknofest-ai/web smoke:p4-01b",
     "smoke:p5": "pnpm --filter @teknofest-ai/web smoke:p5",
+    "smoke:p6": "pnpm --filter @teknofest-ai/shared test src/review-priority.test.ts && pnpm --filter @teknofest-ai/web smoke:p6",
     "cf:typegen": "pnpm --filter @teknofest-ai/web cf:typegen"
   },
   "devDependencies": {

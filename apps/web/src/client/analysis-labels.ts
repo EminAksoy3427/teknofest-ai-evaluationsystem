@@ -1,9 +1,11 @@
 import type {
   AnalysisCheckStatus,
   AnalysisCheckType,
+  AnalysisRunStatus,
   DecisionTraceClassification,
   ReviewerEvaluationStatus,
   ReviewerQueueState,
+  ReviewPriorityLevel,
   SemanticEvidenceStrength,
   SimilarityLevel,
   SimilaritySemanticStatus,
@@ -39,10 +41,46 @@ export function checkStatusClass(status: AnalysisCheckStatus): string {
   return "text-red-800";
 }
 
-export function checkStatusBadgeClass(status: AnalysisCheckStatus): string {
-  if (status === "PASS") return "border-emerald-300 bg-emerald-50 text-emerald-900";
-  if (status === "WARN") return "border-amber-300 bg-amber-50 text-amber-900";
-  return "border-red-300 bg-red-50 text-red-900";
+/**
+ * Status chip variant for a check status. Returns only the semantic variant class defined in
+ * `styles.css`; the caller combines it with `status-chip` and always renders the status WORD inside
+ * the chip, so the status is never conveyed by colour alone.
+ */
+export function checkStatusChipClass(status: AnalysisCheckStatus): string {
+  if (status === "PASS") return "status-chip-pass";
+  if (status === "WARN") return "status-chip-warn";
+  return "status-chip-fail";
+}
+
+export const ANALYSIS_RUN_STATUS_LABELS = {
+  QUEUED: "Sırada",
+  PROCESSING: "Sürüyor",
+  SUCCEEDED: "Tamamlandı",
+  FAILED: "Tamamlanamadı",
+} as const satisfies Record<AnalysisRunStatus, string>;
+
+export function analysisRunStatusChipClass(status: AnalysisRunStatus | null): string {
+  if (status === null) return "status-chip-neutral";
+  if (status === "SUCCEEDED") return "status-chip-pass";
+  if (status === "FAILED") return "status-chip-fail";
+  return "status-chip-info";
+}
+
+/**
+ * Review priority is a qualitative attention level, never a probability, a plagiarism score or a
+ * decision. The wording stays "İnceleme Önceliği: Yüksek", and the level is always accompanied by
+ * the reason list that produced it.
+ */
+export const REVIEW_PRIORITY_LEVEL_LABELS = {
+  HIGH: "Yüksek",
+  MEDIUM: "Orta",
+  LOW: "Düşük",
+} as const satisfies Record<ReviewPriorityLevel, string>;
+
+export function priorityPillClass(level: ReviewPriorityLevel): string {
+  if (level === "HIGH") return "priority-pill-high";
+  if (level === "MEDIUM") return "priority-pill-medium";
+  return "priority-pill-low";
 }
 
 export const EVIDENCE_STRENGTH_LABELS = {
@@ -76,6 +114,19 @@ export const REVIEWER_QUEUE_STATE_LABELS = {
   DRAFT: "Taslak değerlendirme",
   SUBMITTED: "Değerlendirme gönderildi",
 } as const satisfies Record<ReviewerQueueState, string>;
+
+export function reviewerQueueStateChipClass(state: ReviewerQueueState): string {
+  if (state === "SUBMITTED") return "status-chip-pass";
+  if (state === "DRAFT") return "status-chip-info";
+  if (state === "ASSIGNED") return "status-chip-neutral";
+  return "status-chip-warn";
+}
+
+export function evaluationStatusChipClass(status: ReviewerEvaluationStatus | null): string {
+  if (status === "SUBMITTED") return "status-chip-pass";
+  if (status === "DRAFT") return "status-chip-info";
+  return "status-chip-neutral";
+}
 
 export const REVIEWER_EVALUATION_STATUS_LABELS = {
   DRAFT: "Taslak",

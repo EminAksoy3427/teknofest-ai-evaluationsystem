@@ -12,6 +12,7 @@ import { Link, useParams } from "react-router";
 
 import { REVIEWER_EVALUATION_STATUS_LABELS } from "./analysis-labels";
 import { apiDelete, apiRequest, errorMessage } from "./api";
+import { Breadcrumb, ManagerStepNav } from "./competition-nav";
 
 function totalCell(score: number | null, maximum: number | null): string {
   if (score === null || maximum === null) return "—";
@@ -160,19 +161,22 @@ export function ReviewerAssignmentsPage() {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-3xl">
-          <p className="eyebrow">Değerlendirme operasyonu</p>
-          <h1 className="page-title">Hakem atamaları</h1>
-          <p className="page-lead">
-            Hakem rolü tek başına başvuru erişimi vermez. Bir hakem yalnız burada açıkça atadığınız
-            başvuruları açabilir.
-          </p>
-        </div>
-        <Link className="secondary-button" to={`/app/competitions/${competitionId}/submissions`}>
-          Başvurular
-        </Link>
+      <Breadcrumb
+        trail={[
+          { label: "Yarışmalar", to: "/app" },
+          { label: "Başvurular", to: `/app/competitions/${competitionId}/submissions` },
+          { label: "Hakem Atamaları" },
+        ]}
+      />
+      <div className="mt-4 max-w-3xl">
+        <p className="eyebrow">Değerlendirme operasyonu</p>
+        <h1 className="page-title">Hakem atamaları</h1>
+        <p className="page-lead">
+          Hakem rolü tek başına başvuru erişimi vermez. Bir hakem yalnız burada açıkça atadığınız
+          başvuruları açabilir.
+        </p>
       </div>
+      {competitionId ? <ManagerStepNav competitionId={competitionId} current="reviewers" /> : null}
 
       {error ? (
         <div
@@ -314,7 +318,17 @@ export function ReviewerAssignmentsPage() {
           </div>
         ) : null}
 
-        <p className="mt-4 text-xs leading-5 text-slate-500">
+        <p className="mt-4 text-sm leading-6 text-slate-600">
+          Bu tablo atama durumunu gösterir. Hangi başvuruya önce bakılması gerektiğini görmek için{" "}
+          <Link
+            className="font-semibold text-blue-800 underline decoration-dotted underline-offset-2"
+            to={`/app/competitions/${competitionId}/operations`}
+          >
+            inceleme önceliği kuyruğuna
+          </Link>{" "}
+          geçin.
+        </p>
+        <p className="mt-3 text-xs leading-5 text-slate-500">
           AI önerisi ve hakem puanı ayrı sütunlardır ve tek bir puana birleştirilmez. Gönderilmiş
           bir değerlendirme kaydı korunur; bu nedenle atama kaldırılamaz. Bir hakemin
           değerlendirmeyi göndermesi yarışma genelinde nihai bir karar üretmez.

@@ -101,7 +101,10 @@ function CriterionCard({
 
       {criterion.aiSuggestion ? (
         <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
-          <p className="text-sm font-bold text-blue-900">
+          <p className="text-xs font-bold tracking-[0.14em] text-blue-800 uppercase">
+            AI önerisi · hakem kararı değildir
+          </p>
+          <p className="mt-1 text-sm font-bold text-blue-900">
             AI önerisi: {criterion.aiSuggestion.suggestedScore} / {criterion.maxScore}
           </p>
           <p className="mt-1 text-xs font-medium text-blue-900">
@@ -130,7 +133,10 @@ function CriterionCard({
         </p>
       )}
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-[auto_1fr] sm:items-end">
+      <p className="mt-3 text-xs font-bold tracking-[0.14em] text-slate-600 uppercase">
+        Hakem kararı
+      </p>
+      <div className="mt-1 grid gap-2 sm:grid-cols-[auto_1fr] sm:items-end">
         <div>
           <label className="field-label" htmlFor={scoreInputId}>
             Hakem puanı (0–{criterion.maxScore})
@@ -230,13 +236,35 @@ export function RubricPanel({
   return (
     <div className="flex min-h-0 min-w-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        {editable ? null : (
-          <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-sm text-emerald-900">
-            Bu değerlendirmeyi gönderdiniz ve kaydı değiştirilemez. Gönderim yalnız sizin
-            değerlendirmenizi tamamlar; projeyi elemez, kazanan seçmez ve yarışma genelinde nihai
-            bir karar üretmez.
-          </p>
+        {editable ? (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+            <span
+              className={`status-chip ${workspace.evaluation === null ? "status-chip-neutral" : "status-chip-info"}`}
+            >
+              {workspace.evaluation === null ? "Henüz kayıt yok" : "Taslak"}
+            </span>
+            <p className="mt-1.5 text-xs leading-5 text-slate-600">
+              Taslağı istediğiniz zaman kaydedebilirsiniz. Göndermek için tüm kriterleri puanlamanız
+              gerekir; gönderdikten sonra kayıt değiştirilemez.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5">
+            <span className="status-chip status-chip-pass">Gönderildi</span>
+            <p className="mt-1.5 text-sm leading-6 text-emerald-900">
+              Bu değerlendirmeyi gönderdiniz ve kaydı değiştirilemez. Gönderim yalnız sizin
+              değerlendirmenizi tamamlar; projeyi elemez, kazanan seçmez ve yarışma genelinde nihai
+              bir karar üretmez.
+            </p>
+          </div>
         )}
+
+        {workspace.criteria.length === 0 ? (
+          <p className="empty-state mt-2">
+            Bu koşuya sabitlenmiş rubrik sürümünde kriter bulunmuyor. Yarışma yöneticisiyle
+            iletişime geçin.
+          </p>
+        ) : null}
 
         <div className="mt-2 space-y-2">
           {workspace.criteria.map((criterion) => (
@@ -267,7 +295,9 @@ export function RubricPanel({
         </div>
       </div>
 
-      <div className="border-t border-slate-200 bg-white p-3">
+      {/* Totals and the save/submit actions stay pinned to the bottom of the pane, so the reviewer
+          never has to scroll a long rubric to find them. */}
+      <div className="sticky bottom-0 border-t border-slate-200 bg-white p-3">
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5">
             <p className="text-xs font-bold tracking-wide text-blue-900 uppercase">AI önerisi</p>

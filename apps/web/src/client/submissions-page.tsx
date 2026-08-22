@@ -12,7 +12,7 @@ import {
   type SubmissionSummary,
 } from "@teknofest-ai/shared";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import {
   CHECK_STATUS_LABELS,
@@ -22,6 +22,7 @@ import {
   languageName,
 } from "./analysis-labels";
 import { apiRequest, errorMessage } from "./api";
+import { Breadcrumb, ManagerStepNav } from "./competition-nav";
 
 function formatFileSize(bytes: number) {
   return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024);
@@ -593,15 +594,8 @@ export function SubmissionsPage() {
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-8 sm:py-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link className="text-sm font-semibold text-blue-700 hover:text-blue-900" to="/app">
-          ← Yarışmalara dön
-        </Link>
-        <Link className="secondary-button" to={`/app/competitions/${competitionId}/setup`}>
-          Yarışma yapılandırması
-        </Link>
-      </div>
-      <div className="mt-6 max-w-3xl">
+      <Breadcrumb trail={[{ label: "Yarışmalar", to: "/app" }, { label: "Başvurular" }]} />
+      <div className="mt-4 max-w-3xl">
         <p className="eyebrow">Özel belge deposu</p>
         <h1 className="page-title">Başvurular</h1>
         <p className="page-lead">
@@ -610,6 +604,7 @@ export function SubmissionsPage() {
           raporlar puanlanmaz ve nihai karar daima insana aittir.
         </p>
       </div>
+      <ManagerStepNav competitionId={competitionId} current="submissions" />
 
       <section aria-labelledby="upload-title" className="setup-panel mt-8">
         <h2 className="section-title" id="upload-title">

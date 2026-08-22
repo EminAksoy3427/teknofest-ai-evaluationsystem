@@ -14,9 +14,11 @@ import {
   ReviewerAssignmentRepositoryError,
   type ReviewerEvaluationRepository,
   ReviewerEvaluationRepositoryError,
+  type ReviewOperationsRepository,
   type RubricSuggestionRepository,
   reviewerAssignmentRepository,
   reviewerEvaluationRepository,
+  reviewOperationsRepository,
   rubricSuggestionRepository,
   type SimilarityPairRepository,
   type SubmissionRepository,
@@ -72,6 +74,7 @@ interface AppDependencies {
   similarityPairRepository: SimilarityPairRepository;
   reviewerAssignmentRepository: ReviewerAssignmentRepository;
   reviewerEvaluationRepository: ReviewerEvaluationRepository;
+  reviewOperationsRepository: ReviewOperationsRepository;
   rubricSuggestionRepository: RubricSuggestionRepository;
 }
 
@@ -87,6 +90,7 @@ const defaultDependencies: AppDependencies = {
   similarityPairRepository,
   reviewerAssignmentRepository,
   reviewerEvaluationRepository,
+  reviewOperationsRepository,
   rubricSuggestionRepository,
 };
 

@@ -54,7 +54,9 @@ export function ReportPanel({ reportPath, pageCount, page, onPageChange }: Repor
 
   return (
     <div className="flex min-h-0 min-w-0 flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 p-3">
+      {/* The toolbar stays reachable while the document scrolls, so an evidence jump can always be
+          undone with "Önceki sayfa" without scrolling back up. */}
+      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white p-3">
         <button
           className="secondary-button"
           disabled={atFirstPage}
@@ -75,6 +77,7 @@ export function ReportPanel({ reportPath, pageCount, page, onPageChange }: Repor
           Sayfa {page}
           {total === null ? "" : ` / ${total}`}
         </p>
+        {total === null ? <p className="pane-note">Sayfa sayısı bu koşuda kaydedilmemiş.</p> : null}
         <form className="flex items-end gap-2" onSubmit={jumpToPage}>
           <div>
             <label className="field-label sr-only" htmlFor="report-page-input">

@@ -5,6 +5,7 @@ import { BrowserRouter, Link, Route, Routes } from "react-router";
 import "./styles.css";
 import { authClient } from "./auth-client";
 import { DashboardPage } from "./dashboard-page";
+import { ReviewOperationsPage } from "./review-operations-page";
 import { ReviewQueuePage } from "./review-queue-page";
 import { ReviewWorkspacePage } from "./review-workspace-page";
 import { ReviewerAssignmentsPage } from "./reviewer-assignments-page";
@@ -86,7 +87,7 @@ function ProductHeader({ name, email }: { name: string; email: string }) {
         </Link>
         <div className="flex items-center gap-4">
           <Link className="secondary-button" to="/app/review">
-            Hakem kuyruğu
+            Atamalarım
           </Link>
           <div className="hidden text-right sm:block">
             <p className="text-sm font-semibold text-slate-900">{name}</p>
@@ -139,6 +140,10 @@ function SessionGate() {
         <Route
           element={<ReviewerAssignmentsPage />}
           path="/app/competitions/:competitionId/reviewers"
+        />
+        <Route
+          element={<ReviewOperationsPage />}
+          path="/app/competitions/:competitionId/operations"
         />
         <Route element={<ReviewQueuePage />} path="/app/review" />
         <Route element={<ReviewWorkspacePage />} path="/app/review/:competitionId/:assignmentId" />

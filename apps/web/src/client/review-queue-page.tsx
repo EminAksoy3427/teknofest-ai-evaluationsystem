@@ -7,18 +7,11 @@ import {
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
-import { REVIEWER_QUEUE_STATE_LABELS } from "./analysis-labels";
+import { REVIEWER_QUEUE_STATE_LABELS, reviewerQueueStateChipClass } from "./analysis-labels";
 import { apiRequest, errorMessage } from "./api";
 
 interface QueueEntry extends ReviewerQueueItem {
   competitionName: string;
-}
-
-function stateBadgeClass(state: ReviewerQueueItem["state"]): string {
-  if (state === "SUBMITTED") return "border-emerald-300 bg-emerald-50 text-emerald-900";
-  if (state === "DRAFT") return "border-blue-300 bg-blue-50 text-blue-900";
-  if (state === "ASSIGNED") return "border-slate-300 bg-slate-50 text-slate-800";
-  return "border-amber-300 bg-amber-50 text-amber-900";
 }
 
 function QueueCard({ entry }: { entry: QueueEntry }) {
@@ -37,9 +30,7 @@ function QueueCard({ entry }: { entry: QueueEntry }) {
           <p className="mt-0.5 text-sm text-slate-600">{entry.submission.category.name}</p>
         </div>
         {/* The state is spelled out in text, not conveyed by colour alone. */}
-        <span
-          className={`rounded-full border px-3 py-1 text-xs font-bold ${stateBadgeClass(entry.state)}`}
-        >
+        <span className={`status-chip ${reviewerQueueStateChipClass(entry.state)}`}>
           {REVIEWER_QUEUE_STATE_LABELS[entry.state]}
         </span>
       </div>
@@ -118,6 +109,19 @@ export function ReviewQueuePage() {
           Yalnız size açıkça atanmış başvurular listelenir. Hakem rolü tek başına başvuru erişimi
           vermez; erişim atama üzerinden sunucuda doğrulanır.
         </p>
+        <ol className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-slate-500">
+          {[
+            "Başvuruyu aç",
+            "Rapor + AI 4. Göz + Hakem Rubriği",
+            "Taslağı kaydet",
+            "Değerlendirmeyi gönder",
+          ].map((step, index) => (
+            <li className="flex items-center gap-2" key={step}>
+              {index > 0 ? <span aria-hidden="true">→</span> : null}
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
       </div>
 
       {error ? (
