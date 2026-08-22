@@ -11,3 +11,5 @@ Ayrıntılı karar kayıtları ihtiyaç oluştukça bu dizine eklenecektir.
 - [Belge analiz pipeline'ı](./analysis-pipeline.md)
 - [Hakem iş akışı](./reviewer-workflow.md)
 - [Değerlendirme operasyonu ve inceleme önceliği](./review-operations.md)
+- [Resmî rapor şablonu dosyası](./template-files.md)
+- [Yarışmacı sahipliği ve yayımlanmış geri bildirim](./contestant-feedback.md)

@@ -12,7 +12,7 @@ import {
   type SubmissionSummary,
 } from "@teknofest-ai/shared";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 
 import {
   CHECK_STATUS_LABELS,
@@ -405,6 +405,12 @@ function SubmissionTable({
                   >
                     Raporu aç
                   </a>
+                  <Link
+                    className="secondary-button whitespace-nowrap"
+                    to={`/app/competitions/${submission.competitionId}/submissions/${submission.id}/participants`}
+                  >
+                    Katılımcılar
+                  </Link>
                   {latestRuns[submission.id]?.status === "QUEUED" ||
                   latestRuns[submission.id]?.status === "PROCESSING" ? null : (
                     <button

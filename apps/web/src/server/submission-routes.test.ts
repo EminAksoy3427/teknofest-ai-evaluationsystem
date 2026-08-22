@@ -83,6 +83,9 @@ function storageStub(overrides: Partial<DocumentStorage> = {}): DocumentStorage 
     putDocumentArtifact: async () => ({ etag: "artifact-etag" }),
     getDocumentArtifact: async () => null,
     headDocumentArtifact: async () => null,
+    putTemplateFile: async () => ({ etag: "template-etag" }),
+    getTemplateFile: async () => null,
+    deleteTemplateFile: async () => undefined,
     ...overrides,
   };
 }

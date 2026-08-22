@@ -1,8 +1,10 @@
 import type {
   AnalysisRunRepositoryError,
   ConfigurationRepositoryError,
+  ContestantFeedbackRepositoryError,
   ReviewerAssignmentRepositoryError,
   ReviewerEvaluationRepositoryError,
+  SubmissionParticipantRepositoryError,
   SubmissionRepositoryError,
 } from "@teknofest-ai/db";
 import type { ApiErrorResponse } from "@teknofest-ai/shared";
@@ -149,6 +151,67 @@ export function mapReviewerEvaluationRepositoryError(
   return new ApiApplicationError({ code: "CONFLICT", message: messages[error.reason] }, 409);
 }
 
+export function mapSubmissionParticipantRepositoryError(
+  error: SubmissionParticipantRepositoryError,
+): ApiApplicationError {
+  if (error.code === "NOT_FOUND") {
+    return new ApiApplicationError(
+      {
+        code: "NOT_FOUND",
+        message: error.reason === "SUBMISSION" ? "Başvuru bulunamadı." : "Katılımcı bulunamadı.",
+      },
+      404,
+    );
+  }
+
+  const messages = {
+    DUPLICATE_PARTICIPANT: "Bu kullanıcı bu başvuruya zaten eklenmiş.",
+    CONTESTANT_MEMBERSHIP: "Seçilen kullanıcı bu yarışmada yarışmacı rolüne sahip değil.",
+    SUBMISSION: "İşlem mevcut başvuru durumuyla çakışıyor.",
+    PARTICIPANT: "İşlem mevcut katılımcı durumuyla çakışıyor.",
+  } as const;
+
+  return new ApiApplicationError({ code: "CONFLICT", message: messages[error.reason] }, 409);
+}
+
+export function mapContestantFeedbackRepositoryError(
+  error: ContestantFeedbackRepositoryError,
+): ApiApplicationError {
+  if (error.code === "NOT_FOUND") {
+    const messages = {
+      SUBMISSION: "Bu başvuru için henüz bir geri bildirim taslağı yok.",
+      EVALUATION: "Kaynak hakem değerlendirmesi bulunamadı.",
+      STALE_SOURCE: "Geri bildirim bulunamadı.",
+      PUBLISHED_IMMUTABLE: "Geri bildirim bulunamadı.",
+      INCOMPLETE: "Geri bildirim bulunamadı.",
+      RESOURCE: "Geri bildirim bulunamadı.",
+    } as const;
+    return new ApiApplicationError({ code: "NOT_FOUND", message: messages[error.reason] }, 404);
+  }
+
+  if (error.code === "VALIDATION") {
+    return new ApiApplicationError(
+      {
+        code: "VALIDATION_ERROR",
+        message:
+          "Yayımlamak için özet, güçlü yönler, gelişim alanları ve öneriler bölümlerinin her biri doldurulmalıdır.",
+      },
+      400,
+    );
+  }
+
+  const messages = {
+    STALE_SOURCE: "Bu geri bildirim taslağı zaten başka bir hakem değerlendirmesine sabitlenmiş.",
+    PUBLISHED_IMMUTABLE: "Yayımlanmış geri bildirim değiştirilemez.",
+    SUBMISSION: "İşlem mevcut başvuru durumuyla çakışıyor.",
+    EVALUATION: "İşlem mevcut değerlendirme durumuyla çakışıyor.",
+    INCOMPLETE: "İşlem mevcut geri bildirim durumuyla çakışıyor.",
+    RESOURCE: "İşlem mevcut geri bildirim durumuyla çakışıyor.",
+  } as const;
+
+  return new ApiApplicationError({ code: "CONFLICT", message: messages[error.reason] }, 409);
+}
+
 interface RuntimeSchema<T> {
   safeParse(value: unknown):
     | { success: true; data: T }
@@ -205,6 +268,7 @@ export function mapRepositoryError(error: ConfigurationRepositoryError): ApiAppl
     IMMUTABLE_VERSION: "Aktif veya emekli sürümler değiştirilemez.",
     RUBRIC_NOT_READY: "Kriteri olmayan bir rubrik etkinleştirilemez.",
     TEMPLATE_NOT_READY: "Şablon için en az bir bölüm ve bir zorunlu bölüm tanımlayın.",
+    TEMPLATE_FILE_MISSING: "Resmî rapor şablonu PDF'i yüklenmeden şablon etkinleştirilemez.",
     VERSION_NUMBER: "Sürüm oluşturulurken eşzamanlı bir değişiklik oluştu; tekrar deneyin.",
     RESOURCE: "İşlem mevcut yapılandırma durumuyla çakışıyor.",
   } as const;

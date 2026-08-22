@@ -6,6 +6,10 @@ export interface StoredDocumentArtifact {
   etag: string;
 }
 
+export interface StoredTemplateFile {
+  etag: string;
+}
+
 export interface DocumentStorage {
   putSubmissionReport(
     binding: R2Bucket,
@@ -22,6 +26,14 @@ export interface DocumentStorage {
   ): Promise<StoredDocumentArtifact>;
   getDocumentArtifact(binding: R2Bucket, storageKey: string): Promise<R2ObjectBody | null>;
   headDocumentArtifact(binding: R2Bucket, storageKey: string): Promise<R2Object | null>;
+  /** The official report-template PDF. Same private `DOCUMENTS` boundary as a submission report. */
+  putTemplateFile(
+    binding: R2Bucket,
+    storageKey: string,
+    bytes: Uint8Array,
+  ): Promise<StoredTemplateFile>;
+  getTemplateFile(binding: R2Bucket, storageKey: string): Promise<R2ObjectBody | null>;
+  deleteTemplateFile(binding: R2Bucket, storageKey: string): Promise<void>;
 }
 
 export const documentStorage: DocumentStorage = {
@@ -57,5 +69,20 @@ export const documentStorage: DocumentStorage = {
 
   headDocumentArtifact(binding, storageKey) {
     return binding.head(storageKey);
+  },
+
+  async putTemplateFile(binding, storageKey, bytes) {
+    const stored = await binding.put(storageKey, bytes, {
+      httpMetadata: { contentType: "application/pdf" },
+    });
+    return { etag: stored.etag };
+  },
+
+  getTemplateFile(binding, storageKey) {
+    return binding.get(storageKey);
+  },
+
+  async deleteTemplateFile(binding, storageKey) {
+    await binding.delete(storageKey);
   },
 };

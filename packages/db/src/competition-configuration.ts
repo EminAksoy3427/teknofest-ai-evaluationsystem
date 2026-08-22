@@ -12,6 +12,7 @@ import {
   type RubricVersionCreateRequest,
   type RubricVersionResponse,
   type RubricVersionUpdateRequest,
+  type TemplateFileMetadata,
   TemplateStructuralProfileSchema,
   type TemplateVersionCreateRequest,
   type TemplateVersionResponse,
@@ -39,6 +40,7 @@ export type ConfigurationRepositoryErrorReason =
   | "CATEGORY_IN_USE"
   | "IMMUTABLE_VERSION"
   | "TEMPLATE_NOT_READY"
+  | "TEMPLATE_FILE_MISSING"
   | "RUBRIC_NOT_READY"
   | "VERSION_NUMBER"
   | "RESOURCE";
@@ -92,6 +94,23 @@ function parseStructuralProfile(value: string) {
   return TemplateStructuralProfileSchema.parse(JSON.parse(value));
 }
 
+function mapTemplateFile(row: typeof templateVersions.$inferSelect): TemplateFileMetadata | null {
+  // Loose check on purpose: a row freshly built in-memory right before its own INSERT (as
+  // `createTemplateVersion` does) never sets these columns at all, so they read as `undefined`
+  // rather than the `null` a real SELECT would return. Both mean the same thing here: no file yet.
+  if (row.storageKey == null) return null;
+  // The all-or-nothing CHECK constraint on `template_version` guarantees these columns are either
+  // all null or all present together, so a non-null `storageKey` means every field here is safe to
+  // read as non-null.
+  return {
+    originalFilename: row.originalFilename as string,
+    mimeType: "application/pdf",
+    sizeBytes: row.sizeBytes as number,
+    sha256: row.sha256 as string,
+    createdAt: timestamp(row.fileUploadedAt as Date | number),
+  };
+}
+
 function mapTemplate(row: typeof templateVersions.$inferSelect): TemplateVersionResponse {
   return {
     id: row.id,
@@ -100,6 +119,7 @@ function mapTemplate(row: typeof templateVersions.$inferSelect): TemplateVersion
     label: row.label,
     status: publicVersionStatus(row.status),
     structuralProfile: parseStructuralProfile(row.structuralProfile),
+    file: mapTemplateFile(row),
     createdAt: timestamp(row.createdAt),
     updatedAt: timestamp(row.updatedAt),
   };
@@ -380,6 +400,26 @@ export async function listTemplateVersions(
   return rows.map(mapTemplate);
 }
 
+/** Competition-scoped single-version read, for callers that need one version rather than the list
+ * (e.g. the activation route's pre-flight heading check). */
+export async function getTemplateVersion(
+  binding: D1Database,
+  competitionId: string,
+  templateVersionId: string,
+): Promise<TemplateVersionResponse | null> {
+  const [row] = await createDb(binding)
+    .select()
+    .from(templateVersions)
+    .where(
+      and(
+        eq(templateVersions.id, templateVersionId),
+        eq(templateVersions.competitionId, competitionId),
+      ),
+    )
+    .limit(1);
+  return row ? mapTemplate(row) : null;
+}
+
 export async function createTemplateVersion(
   binding: D1Database,
   competitionId: string,
@@ -500,6 +540,15 @@ export async function activateTemplateVersion(
   if (!isTemplateProfileActivatable(parseStructuralProfile(target.structuralProfile))) {
     throw new ConfigurationRepositoryError("CONFLICT", "TEMPLATE_NOT_READY");
   }
+  // A TemplateVersion cannot become ACTIVE without its official file. This check is deliberately
+  // application-level rather than a table-wide CHECK constraint: this function is the ONLY code
+  // path that ever sets `status = 'ACTIVE'`, so gating it here is sufficient, and a blanket CHECK
+  // would instead apply retroactively to every historical row on any future migration that rebuilds
+  // this table — which would break the upgrade path forever the moment a single TemplateVersion had
+  // ever been activated before this file requirement existed.
+  if (target.storageKey === null) {
+    throw new ConfigurationRepositoryError("CONFLICT", "TEMPLATE_FILE_MISSING");
+  }
 
   const now = new Date();
   const nowMilliseconds = now.getTime();
@@ -558,6 +607,133 @@ export async function activateTemplateVersion(
     throw new ConfigurationRepositoryError("CONFLICT", "TEMPLATE_NOT_READY");
   }
   return mapTemplate(activated);
+}
+
+export interface TemplateFileWriteInput {
+  storageKey: string;
+  sha256: string;
+  originalFilename: string;
+  sizeBytes: number;
+  etag?: string | undefined;
+}
+
+export interface TemplateFileWriteResult {
+  template: TemplateVersionResponse;
+  /** The R2 key the official file occupied before this write, or null on a first upload. The
+   * caller deletes this key AFTER this function returns successfully — never before, so a D1
+   * failure never leaves the metadata pointing at an already-deleted object. */
+  previousStorageKey: string | null;
+}
+
+/**
+ * Attaches or replaces the official template PDF on a DRAFT TemplateVersion. Only DRAFT is
+ * writable; ACTIVE and RETIRED files are immutable, exactly like the structural profile.
+ *
+ * The caller has already written the new PDF bytes to a FRESH private R2 key before calling this
+ * function (upload-then-write-metadata, mirroring the submission report pattern), so this is purely
+ * the D1 metadata write. The previous file's key is returned rather than deleted here: deleting it
+ * is the caller's job, performed only after this metadata write has actually succeeded, so a crash
+ * between the two never destroys a working object while its metadata still points at it.
+ */
+export async function putTemplateVersionFile(
+  binding: D1Database,
+  competitionId: string,
+  templateVersionId: string,
+  input: TemplateFileWriteInput,
+): Promise<TemplateFileWriteResult> {
+  const db = createDb(binding);
+  const [existing] = await db
+    .select()
+    .from(templateVersions)
+    .where(
+      and(
+        eq(templateVersions.id, templateVersionId),
+        eq(templateVersions.competitionId, competitionId),
+      ),
+    )
+    .limit(1);
+
+  if (!existing) {
+    throw new ConfigurationRepositoryError("NOT_FOUND", "RESOURCE");
+  }
+  if (existing.status !== "DRAFT") {
+    throw new ConfigurationRepositoryError("CONFLICT", "IMMUTABLE_VERSION");
+  }
+
+  const now = new Date();
+  await db
+    .update(templateVersions)
+    .set({
+      storageKey: input.storageKey,
+      sha256: input.sha256,
+      originalFilename: input.originalFilename,
+      mimeType: "application/pdf",
+      sizeBytes: input.sizeBytes,
+      etag: input.etag ?? null,
+      fileUploadedAt: now,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(templateVersions.id, templateVersionId),
+        eq(templateVersions.competitionId, competitionId),
+        eq(templateVersions.status, "DRAFT"),
+      ),
+    );
+
+  const [updated] = await db
+    .select()
+    .from(templateVersions)
+    .where(
+      and(
+        eq(templateVersions.id, templateVersionId),
+        eq(templateVersions.competitionId, competitionId),
+      ),
+    )
+    .limit(1);
+  if (!updated) {
+    throw new ConfigurationRepositoryError("NOT_FOUND", "RESOURCE");
+  }
+  if (updated.storageKey !== input.storageKey) {
+    // Activated (or otherwise left DRAFT) between the check above and the write: the guarded
+    // UPDATE above matched zero rows, so the file is still whatever it was before this call.
+    throw new ConfigurationRepositoryError("CONFLICT", "IMMUTABLE_VERSION");
+  }
+
+  return { template: mapTemplate(updated), previousStorageKey: existing.storageKey };
+}
+
+export interface TemplateFileStorageMetadata {
+  storageKey: string;
+  originalFilename: string;
+}
+
+/**
+ * Competition-scoped read of the official file's storage pointer, for the protected download
+ * endpoint. Returns null both when the TemplateVersion does not exist in this competition and when
+ * it exists but has no file yet — the route reports both as an ordinary 404.
+ */
+export async function getTemplateVersionFileMetadata(
+  binding: D1Database,
+  competitionId: string,
+  templateVersionId: string,
+): Promise<TemplateFileStorageMetadata | null> {
+  const [row] = await createDb(binding)
+    .select({
+      storageKey: templateVersions.storageKey,
+      originalFilename: templateVersions.originalFilename,
+    })
+    .from(templateVersions)
+    .where(
+      and(
+        eq(templateVersions.id, templateVersionId),
+        eq(templateVersions.competitionId, competitionId),
+      ),
+    )
+    .limit(1);
+
+  if (!row || row.storageKey === null) return null;
+  return { storageKey: row.storageKey, originalFilename: row.originalFilename ?? "sablon.pdf" };
 }
 
 export async function listCriteriaForRubric(binding: D1Database, rubricVersionId: string) {
@@ -894,10 +1070,13 @@ export const competitionConfigurationRepository = {
   deleteCategory,
   findCompetition,
   getCompetitionConfiguration,
+  getTemplateVersion,
+  getTemplateVersionFileMetadata,
   listCategories,
   listCriteriaForRubric,
   listRubricVersions,
   listTemplateVersions,
+  putTemplateVersionFile,
   replaceDraftCriteria,
   updateCategory,
   updateCompetition,

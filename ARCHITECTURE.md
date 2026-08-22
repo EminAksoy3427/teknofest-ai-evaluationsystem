@@ -234,14 +234,38 @@ gösterge veya güven değeri olarak sunulmaz. Kuyruk `competition:view-operatio
 (`COMPETITION_MANAGER`, `EVALUATION_MANAGER`); `REVIEWER` ve `CONTESTANT` erişemez ve çapraz yarışma
 sızıntısı her ifadede engellenir. Ayrıntılar `docs/architecture/review-operations.md` içindedir.
 
-## 14. Bilinçli olarak ertelenenler
+## 14. Resmî şablon dosyası ve yarışmacı sahipliği (P6.5A)
+
+P6.5A, Problem 4'ün iki geride kalan MVP açığını kapatır. Birincisi: bir `TemplateVersion` artık
+hem yapısal profili hem de yarışmacılara verilecek resmî PDF şablonunu birlikte taşır ve resmî
+dosyası olmadan etkinleştirilemez; aktivasyon ayrıca yapılandırılan her zorunlu başlığın gerçek
+dosyada bulunduğunu P3-01'in aynı deterministik heading-eşleştirme primitifiyle (geçici, bellek içi
+bir kontrolle) doğrular. P6.5A öncesinden gelen dosyasız ACTİF bir `TemplateVersion` bilinçli olarak
+korunur ve ona sabitlenmiş eski koşular okunabilir kalır; ancak güncel yapılandırma sayılmaz:
+hazırlık ayrı bir `activeTemplateFile` bayrağıyla `ready` bildirmez ve yeni bir `AnalysisRun` böyle
+bir şablona sabitlenemez (denetimli `409 CONFLICT`). İkincisi: CONTESTANT rolü artık somut başvuru
+sahipliği taşır
+(`submission_participant`, `reviewer_assignment`in izlediği aynı composite-foreign-key deseniyle)
+ve yönetici, zaten kalıcı olan SUBMITTED bir hakem değerlendirmesinden insan onaylı, nitel bir
+sonuç yayımlayabilir (`contestant_feedback`). Taslak eksik kalabilir; yayım ise brief'in yarışmacıya
+verdiği sözün tamamını gerektirir: özet ve en az birer maddelik güçlü yönler, gelişim alanları ve
+öneriler. Eksik içerik reddedilir, tamamlanmaz — yayım içeriğinin yazarı insandır. Yarışmacı yalnız
+`/api/v1/me/*` altında, kimliği
+oturumdan gelen, sahipliği veritabanında doğrulanan ve yayımlanmamış hiçbir şeyi asla açıklamayan
+güvenli bir projeksiyon görür. Bu görev sıfır yeni yapay zekâ çıkarımı eklemiştir: geri bildirim
+önerisi zaten kalıcı ve doğrulanmış insan puanları ile AI rubrik kanıtından deterministik olarak
+türetilir ve yalnız açık bir yönetici eylemiyle yayım içeriğine kopyalanabilir. Ayrıntılar
+`docs/architecture/template-files.md` ve `docs/architecture/contestant-feedback.md` içindedir.
+
+## 15. Bilinçli olarak ertelenenler
 
 Başvuru PDF depolaması özel R2 ve D1 metadata ayrımıyla uygulanmıştır; ayrıntılar
-`docs/architecture/document-storage.md` içindedir. Hakem ataması ve hakem çalışma alanı P5 ile
-uygulanmıştır. Yarışmacı sahipliği ve geri bildirim yüzeyi, global yönetim, production OAuth/D1, uzak
-D1/R2/Workflow kaynağı, OCR, production Vectorize/Workers AI index'i ve dağıtımı (P4-01B DEVELOPMENT
-kaynaklarına karşı uzak doğrulanmıştır), akıllı risk kuyruğu, gönderilmiş hakem değerlendirmesinin
-yeniden açılması/sürümlenmesi, birden çok hakemin puanından yarışma geneli uzlaşma üretilmesi ve
-uygulama içi PDF.js render katmanı gibi diğer iş özellikleri ertelenmiştir. Akıllı risk kuyruğu P6
-ile türetilmiş bir projeksiyon olarak uygulanmıştır; eşik ve ağırlık kalibrasyonu hâlâ golden set
-beklemektedir.
+`docs/architecture/document-storage.md` içindedir. Hakem ataması ve hakem çalışma alanı P5 ile,
+resmî şablon dosyası ve yarışmacı sahipliği/geri bildirimi P6.5A ile uygulanmıştır. Global yönetim,
+production OAuth/D1, uzak D1/R2/Workflow kaynağı, OCR, production Vectorize/Workers AI index'i ve
+dağıtımı (P4-01B DEVELOPMENT kaynaklarına karşı uzak doğrulanmıştır), gönderilmiş hakem
+değerlendirmesinin veya yayımlanmış yarışmacı geri bildiriminin yeniden açılması/sürümlenmesi,
+birden çok hakemin puanından yarışma geneli uzlaşma üretilmesi, piksel düzeyi şablon düzen uyumu
+ve uygulama içi PDF.js render katmanı gibi diğer iş özellikleri hâlâ ertelenmiştir. Akıllı risk
+kuyruğu P6 ile türetilmiş bir projeksiyon olarak uygulanmıştır; eşik ve ağırlık kalibrasyonu hâlâ
+golden set beklemektedir.

@@ -13,6 +13,7 @@ import type { SessionResolver } from "./auth/session";
 import { requireCompetitionPermission } from "./authorization/membership";
 import { requireAuthenticatedUser } from "./authorization/require-auth";
 import type { DocumentStorage } from "./storage/documents";
+import { readBoundedBody, validatePdfBytes } from "./storage/pdf-upload";
 import { normalizeDisplayFilename, reportResponse } from "./storage/report-response";
 
 export interface SubmissionRouteDependencies {
@@ -62,64 +63,13 @@ function validationError(message: string, issues?: { path: string; message: stri
   );
 }
 
-function hasPdfSignature(bytes: Uint8Array): boolean {
-  const signature = [0x25, 0x50, 0x44, 0x46, 0x2d];
-  return signature.every((byte, index) => bytes[index] === byte);
-}
-
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digestInput = new Uint8Array(new ArrayBuffer(bytes.byteLength));
-  digestInput.set(bytes);
-  const digest = await crypto.subtle.digest("SHA-256", digestInput.buffer);
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 async function parseBoundedMultipartBody(request: Request): Promise<FormData> {
   const maximumRequestBytes = MAX_SUBMISSION_PDF_BYTES + 128 * 1024;
-  const declaredLength = request.headers.get("content-length");
-  if (declaredLength !== null) {
-    const contentLength = Number(declaredLength);
-    if (!Number.isFinite(contentLength) || contentLength < 0) {
-      throw validationError("Content-Length başlığı geçersizdir.");
-    }
-    if (contentLength > maximumRequestBytes) {
-      throw new ApiApplicationError(
-        { code: "PAYLOAD_TOO_LARGE", message: "PDF dosyası en fazla 20 MiB olabilir." },
-        413,
-      );
-    }
-  }
-
-  if (!request.body) {
-    throw validationError("Çok parçalı istek gövdesi gereklidir.");
-  }
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-  while (true) {
-    const chunk = await reader.read();
-    if (chunk.done) break;
-    totalBytes += chunk.value.byteLength;
-    if (totalBytes > maximumRequestBytes) {
-      await reader.cancel();
-      throw new ApiApplicationError(
-        { code: "PAYLOAD_TOO_LARGE", message: "PDF dosyası en fazla 20 MiB olabilir." },
-        413,
-      );
-    }
-    chunks.push(chunk.value);
-  }
-
-  const body = new Uint8Array(new ArrayBuffer(totalBytes));
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
+  const body = await readBoundedBody(request, maximumRequestBytes);
   return new Request(request.url, {
     method: request.method,
     headers: request.headers,
-    body: body.buffer,
+    body,
   }).formData();
 }
 
@@ -169,26 +119,17 @@ async function parseSubmissionUpload(request: Request) {
       415,
     );
   }
-  if (report.size === 0) {
-    throw validationError("PDF raporu boş olamaz.");
-  }
-  if (report.size > MAX_SUBMISSION_PDF_BYTES) {
-    throw new ApiApplicationError(
-      { code: "PAYLOAD_TOO_LARGE", message: "PDF dosyası en fazla 20 MiB olabilir." },
-      413,
-    );
-  }
 
-  const bytes = new Uint8Array(await report.arrayBuffer());
-  if (!hasPdfSignature(bytes)) {
-    throw validationError("Dosya geçerli bir PDF imzasıyla başlamalıdır.");
-  }
+  const validated = await validatePdfBytes(
+    new Uint8Array(await report.arrayBuffer()),
+    MAX_SUBMISSION_PDF_BYTES,
+  );
 
   return {
     metadata: metadataResult.data,
-    bytes,
+    bytes: validated.bytes,
     originalFilename: normalizeDisplayFilename(report.name),
-    sha256: await sha256Hex(bytes),
+    sha256: validated.sha256,
   };
 }
 

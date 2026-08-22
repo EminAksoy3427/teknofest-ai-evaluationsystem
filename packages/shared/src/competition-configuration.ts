@@ -1,6 +1,14 @@
 import { z } from "zod";
 
 import { VersionStatusSchema } from "./status";
+import { MAX_SUBMISSION_PDF_BYTES } from "./submission";
+
+/**
+ * The official report-template PDF reuses the same 20 MiB ceiling as a submission report: both are
+ * a single application/pdf body validated by the same signature/size/hash discipline, so a second,
+ * differently-tuned limit would be an arbitrary distinction rather than a real product difference.
+ */
+export const MAX_TEMPLATE_PDF_BYTES = MAX_SUBMISSION_PDF_BYTES;
 
 const trimmedText = (field: string, maximum: number) =>
   z.string().trim().min(1, `${field} boş bırakılamaz.`).max(maximum, `${field} çok uzun.`);
@@ -169,6 +177,28 @@ export const TemplateVersionUpdateRequestSchema = TemplateVersionCreateRequestSc
 
 export type TemplateVersionUpdateRequest = z.infer<typeof TemplateVersionUpdateRequestSchema>;
 
+/**
+ * Metadata for the official report-template PDF attached to a TemplateVersion. The R2 object key is
+ * never part of this shape: it stays a server-internal identifier and is never returned to a
+ * client, exactly like `SubmissionFileMetadata`.
+ */
+export const TemplateFileMetadataSchema = z
+  .object({
+    originalFilename: z.string().min(1).max(200),
+    mimeType: z.literal("application/pdf"),
+    sizeBytes: z.number().int().positive().max(MAX_TEMPLATE_PDF_BYTES),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    createdAt: z.number().int().nonnegative(),
+  })
+  .strict();
+export type TemplateFileMetadata = z.infer<typeof TemplateFileMetadataSchema>;
+
+/**
+ * A TemplateVersion represents BOTH the official versioned template file and the structural profile
+ * used by analysis. `file` is null only while the version is still a DRAFT with no upload yet; a
+ * version can never become ACTIVE without one, so every ACTIVE or RETIRED response has a non-null
+ * `file`.
+ */
 export const TemplateVersionResponseSchema = z
   .object({
     id: z.string().min(1),
@@ -177,6 +207,7 @@ export const TemplateVersionResponseSchema = z
     label: z.string().min(1),
     status: VersionStatusSchema,
     structuralProfile: TemplateStructuralProfileSchema,
+    file: TemplateFileMetadataSchema.nullable(),
     createdAt: z.number().int().nonnegative(),
     updatedAt: z.number().int().nonnegative(),
   })
@@ -278,6 +309,13 @@ export const CompetitionConfigurationReadinessSchema = z
     competition: z.boolean(),
     categories: z.boolean(),
     activeTemplate: z.boolean(),
+    /**
+     * Reported separately from `activeTemplate` because a pre-P6.5A competition can legitimately
+     * still carry an ACTIVE TemplateVersion with no official file. That historical row is preserved
+     * as-is, but it is not valid configuration for NEW work, so the two facts are surfaced
+     * truthfully rather than collapsed into one misleading "no active template" signal.
+     */
+    activeTemplateFile: z.boolean(),
     activeRubric: z.boolean(),
     rubricHasCriteria: z.boolean(),
     ready: z.boolean(),
@@ -337,6 +375,7 @@ export function deriveConfigurationReadiness(
       configuration.competition.slug.trim().length > 0,
     categories: configuration.categories.length > 0,
     activeTemplate: activeTemplate !== undefined,
+    activeTemplateFile: activeTemplate?.file != null,
     activeRubric: activeRubric !== undefined,
     rubricHasCriteria: (activeRubric?.criteria.length ?? 0) > 0,
   };

@@ -4,6 +4,7 @@ import {
   CompetitionConfigurationResponseSchema,
   CompetitionResponseSchema,
   type CriterionInput,
+  MAX_TEMPLATE_PDF_BYTES,
   type RubricVersionResponse,
   RubricVersionResponseSchema,
   type TemplateSectionRule,
@@ -423,6 +424,101 @@ function reorder<T>(items: T[], index: number, direction: -1 | 1): T[] {
   return next;
 }
 
+function formatFileSizeMiB(bytes: number): string {
+  return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(bytes / 1024 / 1024);
+}
+
+/**
+ * The official report-template PDF. A DRAFT version may upload or replace its file; ACTIVE and
+ * RETIRED files are immutable, exactly like the structural profile. "Şablonu görüntüle" streams the
+ * file through the protected download endpoint — no R2 key or public URL is ever involved.
+ */
+function TemplateFileUploader({
+  competitionId,
+  version,
+  editable,
+  refresh,
+}: {
+  competitionId: string;
+  version: TemplateVersionResponse;
+  editable: boolean;
+  refresh: () => Promise<void>;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const filePath = `/api/v1/competitions/${competitionId}/templates/${version.id}/file`;
+
+  async function upload() {
+    if (!file) return;
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setFeedback({ kind: "error", message: "Yalnız PDF dosyası seçebilirsiniz." });
+      return;
+    }
+    if (file.size === 0 || file.size > MAX_TEMPLATE_PDF_BYTES) {
+      setFeedback({ kind: "error", message: "PDF dosyası boş olmamalı ve 20 MiB'ı aşmamalıdır." });
+      return;
+    }
+    setUploading(true);
+    setFeedback(null);
+    try {
+      await apiRequest(
+        `${filePath}?filename=${encodeURIComponent(file.name)}`,
+        TemplateVersionResponseSchema,
+        { method: "PUT", body: file, headers: { "content-type": "application/pdf" } },
+      );
+      setFile(null);
+      await refresh();
+      setFeedback({ kind: "saved", message: "Resmî rapor şablonu kaydedildi." });
+    } catch (error) {
+      setFeedback({ kind: "error", message: errorMessage(error) });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <h4 className="font-semibold text-slate-950">Resmî rapor şablonu (PDF)</h4>
+      {version.file ? (
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+          <span className="metric-chip">{version.file.originalFilename}</span>
+          <span className="metric-chip">{formatFileSizeMiB(version.file.sizeBytes)} MiB</span>
+          <a className="secondary-button" href={filePath} rel="noreferrer" target="_blank">
+            Şablonu görüntüle
+          </a>
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-amber-800">
+          Bu sürüm için henüz resmî şablon dosyası yüklenmedi. Etkinleştirmek için PDF yükleyin.
+        </p>
+      )}
+      {editable ? (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <input
+            accept="application/pdf,.pdf"
+            aria-label="Resmî rapor şablonu PDF dosyası"
+            className="field-input max-w-xs"
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            type="file"
+          />
+          <button
+            className="secondary-button"
+            disabled={!file || uploading}
+            onClick={upload}
+            type="button"
+          >
+            {uploading ? "Yükleniyor…" : version.file ? "Dosyayı değiştir" : "Dosyayı yükle"}
+          </button>
+        </div>
+      ) : null}
+      <div className="mt-2">
+        <FeedbackMessage feedback={feedback} />
+      </div>
+    </div>
+  );
+}
+
 function TemplateDraftEditor({
   competitionId,
   version,
@@ -534,6 +630,15 @@ function TemplateDraftEditor({
             value={language}
           />
         </div>
+      </div>
+
+      <div className="mt-5">
+        <TemplateFileUploader
+          competitionId={competitionId}
+          editable
+          refresh={refresh}
+          version={version}
+        />
       </div>
 
       <div className="mt-6 flex items-center justify-between gap-3">
@@ -663,6 +768,11 @@ function TemplateDraftEditor({
         </button>
         <FeedbackMessage feedback={feedback} />
       </div>
+      {!version.file ? (
+        <p className="field-help mt-2">
+          Etkinleştirmek için önce resmî rapor şablonu PDF'ini yükleyin.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -719,13 +829,14 @@ function TemplatesSection({
     <section aria-labelledby="templates-title" className="setup-panel">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Dosya değil, yapısal profil</p>
+          <p className="eyebrow">Resmî rapor şablonu</p>
           <h2 className="section-title" id="templates-title">
             Şablon Yapısı
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Bu aşama beklenen dil ve bölüm yapısını tanımlar. Yetkili dosya yükleme R2 aşamasına
-            ertelenmiştir.
+            Bir şablon sürümü hem yarışmacılara verilecek resmî PDF şablonunu hem de analizin
+            kullandığı beklenen dil ve bölüm yapısını birlikte taşır. Bir sürüm, resmî dosyası
+            olmadan etkinleştirilemez.
           </p>
         </div>
       </div>
@@ -800,6 +911,14 @@ function TemplatesSection({
                 Aktif ve emekli sürümler tarihsel kayıt olarak değiştirilemez. Değişiklik için yeni
                 taslak oluşturun.
               </p>
+              <div className="mt-5">
+                <TemplateFileUploader
+                  competitionId={configuration.competition.id}
+                  editable={false}
+                  refresh={refresh}
+                  version={selected}
+                />
+              </div>
               <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
                 <div>
                   <dt className="text-slate-500">Beklenen dil</dt>
@@ -1273,6 +1392,7 @@ function ReadinessSection({ configuration }: { configuration: CompetitionConfigu
     ["competition", "Yarışma bilgileri"],
     ["categories", "En az bir kategori"],
     ["activeTemplate", "Aktif şablon yapısı"],
+    ["activeTemplateFile", "Aktif şablonun resmî dosyası"],
     ["activeRubric", "Aktif rubrik"],
     ["rubricHasCriteria", "Rubrik kriterleri"],
   ] as const;

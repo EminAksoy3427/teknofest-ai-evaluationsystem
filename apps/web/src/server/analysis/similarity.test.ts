@@ -184,6 +184,9 @@ describe("similarity processing", () => {
       headDocumentArtifact: vi.fn(),
       getDocumentArtifact: async (_bucket, key) =>
         key === "source.json" ? r2Artifact(source) : r2Artifact(other),
+      putTemplateFile: vi.fn(),
+      getTemplateFile: vi.fn(),
+      deleteTemplateFile: vi.fn(),
     };
     const dependencies = {
       runRepository: {

@@ -6,7 +6,10 @@ import {
   type CompetitionConfigurationRepository,
   type CompetitionMembershipLookup,
   ConfigurationRepositoryError,
+  type ContestantFeedbackRepository,
+  ContestantFeedbackRepositoryError,
   competitionConfigurationRepository,
+  contestantFeedbackRepository,
   findCompetitionMembership,
   listMembershipSummaries,
   type MembershipSummaryList,
@@ -21,9 +24,12 @@ import {
   reviewOperationsRepository,
   rubricSuggestionRepository,
   type SimilarityPairRepository,
+  type SubmissionParticipantRepository,
+  SubmissionParticipantRepositoryError,
   type SubmissionRepository,
   SubmissionRepositoryError,
   similarityPairRepository,
+  submissionParticipantRepository,
   submissionRepository,
 } from "@teknofest-ai/db";
 import {
@@ -44,9 +50,11 @@ import {
 import {
   ApiApplicationError,
   mapAnalysisRunRepositoryError,
+  mapContestantFeedbackRepositoryError,
   mapRepositoryError,
   mapReviewerAssignmentRepositoryError,
   mapReviewerEvaluationRepositoryError,
+  mapSubmissionParticipantRepositoryError,
   mapSubmissionRepositoryError,
 } from "./api-error";
 import { type AuthRuntimeBindings, createAuth } from "./auth/auth";
@@ -56,9 +64,13 @@ import { requireCompetitionMembership } from "./authorization/membership";
 import { getPermissionsForRole } from "./authorization/policy";
 import { requireAuthenticatedUser } from "./authorization/require-auth";
 import { registerCompetitionConfigurationRoutes } from "./competition-configuration-routes";
+import { registerContestantFeedbackRoutes } from "./contestant-feedback-routes";
+import { registerContestantRoutes } from "./contestant-routes";
 import { registerReviewRoutes } from "./review-routes";
 import { type DocumentStorage, documentStorage } from "./storage/documents";
+import { registerSubmissionParticipantRoutes } from "./submission-participant-routes";
 import { registerSubmissionRoutes } from "./submission-routes";
+import { registerTemplateFileRoutes } from "./template-file-routes";
 
 export { SubmissionAnalysisWorkflow } from "./analysis/submission-analysis-workflow";
 
@@ -76,6 +88,8 @@ interface AppDependencies {
   reviewerEvaluationRepository: ReviewerEvaluationRepository;
   reviewOperationsRepository: ReviewOperationsRepository;
   rubricSuggestionRepository: RubricSuggestionRepository;
+  submissionParticipantRepository: SubmissionParticipantRepository;
+  contestantFeedbackRepository: ContestantFeedbackRepository;
 }
 
 const defaultDependencies: AppDependencies = {
@@ -92,6 +106,8 @@ const defaultDependencies: AppDependencies = {
   reviewerEvaluationRepository,
   reviewOperationsRepository,
   rubricSuggestionRepository,
+  submissionParticipantRepository,
+  contestantFeedbackRepository,
 };
 
 export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
@@ -132,6 +148,16 @@ export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
 
     if (error instanceof ReviewerEvaluationRepositoryError) {
       const mapped = mapReviewerEvaluationRepositoryError(error);
+      return context.json(mapped.response, mapped.status);
+    }
+
+    if (error instanceof SubmissionParticipantRepositoryError) {
+      const mapped = mapSubmissionParticipantRepositoryError(error);
+      return context.json(mapped.response, mapped.status);
+    }
+
+    if (error instanceof ContestantFeedbackRepositoryError) {
+      const mapped = mapContestantFeedbackRepositoryError(error);
       return context.json(mapped.response, mapped.status);
     }
 
@@ -209,9 +235,13 @@ export function createApp(dependencyOverrides: Partial<AppDependencies> = {}) {
   });
 
   registerCompetitionConfigurationRoutes(app, dependencies);
+  registerTemplateFileRoutes(app, dependencies);
   registerSubmissionRoutes(app, dependencies);
+  registerSubmissionParticipantRoutes(app, dependencies);
   registerAnalysisRoutes(app, dependencies);
   registerReviewRoutes(app, dependencies);
+  registerContestantFeedbackRoutes(app, dependencies);
+  registerContestantRoutes(app, dependencies);
 
   return app;
 }

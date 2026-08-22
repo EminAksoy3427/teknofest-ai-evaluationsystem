@@ -70,8 +70,10 @@ için geçerli etiket/dil, en az bir bölüm ve en az bir zorunlu bölüm gereki
 önceki `ACTIVE` sürümü aynı D1 batch içinde `RETIRED` yapar. Aktif ve emekli sürümler değişmez;
 yarışma başına tek aktif sürüm kısmi benzersiz indeksle de korunur.
 
-P2-01 yalnız yapısal uyumu tanımlar. Yetkili şablon dosyası R2 aşamasına, piksel düzeyi düzen
-uyumu post-MVP'ye ertelenmiştir.
+P2-01 yalnız yapısal uyumu tanımlıyordu. P6.5A ile bir `TemplateVersion` artık hem yapısal
+profili hem de resmî PDF şablon dosyasını birlikte taşır ve dosyası olmadan etkinleştirilemez;
+ayrıntı `docs/architecture/template-files.md` içindedir. Piksel düzeyi düzen uyumu hâlâ post-MVP'ye
+ertelenmiştir — bu, byte/piksel özdeşliği değil deterministik başlık eşleşmesidir.
 
 ## Rubrik, kriterler ve yaşam döngüsü
 
@@ -91,15 +93,20 @@ Hazırlık veritabanında saklanmaz. Yapılandırma okumasında şu değerler t�
 - yarışma bilgileri var,
 - en az bir kategori var,
 - aktif şablon yapısı var,
+- aktif şablonun resmî dosyası var,
 - aktif rubrik var,
 - aktif rubriğin en az bir kriteri var.
 
 Tümü doğruysa `ready: true` döner ve arayüz “Yarışma yapılandırması hazır” der. Bu sonuç başvuru,
 yapay zekâ veya Problem 4 MVP'sinin tamamlandığı anlamına gelmez.
 
+`activeTemplate` ve `activeTemplateFile` ayrı bayraklardır: P6.5A öncesinden gelen bir yarışma
+dosyasız ACTİF bir şablon taşıyabilir. O tarihsel satır olduğu gibi korunur ve ona sabitlenmiş eski
+koşular okunabilir kalır, fakat güncel yapılandırma sayılmaz — hazırlık `ready` bildirmez ve yeni
+bir `AnalysisRun` bu şablona sabitlenemez. Ayrıntı `docs/architecture/template-files.md` içindedir.
+
 ## Gelecek uyumluluğu
 
-Gelecekteki başvuru hattı yetkili şablon dosyasını R2'de saklayacak; zorunlu kontroller dil,
-bölüm ve kategori tanımlarını kullanacak; rubrik değerlendirmesi aktif sürüm ve kanıt
-beklentilerini tüketecektir. `AnalysisRun` eklendiğinde kullanılan `TemplateVersion` ve
-`RubricVersion` kimliklerini sabitlemelidir.
+Yetkili şablon dosyası R2'de saklanmaktadır (P6.5A); zorunlu kontroller dil, bölüm ve kategori
+tanımlarını kullanır; rubrik değerlendirmesi aktif sürüm ve kanıt beklentilerini tüketir.
+`AnalysisRun`, kullanılan `TemplateVersion` ve `RubricVersion` kimliklerini sabitler.

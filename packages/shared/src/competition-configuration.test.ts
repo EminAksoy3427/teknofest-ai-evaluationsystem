@@ -86,6 +86,13 @@ describe("competition configuration contracts", () => {
             expectedLanguage: "tr",
             sections: [{ key: "ozet", title: "Özet", description: "", required: true, order: 1 }],
           },
+          file: {
+            originalFilename: "sablon.pdf",
+            mimeType: "application/pdf" as const,
+            sizeBytes: 1024,
+            sha256: "a".repeat(64),
+            createdAt: 1,
+          },
           createdAt: 1,
           updatedAt: 1,
         },
@@ -124,10 +131,23 @@ describe("competition configuration contracts", () => {
       competition: true,
       categories: true,
       activeTemplate: true,
+      activeTemplateFile: true,
       activeRubric: true,
       rubricHasCriteria: true,
       ready: true,
     });
     expect(CompetitionConfigurationResponseSchema.parse({ ...complete, readiness })).toBeDefined();
+
+    // A legacy ACTIVE TemplateVersion with no official file is still reported as an active
+    // template — it genuinely exists and its historical runs stay readable — but it is not valid
+    // configuration for new work, so readiness is NOT ready.
+    const legacyReadiness = deriveConfigurationReadiness({
+      ...complete,
+      templates: complete.templates.map((template) => ({ ...template, file: null })),
+    });
+
+    expect(legacyReadiness.activeTemplate).toBe(true);
+    expect(legacyReadiness.activeTemplateFile).toBe(false);
+    expect(legacyReadiness.ready).toBe(false);
   });
 });

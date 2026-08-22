@@ -144,6 +144,14 @@ async function scopedAnalysisRunRow(
   return result?.run ?? null;
 }
 
+/**
+ * Pins the current configuration onto a new run. The ACTIVE TemplateVersion must carry its official
+ * file: a pre-P6.5A competition can still hold an ACTIVE, file-less TemplateVersion, and that row is
+ * deliberately left untouched so historical runs stay readable — but it is not valid configuration
+ * for NEW work, so no new run may be pinned to it. Failing the join reports the ordinary
+ * `CONFIGURATION_NOT_READY` conflict rather than silently analysing against a template whose
+ * official source document does not exist.
+ */
 export async function createQueuedAnalysisRun(
   binding: D1Database,
   input: QueuedAnalysisRunInput,
@@ -201,6 +209,7 @@ export async function createQueuedAnalysisRun(
          INNER JOIN template_version
            ON template_version.competition_id = submission.competition_id
           AND template_version.status = 'ACTIVE'
+          AND template_version.storage_key is not null
          INNER JOIN rubric_version
            ON rubric_version.competition_id = submission.competition_id
           AND rubric_version.status = 'ACTIVE'

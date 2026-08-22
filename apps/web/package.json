@@ -19,6 +19,7 @@
     "smoke:p4-01b": "vitest run src/server/analysis/semantic-similarity-provider.test.ts src/server/analysis/semantic-similarity-integration.test.ts src/server/analysis/similarity.test.ts src/server/analysis/similarity-persistence.test.ts src/server/analysis/similarity-candidate-cap.test.ts src/server/analysis/submission-analysis-workflow.test.ts src/server/analysis-routes.test.ts src/client/submissions-page.test.tsx",
     "smoke:p4-01b:remote": "tsx scripts/p4-01b-remote-smoke.ts",
     "smoke:p6": "vitest run src/server/review-operations-routes.test.ts src/server/authorization/authorization.test.ts src/server/review-routes.test.ts src/client/review-operations-page.test.tsx src/client/review-workspace-page.test.tsx src/client/review/workspace-panes.test.ts",
+    "smoke:p6-5a": "vitest run src/server/template-file-routes.test.ts src/server/submission-participant-routes.test.ts src/server/contestant-feedback-routes.test.ts src/server/contestant-routes.test.ts src/server/p6-5a-historical-integrity.test.ts src/server/p6-5a-legacy-template-compliance.test.ts src/server/competition-configuration-routes.test.ts src/server/authorization/authorization.test.ts",
     "smoke:p5": "vitest run src/server/review-routes.test.ts src/server/review-evaluation.test.ts src/server/authorization/authorization.test.ts src/client/review-workspace-page.test.tsx src/client/review/evidence-navigation.test.ts src/client/review/report-object-url.test.ts src/server/analysis/rubric-checks.test.ts",
     "cf:typegen": "wrangler types"
   },

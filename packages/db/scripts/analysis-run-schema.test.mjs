@@ -12,7 +12,7 @@ const migrations = readdirSync(migrationDirectory)
 
 // Every later milestone must APPEND to this chain; an already committed migration is never edited
 // or renumbered, so the ordinal prefix of each existing entry stays exactly where it was.
-assert.equal(migrations.length, 16, "P5 must extend the unchanged 0000-0012 chain");
+assert.equal(migrations.length, 18, "P6.5A must extend the unchanged 0000-0015 chain");
 for (const [index, migration] of migrations.entries()) {
   assert.ok(
     migration.startsWith(`${String(index).padStart(4, "0")}_`),
@@ -26,17 +26,38 @@ function apply(database, filenames) {
   }
 }
 
+// `seedFoundation` is reused by BOTH the full-chain test (all 18 migrations already applied) and
+// the upgrade-path test below (only migrations 0-5 applied so far, well before P6.5A added the
+// official-file columns onto `template_version`). It must therefore detect what actually exists on
+// this connection rather than assume the current schema.
+function hasTemplateFileColumns(database) {
+  return (
+    database
+      .prepare(
+        "SELECT count(*) AS count FROM pragma_table_info('template_version') WHERE name = 'original_filename'",
+      )
+      .get().count > 0
+  );
+}
+
 function seedFoundation(database) {
+  const withFile = hasTemplateFileColumns(database);
+  const fileColumns = withFile
+    ? ", storage_key, sha256, original_filename, mime_type, size_bytes, file_uploaded_at"
+    : "";
+  const fileValues = withFile
+    ? `, 'competitions/competition-a/template-versions/template-v1/file.pdf', '${"a".repeat(64)}', 'sablon.pdf', 'application/pdf', 2048, 1`
+    : "";
   database.exec(`
     INSERT INTO competition (id, name, slug, description)
     VALUES ('competition-a', 'Yarışma A', 'analysis-a', 'Synthetic only');
     INSERT INTO category (id, competition_id, name, code, description)
     VALUES ('category-a', 'competition-a', 'Yapay Zekâ', 'ai', 'Synthetic only');
     INSERT INTO template_version (
-      id, competition_id, version_number, label, status, structural_profile
+      id, competition_id, version_number, label, status, structural_profile${fileColumns}
     ) VALUES (
       'template-v1', 'competition-a', 1, 'v1', 'ACTIVE',
-      '{"expectedLanguage":"tr","sections":[{"key":"summary","title":"Summary","description":"","required":true,"order":1}]}'
+      '{"expectedLanguage":"tr","sections":[{"key":"summary","title":"Summary","description":"","required":true,"order":1}]}'${fileValues}
     );
     INSERT INTO rubric_version (id, competition_id, version_number, label, status)
     VALUES ('rubric-v1', 'competition-a', 1, 'v1', 'ACTIVE');
@@ -219,10 +240,13 @@ assert.throws(
 database.exec(`
   UPDATE template_version SET status = 'RETIRED' WHERE id = 'template-v1';
   INSERT INTO template_version (
-    id, competition_id, version_number, label, status, structural_profile
+    id, competition_id, version_number, label, status, structural_profile,
+    storage_key, sha256, original_filename, mime_type, size_bytes, file_uploaded_at
   ) VALUES (
     'template-v2', 'competition-a', 2, 'v2', 'ACTIVE',
-    '{"expectedLanguage":"tr","sections":[{"key":"new","title":"New","description":"","required":true,"order":1}]}'
+    '{"expectedLanguage":"tr","sections":[{"key":"new","title":"New","description":"","required":true,"order":1}]}',
+    'competitions/competition-a/template-versions/template-v2/file.pdf', '${"b".repeat(64)}',
+    'sablon.pdf', 'application/pdf', 2048, 1
   );
   UPDATE rubric_version SET status = 'RETIRED' WHERE id = 'rubric-v1';
   INSERT INTO rubric_version (id, competition_id, version_number, label, status)

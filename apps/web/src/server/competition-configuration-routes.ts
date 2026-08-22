@@ -16,6 +16,7 @@ import {
   RubricVersionListResponseSchema,
   RubricVersionResponseSchema,
   RubricVersionUpdateRequestSchema,
+  type SectionPresenceCheckDetails,
   TemplateVersionCreateRequestSchema,
   TemplateVersionListResponseSchema,
   TemplateVersionResponseSchema,
@@ -23,16 +24,20 @@ import {
 } from "@teknofest-ai/shared";
 import type { Context, Hono } from "hono";
 
+import { DocumentProcessingError, extractDocument } from "./analysis/document-extraction";
+import { evaluateSections } from "./analysis/structural-checks";
 import { ApiApplicationError, parseJsonBody } from "./api-error";
 import type { AuthRuntimeBindings } from "./auth/auth";
 import type { SessionResolver } from "./auth/session";
 import { requireCompetitionPermission } from "./authorization/membership";
 import { requireAuthenticatedUser } from "./authorization/require-auth";
+import type { DocumentStorage } from "./storage/documents";
 
 export interface CompetitionConfigurationRouteDependencies {
   resolveSession: SessionResolver;
   findMembership: CompetitionMembershipLookup;
   repository: CompetitionConfigurationRepository;
+  documentStorage: DocumentStorage;
 }
 
 type Application = Hono<{ Bindings: AuthRuntimeBindings }>;
@@ -68,6 +73,95 @@ async function requireConfigurationPermission(
   );
 
   return { competitionId, user };
+}
+
+/**
+ * Pre-flight, activation-time proof that the configured structural profile actually corresponds to
+ * the uploaded official template: every REQUIRED section heading configured on the profile must be
+ * found in the official file's own extracted text, using the exact same deterministic
+ * heading-matching primitive (`evaluateSections`) a real submission is checked against. This is
+ * intentionally NOT a claim of byte, pixel or layout identity — a filled contestant report will
+ * always differ from the blank official template — it only proves the two describe the same
+ * section structure.
+ *
+ * This function only ever SHORT-CIRCUITS to a no-op when a more specific, more truthful error is
+ * about to come from `activateTemplateVersion` itself (not DRAFT, no required sections, no file
+ * yet); it never duplicates those checks, and it never fakes a pass when extraction genuinely
+ * fails — an unreadable file blocks activation with an honest message instead of being silently
+ * skipped.
+ */
+async function validateOfficialTemplateHeadings(
+  environment: AuthRuntimeBindings,
+  dependencies: CompetitionConfigurationRouteDependencies,
+  competitionId: string,
+  templateVersionId: string,
+): Promise<void> {
+  const target = await dependencies.repository.getTemplateVersion(
+    environment.DB,
+    competitionId,
+    templateVersionId,
+  );
+  if (!target) return;
+  if (target.status !== "DRAFT" || target.file === null) return;
+  const requiredSections = target.structuralProfile.sections.filter((section) => section.required);
+  if (requiredSections.length === 0) return;
+
+  const fileMetadata = await dependencies.repository.getTemplateVersionFileMetadata(
+    environment.DB,
+    competitionId,
+    templateVersionId,
+  );
+  if (!fileMetadata) return;
+
+  const object = await dependencies.documentStorage.getTemplateFile(
+    environment.DOCUMENTS,
+    fileMetadata.storageKey,
+  );
+  if (!object) {
+    throw new ApiApplicationError(
+      { code: "STORAGE_ERROR", message: "Resmî rapor şablonu belge deposundan okunamadı." },
+      500,
+    );
+  }
+
+  let artifact: Awaited<ReturnType<typeof extractDocument>>;
+  try {
+    artifact = await extractDocument({
+      bytes: new Uint8Array(await object.arrayBuffer()),
+      // These two ids are opaque schema fields on the extraction artifact, not foreign keys: this
+      // validation is a transient, in-memory check and nothing here is persisted to R2 or D1.
+      submissionId: templateVersionId,
+      analysisRunId: templateVersionId,
+      sourceSha256: target.file.sha256,
+    });
+  } catch (error) {
+    if (error instanceof DocumentProcessingError) {
+      throw new ApiApplicationError(
+        {
+          code: "VALIDATION_ERROR",
+          message: `Resmî rapor şablonundan metin çıkarılamadı; başlık doğrulaması yapılamadı (${error.safeMessage})`,
+        },
+        400,
+      );
+    }
+    throw error;
+  }
+
+  const { sectionPresence } = evaluateSections(artifact, target.structuralProfile);
+  const details = sectionPresence.details as SectionPresenceCheckDetails;
+  if (details.missingRequiredSectionKeys.length === 0) return;
+
+  const missingTitles = requiredSections
+    .filter((section) => details.missingRequiredSectionKeys.includes(section.key))
+    .map((section) => section.title)
+    .join(", ");
+  throw new ApiApplicationError(
+    {
+      code: "VALIDATION_ERROR",
+      message: `Resmî rapor şablonunda yapılandırılan şu zorunlu başlıklar bulunamadı: ${missingTitles}. Şablon dosyasını veya yapılandırılan bölümleri güncelleyin.`,
+    },
+    400,
+  );
 }
 
 export function registerCompetitionConfigurationRoutes(
@@ -210,10 +304,17 @@ export function registerCompetitionConfigurationRoutes(
     "/api/v1/competitions/:competitionId/templates/:templateVersionId/activate",
     async (context) => {
       const { competitionId } = await requireConfigurationPermission(context, dependencies);
+      const templateVersionId = requiredParameter(context, "templateVersionId");
+      await validateOfficialTemplateHeadings(
+        context.env,
+        dependencies,
+        competitionId,
+        templateVersionId,
+      );
       const template = await dependencies.repository.activateTemplateVersion(
         context.env.DB,
         competitionId,
-        requiredParameter(context, "templateVersionId"),
+        templateVersionId,
       );
 
       return context.json(TemplateVersionResponseSchema.parse(template));

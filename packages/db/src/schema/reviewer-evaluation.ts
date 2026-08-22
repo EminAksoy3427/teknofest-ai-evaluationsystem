@@ -63,6 +63,10 @@ export const reviewerEvaluations = sqliteTable(
       table.id,
       table.rubricVersionId,
     ),
+    // Parent key for ContestantFeedback's pinned-source-evaluation ownership foreign key: a
+    // published feedback row can only cite an evaluation that actually belongs to its own
+    // submission.
+    uniqueIndex("reviewer_evaluation_submission_scope_unique").on(table.submissionId, table.id),
     index("reviewer_evaluation_analysis_run_id_index").on(table.analysisRunId),
     foreignKey({
       columns: [table.assignmentId, table.submissionId],

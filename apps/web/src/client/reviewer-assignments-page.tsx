@@ -20,10 +20,12 @@ function totalCell(score: number | null, maximum: number | null): string {
 }
 
 function AssignmentRow({
+  competitionId,
   assignment,
   onUnassign,
   isBusy,
 }: {
+  competitionId: string;
   assignment: ReviewerAssignmentOperation;
   onUnassign(assignmentId: string): void;
   isBusy: boolean;
@@ -57,19 +59,29 @@ function AssignmentRow({
         {assignment.disagreementCount === null ? "—" : assignment.disagreementCount}
       </td>
       <td className="px-3 py-2.5">
-        <button
-          className="danger-button"
-          disabled={isBusy || assignment.evaluationStatus === "SUBMITTED"}
-          onClick={() => onUnassign(assignment.assignmentId)}
-          title={
-            assignment.evaluationStatus === "SUBMITTED"
-              ? "Gönderilmiş değerlendirme kaydı korunur; atama kaldırılamaz."
-              : undefined
-          }
-          type="button"
-        >
-          Atamayı kaldır
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {assignment.evaluationStatus === "SUBMITTED" ? (
+            <Link
+              className="secondary-button whitespace-nowrap"
+              to={`/app/competitions/${competitionId}/submissions/${assignment.submission.id}/feedback`}
+            >
+              Geri Bildirim
+            </Link>
+          ) : null}
+          <button
+            className="danger-button"
+            disabled={isBusy || assignment.evaluationStatus === "SUBMITTED"}
+            onClick={() => onUnassign(assignment.assignmentId)}
+            title={
+              assignment.evaluationStatus === "SUBMITTED"
+                ? "Gönderilmiş değerlendirme kaydı korunur; atama kaldırılamaz."
+                : undefined
+            }
+            type="button"
+          >
+            Atamayı kaldır
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -308,6 +320,7 @@ export function ReviewerAssignmentsPage() {
                 {assignments.map((assignment) => (
                   <AssignmentRow
                     assignment={assignment}
+                    competitionId={competitionId ?? ""}
                     isBusy={isBusy}
                     key={assignment.assignmentId}
                     onUnassign={(id) => void unassign(id)}

@@ -58,6 +58,7 @@ const templateDraft = {
       },
     ],
   },
+  file: null,
   createdAt: now,
   updatedAt: now,
 };
@@ -99,6 +100,12 @@ function repositoryStub(
     createTemplateVersion: async () => templateDraft,
     deleteCategory: async () => undefined,
     findCompetition: async () => competition,
+    getTemplateVersion: async () => templateDraft,
+    getTemplateVersionFileMetadata: async () => null,
+    putTemplateVersionFile: async () => ({
+      template: { ...templateDraft, status: "DRAFT" },
+      previousStorageKey: null,
+    }),
     getCompetitionConfiguration: async () => ({
       competition,
       categories: [category],
@@ -108,6 +115,7 @@ function repositoryStub(
         competition: true,
         categories: true,
         activeTemplate: true,
+        activeTemplateFile: true,
         activeRubric: true,
         rubricHasCriteria: true,
         ready: true,
@@ -540,6 +548,7 @@ describe("configuration readiness", () => {
       competition: true,
       categories: true,
       activeTemplate: true,
+      activeTemplateFile: true,
       activeRubric: true,
       rubricHasCriteria: true,
       ready: true,
